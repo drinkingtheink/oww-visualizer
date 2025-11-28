@@ -1,6 +1,5 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <AppStage msg="Welcome to Your Vue.js App"/>
+  <AppStage />
 </template>
 
 <script>
@@ -28,7 +27,6 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
 }
 
 #app {
