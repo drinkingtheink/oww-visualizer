@@ -10,6 +10,9 @@
       <button class="pattern-btn" @click="toggleAutoRotate">
         Auto-Rotate: {{ autoRotate ? 'ON' : 'OFF' }}
       </button>
+      <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
+        {{ isPaused ? '▶ Play' : '⏸ Pause' }}
+      </button>
     </div>
 
     <div class="visualizer-container">
@@ -31,12 +34,15 @@ const fileName = ref('');
 const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
 const autoRotate = ref(true);
+const isPaused = ref(false);
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
 let animationId;
 let rotationAngle = 0;
 let breathePhase = 0;
 let lastRotateTime = Date.now();
+let audioElement = null;
+let particles = [];
 
 // Color Palettes
 const palettes = [
@@ -70,6 +76,108 @@ const palettes = [
   }
 ];
 
+// Particle system for ephemeral effects
+class Particle {
+  constructor(x, y, energy, colorIndex, total) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
+    this.life = 1.0;
+    this.maxLife = 60 + Math.random() * 60;
+    this.size = 5 + energy * 30;
+    this.energy = energy;
+    this.colorIndex = colorIndex;
+    this.total = total;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.98;
+    this.vy *= 0.98;
+    this.life--;
+    this.rotation += this.rotationSpeed;
+    this.pulsePhase += 0.1;
+  }
+
+  draw(ctx) {
+    const alpha = this.life / this.maxLife;
+    const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+    const size = this.size * pulse * alpha;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+
+    // Outer glow
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+    const color = getColor(this.colorIndex, this.total, 0.1 * alpha);
+    const coreColor = getColor(this.colorIndex, this.total, 0.6 * alpha);
+    gradient.addColorStop(0, coreColor);
+    gradient.addColorStop(0.5, color);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner hexagon with refraction effect
+    ctx.fillStyle = getColor(this.colorIndex, this.total, 0.8 * alpha);
+    ctx.strokeStyle = getColor(this.colorIndex, this.total, 1 * alpha);
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = getColor(this.colorIndex, this.total, 0.8 * alpha);
+    
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const angle = (k / 6) * Math.PI * 2;
+      const px = Math.cos(angle) * size;
+      const py = Math.sin(angle) * size;
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Refraction rings
+    for (let r = 0; r < 3; r++) {
+      const ringSize = size * (0.3 + r * 0.25);
+      ctx.strokeStyle = getColor(this.colorIndex + r * 50, this.total, 0.3 * alpha);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, ringSize, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  isDead() {
+    return this.life <= 0;
+  }
+}
+
+function createParticles(x, y, energy, colorIndex, total, count = 1) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y, energy, colorIndex, total));
+  }
+}
+
+function updateParticles() {
+  particles = particles.filter(p => !p.isDead());
+  particles.forEach(p => p.update());
+}
+
+function drawParticles() {
+  particles.forEach(p => p.draw(ctx));
+}
+
 // Pattern Definitions
 const patterns = [
   { name: 'Cubic Grid', draw: drawCubicGrid },
@@ -87,14 +195,15 @@ function loadAudio(event) {
   if (!file) return;
 
   fileName.value = file.name;
-  const audio = new Audio();
+  audioElement = new Audio();
   const reader = new FileReader();
 
   reader.onload = (e) => {
-    audio.src = e.target.result;
-    audio.play();
-    setupAudioContext(audio);
+    audioElement.src = e.target.result;
+    audioElement.play();
+    setupAudioContext(audioElement);
     audioLoaded.value = true;
+    isPaused.value = false;
   };
 
   reader.readAsDataURL(file);
@@ -149,12 +258,25 @@ function drawCubicGrid() {
       const scale = audioLoaded.value ? 0.8 + value * 0.4 : 0.9 + value * 0.1;
       const depth = value * 30;
 
+      // Spawn particles on high energy
+      if (audioLoaded.value && value > 0.75 && Math.random() > 0.95) {
+        const worldX = x + size / 2;
+        const worldY = y + size / 2;
+        createParticles(worldX, worldY, value, index, cols * rows, 2);
+      }
+
       ctx.save();
       ctx.translate(x + size / 2, y + size / 2);
       ctx.scale(scale, scale);
 
       // Draw 3D cube effect
       const cubeSize = size * 0.7;
+      
+      // Glow effect for high energy
+      if (value > 0.6) {
+        ctx.shadowBlur = 20 * value;
+        ctx.shadowColor = getColor(index, cols * rows, value);
+      }
       
       // Top face
       ctx.fillStyle = getColor(index, cols * rows, value * 0.8);
@@ -180,10 +302,26 @@ function drawCubicGrid() {
       ctx.closePath();
       ctx.fill();
 
-      // Border
+      // Border with glow
       ctx.strokeStyle = getColor(index, cols * rows, 1);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = value > 0.7 ? 3 : 2;
       ctx.strokeRect(-cubeSize / 2, -cubeSize / 2, cubeSize, cubeSize);
+      
+      ctx.shadowBlur = 0;
+
+      // Energy pulse lines
+      if (value > 0.5) {
+        ctx.strokeStyle = getColor(index + 100, cols * rows, value * 0.5);
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(-cubeSize / 2, 0);
+        ctx.lineTo(cubeSize / 2, 0);
+        ctx.moveTo(0, -cubeSize / 2);
+        ctx.lineTo(0, cubeSize / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       ctx.restore();
     }
@@ -215,6 +353,30 @@ function drawDiamondLattice() {
       const octagonSize = size * 0.35 * (0.7 + value * 0.5);
       const diamondSize = size * 0.25 * (0.8 + value * 0.4);
 
+      // Spawn particles
+      if (audioLoaded.value && value > 0.8 && Math.random() > 0.92) {
+        createParticles(x, y, value, index, cols * rows, 3);
+      }
+
+      // Outer glow ring
+      if (value > 0.5) {
+        ctx.strokeStyle = getColor(index, cols * rows, (value - 0.5) * 0.3);
+        ctx.lineWidth = 8;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(index, cols * rows, value);
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const angle = (k / 8) * Math.PI * 2;
+          const px = x + Math.cos(angle) * (octagonSize + 10);
+          const py = y + Math.sin(angle) * (octagonSize + 10);
+          if (k === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
       // Draw octagon
       ctx.fillStyle = getColor(index, cols * rows, value * 0.7);
       ctx.beginPath();
@@ -228,10 +390,14 @@ function drawDiamondLattice() {
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = getColor(index, cols * rows, 1);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = value > 0.6 ? 3 : 2;
       ctx.stroke();
 
-      // Draw center diamond
+      // Draw center diamond with glow
+      if (value > 0.6) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(index + 100, cols * rows, value);
+      }
       ctx.fillStyle = getColor(index + 100, cols * rows, value);
       ctx.beginPath();
       ctx.moveTo(x, y - diamondSize);
@@ -243,6 +409,7 @@ function drawDiamondLattice() {
       ctx.strokeStyle = getColor(index + 100, cols * rows, 1);
       ctx.lineWidth = 2;
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
       // Draw corner diamonds
       const corners = [
@@ -264,6 +431,16 @@ function drawDiamondLattice() {
         ctx.lineTo(cx - cSize, cy);
         ctx.closePath();
         ctx.fill();
+
+        // Energy lines connecting to center
+        if (value > 0.6) {
+          ctx.strokeStyle = getColor(index, cols * rows, value * 0.3);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
       });
     }
   }
@@ -292,6 +469,11 @@ function drawHexFlowers() {
       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.12) * 0.3 + 0.5;
       
+      // Spawn particles at center
+      if (audioLoaded.value && value > 0.78 && Math.random() > 0.9) {
+        createParticles(x, y, value, index, cols * rows, 2);
+      }
+
       // Draw flower pattern with hexagons
       const pattern = [
         { angle: 0, dist: 0, scale: 1.2 },
@@ -303,12 +485,33 @@ function drawHexFlowers() {
         { angle: 300, dist: hexRadius * 0.8, scale: 0.5 }
       ];
 
+      // Draw connecting lines
+      if (value > 0.5) {
+        ctx.strokeStyle = getColor(index, cols * rows, value * 0.2);
+        ctx.lineWidth = 2;
+        pattern.slice(1).forEach(p => {
+          const angle = (p.angle * Math.PI / 180) + rotationAngle;
+          const hx = x + Math.cos(angle) * p.dist;
+          const hy = y + Math.sin(angle) * p.dist;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(hx, hy);
+          ctx.stroke();
+        });
+      }
+
       pattern.forEach((p, pi) => {
         const angle = (p.angle * Math.PI / 180) + rotationAngle;
         const hx = x + Math.cos(angle) * p.dist;
         const hy = y + Math.sin(angle) * p.dist;
         const size = hexRadius * p.scale * (0.7 + value * 0.5);
         const intensity = pi === 0 ? value : value * 0.6;
+
+        // Glow for high energy
+        if (intensity > 0.6) {
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = getColor(index + pi * 30, cols * rows, intensity);
+        }
 
         // Draw hexagon
         ctx.fillStyle = getColor(index + pi * 30, cols * rows, intensity);
@@ -325,6 +528,25 @@ function drawHexFlowers() {
         ctx.strokeStyle = getColor(index + pi * 30, cols * rows, 1);
         ctx.lineWidth = pi === 0 ? 2 : 1;
         ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw refraction rings for center hexagon
+        if (pi === 0 && value > 0.4) {
+          for (let r = 1; r <= 3; r++) {
+            ctx.strokeStyle = getColor(index + r * 40, cols * rows, (value - 0.4) * 0.3);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const hexAngle = (k / 6) * Math.PI * 2;
+              const px = hx + Math.cos(hexAngle) * (size + r * 8);
+              const py = hy + Math.sin(hexAngle) * (size + r * 8);
+              if (k === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
       });
     }
   }
@@ -355,27 +577,72 @@ function drawConcentricWaves() {
       const rings = 8;
       const maxRadius = size * 0.45;
 
+      // Spawn particles from rings
+      if (audioLoaded.value && value > 0.82 && Math.random() > 0.88) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = maxRadius * 0.8;
+        const px = x + Math.cos(angle) * dist;
+        const py = y + Math.sin(angle) * dist;
+        createParticles(px, py, value, index, cols * rows, 4);
+      }
+
+      // Outer glow pulse
+      if (value > 0.5) {
+        const glowRadius = maxRadius * 1.2 * (1 + (value - 0.5));
+        const gradient = ctx.createRadialGradient(x, y, maxRadius * 0.8, x, y, glowRadius);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, getColor(index, cols * rows, (value - 0.5) * 0.4));
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - glowRadius, y - glowRadius, glowRadius * 2, glowRadius * 2);
+      }
+
       for (let r = 0; r < rings; r++) {
         const radius = (maxRadius / rings) * (r + 1) * (0.8 + value * 0.4);
         const ringValue = audioLoaded.value ? dataArray[(dataIndex + r * 10) % bufferLength] / 255 : value;
-        const thickness = (maxRadius / rings) * 0.7;
+        const thickness = (maxRadius / rings) * 0.7 * (0.8 + ringValue * 0.4);
+
+        // Add glow to high energy rings
+        if (ringValue > 0.7) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = getColor(index + r * 20, cols * rows, ringValue);
+        }
 
         // Hexagonal ring
         ctx.strokeStyle = getColor(index + r * 20, cols * rows, ringValue);
         ctx.lineWidth = thickness;
         ctx.beginPath();
         for (let k = 0; k <= 6; k++) {
-          const angle = (k / 6) * Math.PI * 2;
+          const angle = (k / 6) * Math.PI * 2 + rotationAngle * (r + 1) * 0.1;
           const px = x + Math.cos(angle) * radius;
           const py = y + Math.sin(angle) * radius;
           if (k === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
         ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw nodes at intersections
+        if (ringValue > 0.6) {
+          for (let k = 0; k < 6; k++) {
+            const angle = (k / 6) * Math.PI * 2 + rotationAngle * (r + 1) * 0.1;
+            const px = x + Math.cos(angle) * radius;
+            const py = y + Math.sin(angle) * radius;
+            const nodeSize = 3 + ringValue * 4;
+            
+            ctx.fillStyle = getColor(index + r * 20 + k * 10, cols * rows, ringValue);
+            ctx.beginPath();
+            ctx.arc(px, py, nodeSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
 
       // Center hexagon
       const centerSize = maxRadius * 0.25 * (0.8 + value * 0.4);
+      if (value > 0.6) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = getColor(index + 200, cols * rows, value);
+      }
       ctx.fillStyle = getColor(index + 200, cols * rows, value);
       ctx.beginPath();
       for (let k = 0; k < 6; k++) {
@@ -387,6 +654,7 @@ function drawConcentricWaves() {
       }
       ctx.closePath();
       ctx.fill();
+      ctx.shadowBlur = 0;
     }
   }
 
@@ -416,7 +684,33 @@ function drawSpiralGalaxy() {
       const y = centerY + Math.sin(angle) * radius;
       const size = 8 + value * 25;
 
+      // Spawn particles along spiral
+      if (audioLoaded.value && value > 0.75 && Math.random() > 0.97) {
+        createParticles(x, y, value, i + s * 100, points * spirals, 1);
+      }
+
+      // Trail effect
+      if (i > 0 && value > 0.4) {
+        const prevT = (i - 1) / points;
+        const prevAngle = prevT * Math.PI * 6 + spiralAngle + rotationAngle;
+        const prevRadius = prevT * Math.min(width, height) * 0.7;
+        const prevX = centerX + Math.cos(prevAngle) * prevRadius;
+        const prevY = centerY + Math.sin(prevAngle) * prevRadius;
+
+        ctx.strokeStyle = getColor(i + s * 100, points * spirals, value * 0.3);
+        ctx.lineWidth = 2 + value * 3;
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
       // Draw hexagon at each point
+      if (value > 0.6) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(i + s * 100, points * spirals, value);
+      }
+      
       ctx.fillStyle = getColor(i + s * 100, points * spirals, value * 0.8);
       ctx.beginPath();
       for (let k = 0; k < 6; k++) {
@@ -429,14 +723,45 @@ function drawSpiralGalaxy() {
       ctx.closePath();
       ctx.fill();
 
-      // Add glow effect
-      if (value > 0.6) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = getColor(i + s * 100, points * spirals, 1);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+      // Add border
+      ctx.strokeStyle = getColor(i + s * 100, points * spirals, 1);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      // Add refraction circles for high energy
+      if (value > 0.7) {
+        for (let r = 1; r <= 2; r++) {
+          ctx.strokeStyle = getColor(i + s * 100 + r * 30, points * spirals, (value - 0.7) * 0.4);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(x, y, size + r * 6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
     }
+  }
+
+  // Draw central core
+  const coreSize = 40 + Math.sin(breathePhase) * 10;
+  const coreValue = audioLoaded.value ? dataArray[0] / 255 : 0.5;
+  
+  ctx.shadowBlur = 30;
+  ctx.shadowColor = getColor(0, 1, coreValue);
+  ctx.fillStyle = getColor(0, 1, coreValue * 0.8);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Core rings
+  for (let r = 1; r <= 4; r++) {
+    ctx.strokeStyle = getColor(r * 50, 200, 0.3 + coreValue * 0.3);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, coreSize + r * 10, 0, Math.PI * 2);
+    ctx.stroke();
   }
 }
 
@@ -448,7 +773,7 @@ function animate() {
   ctx.fillStyle = 'rgba(10, 10, 10, 0.3)';
   ctx.fillRect(0, 0, width, height);
 
-  if (audioLoaded.value) {
+  if (audioLoaded.value && !isPaused.value) {
     analyser.getByteFrequencyData(dataArray);
     rotationAngle += 0.005;
   } else {
@@ -458,7 +783,7 @@ function animate() {
   }
 
   // Auto-rotate patterns and palettes
-  if (autoRotate.value && audioLoaded.value) {
+  if (autoRotate.value && audioLoaded.value && !isPaused.value) {
     const now = Date.now();
     if (now - lastRotateTime > 15000) { // 15 seconds
       cyclePattern();
@@ -470,7 +795,23 @@ function animate() {
   // Draw current pattern
   patterns[currentPatternIndex.value].draw();
 
+  // Update and draw particles
+  updateParticles();
+  drawParticles();
+
   animationId = requestAnimationFrame(animate);
+}
+
+function togglePause() {
+  if (!audioElement) return;
+  
+  if (isPaused.value) {
+    audioElement.play();
+    isPaused.value = false;
+  } else {
+    audioElement.pause();
+    isPaused.value = true;
+  }
 }
 
 function cyclePattern() {
