@@ -35,12 +35,38 @@
             <stop offset="100%" style="stop-color: #ffffff; stop-opacity: 0" />
           </radialGradient>
           
+          <radialGradient id="bubbleGrad1">
+            <stop offset="0%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: 0.8`" />
+            <stop offset="70%" :style="`stop-color: ${currentPalette.secondary}; stop-opacity: 0.6`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.secondary}; stop-opacity: 0`" />
+          </radialGradient>
+          
+          <radialGradient id="bubbleGrad2">
+            <stop offset="0%" :style="`stop-color: ${currentPalette.accent1}; stop-opacity: 0.8`" />
+            <stop offset="70%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0.6`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0`" />
+          </radialGradient>
+          
+          <radialGradient id="bubbleGrad3">
+            <stop offset="0%" :style="`stop-color: ${currentPalette.highlight1}; stop-opacity: 0.8`" />
+            <stop offset="70%" :style="`stop-color: ${currentPalette.highlight2}; stop-opacity: 0.6`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.highlight2}; stop-opacity: 0`" />
+          </radialGradient>
+          
           <filter id="blur">
             <feGaussianBlur :stdDeviation="3 + audioData.overall * 8" />
           </filter>
           
           <filter id="glow">
             <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          
+          <filter id="bubbleGlow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
@@ -163,6 +189,35 @@
               </g>
             </g>
           </g>
+        </g>
+        
+        <!-- FLOATING BUBBLES - rendered before center so they appear behind -->
+        <g v-for="(bubble, idx) in bubbles" :key="`bubble-${idx}`">
+          <circle
+            :cx="bubble.x"
+            :cy="bubble.y"
+            :r="bubble.size"
+            :fill="bubble.gradient"
+            :opacity="bubble.opacity"
+            filter="url(#bubbleGlow)"
+          />
+          <!-- Bubble highlight -->
+          <circle
+            :cx="bubble.x - bubble.size * 0.3"
+            :cy="bubble.y - bubble.size * 0.3"
+            :r="bubble.size * 0.3"
+            fill="rgba(255, 255, 255, 0.4)"
+            :opacity="bubble.opacity * 0.6"
+          />
+          <!-- Bubble rim -->
+          <circle
+            :cx="bubble.x"
+            :cy="bubble.y"
+            :r="bubble.size"
+            fill="none"
+            :stroke="`rgba(255, 255, 255, ${bubble.opacity * 0.3})`"
+            :stroke-width="bubble.size * 0.05"
+          />
         </g>
         
         <!-- CENTER CELL - 5x larger, dominant -->
@@ -540,35 +595,33 @@ const audioElement = ref(null);
 const animationFrame = ref(null);
 const demoTime = ref(0);
 const paletteTimer = ref(null);
+const bubbleList = ref([]);
+const bubbleIdCounter = ref(0);
+const lastBubbleTime = ref(0);
 
 const currentPalette = computed(() => colorPalettes[currentPaletteIndex.value]);
+
+const bubbles = computed(() => bubbleList.value);
 
 const surroundingCells = computed(() => {
   const cells = [];
   const hexWidth = 200;
-  const hexHeight = 173.2; // sqrt(3) * 100
+  const hexHeight = 173.2;
   const patterns = ['spiral', 'concentric', 'radial', 'geometric', 'particles', 'wave'];
   
-  // Helper to calculate hex position using axial coordinates
   const hexToPixel = (q, r) => {
     const x = 1200 + hexWidth * (3/2 * q);
     const y = 800 + hexHeight * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
     return { x, y };
   };
   
-  // Generate a massive grid of hexagons
-  // Cover from q: -8 to 8, r: -6 to 6
   for (let q = -8; q <= 8; q++) {
     for (let r = -6; r <= 6; r++) {
-      // Skip if sum is out of range (creates hexagonal boundary)
       if (Math.abs(q + r) > 7) continue;
-      
-      // Skip the center cell (that's our large one)
       if (q === 0 && r === 0) continue;
       
       const pos = hexToPixel(q, r);
       
-      // Only add cells that are within the visible viewport (with some padding)
       if (pos.x >= -200 && pos.x <= 2600 && pos.y >= -200 && pos.y <= 1800) {
         cells.push({
           x: pos.x,
@@ -713,6 +766,62 @@ const centerGeometry = computed(() => {
     particles
   };
 });
+
+const updateBubbles = () => {
+  const t = demoTime.value;
+  const currentTime = Date.now();
+  
+  // Spawn new bubbles based on audio intensity
+  const spawnRate = 100 + (1 - audioData.overall) * 400; // Higher audio = faster spawning
+  if (currentTime - lastBubbleTime.value > spawnRate) {
+    const gradients = ['url(#bubbleGrad1)', 'url(#bubbleGrad2)', 'url(#bubbleGrad3)'];
+    const angle = Math.random() * Math.PI * 2;
+    
+    const newBubble = {
+      id: bubbleIdCounter.value++,
+      x: 1200, // Center x
+      y: 800,  // Center y
+      vx: Math.cos(angle) * (0.5 + audioData.overall * 2),
+      vy: Math.sin(angle) * (0.5 + audioData.overall * 2) - 1, // Slight upward bias
+      size: 10 + Math.random() * 30 + audioData.bass * 20,
+      gradient: gradients[Math.floor(Math.random() * gradients.length)],
+      opacity: 0.6 + Math.random() * 0.4,
+      life: 0,
+      maxLife: 3 + Math.random() * 4 // 3-7 seconds lifespan
+    };
+    
+    bubbleList.value.push(newBubble);
+    lastBubbleTime.value = currentTime;
+  }
+  
+  // Update existing bubbles
+  bubbleList.value = bubbleList.value.map(bubble => {
+    bubble.life += 0.016;
+    bubble.x += bubble.vx;
+    bubble.y += bubble.vy;
+    
+    // Slow down over time
+    bubble.vx *= 0.99;
+    bubble.vy *= 0.99;
+    
+    // Add some wobble
+    bubble.x += Math.sin(t * 2 + bubble.id) * 0.3;
+    bubble.y += Math.cos(t * 1.5 + bubble.id) * 0.3;
+    
+    // Fade out near the end of life
+    const lifeFraction = bubble.life / bubble.maxLife;
+    if (lifeFraction > 0.8) {
+      bubble.opacity *= 0.95;
+    }
+    
+    return bubble;
+  }).filter(bubble => {
+    // Remove bubbles that are too old or off screen
+    return bubble.life < bubble.maxLife && 
+           bubble.x > -200 && bubble.x < 2600 &&
+           bubble.y > -200 && bubble.y < 1800;
+  });
+};
 
 const getCellGeometry = (cell) => {
   const t = demoTime.value;
@@ -900,7 +1009,15 @@ const animateDemo = () => {
   audioData.treble = Math.pow((Math.sin(t * 3.7) + 1) / 2, 1.3);
   audioData.overall = (Math.sin(t * 1.1) + 1) / 2;
   
+  updateBubbles();
+  
   animationFrame.value = requestAnimationFrame(animateDemo);
+};
+
+const animate = () => {
+  demoTime.value += 0.016;
+  updateBubbles();
+  animationFrame.value = requestAnimationFrame(animate);
 };
 
 const styles = {
@@ -990,7 +1107,11 @@ const styles = {
 };
 
 onMounted(() => {
-  animateDemo();
+  if (isDemoMode.value) {
+    animateDemo();
+  } else {
+    animate();
+  }
   startPaletteCycle();
 });
 
