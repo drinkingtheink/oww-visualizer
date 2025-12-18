@@ -1,7 +1,7 @@
 <template>
   <div :style="styles.container">
     <div :style="styles.visualizerWrapper">
-      <svg viewBox="0 0 800 800" :style="styles.svg">
+      <svg viewBox="0 0 1600 1200" :style="styles.svg">
         <defs>
           <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: 0.8`" />
@@ -31,201 +31,210 @@
           <filter id="blur">
             <feGaussianBlur :stdDeviation="2 + audioData.overall * 4" />
           </filter>
+          
+          <clipPath id="hexClip">
+            <polygon points="0,-115.47 100,-57.735 100,57.735 0,115.47 -100,57.735 -100,-57.735" />
+          </clipPath>
         </defs>
         
-        <!-- Background glow effects -->
-        <circle cx="400" cy="400" :r="150 + audioData.bass * 200" fill="url(#glow1)" :opacity="audioData.bass * 0.5" />
-        <circle cx="400" cy="400" :r="100 + audioData.treble * 150" fill="url(#glow2)" :opacity="audioData.treble * 0.4" />
-        
-        <!-- Triple layer fractal lines -->
-        <g :style="{ opacity: 0.2 + audioData.treble * 0.5 }">
-          <line
-            v-for="(line, i) in geometry.lines"
-            :key="`line-outer-${i}`"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="url(#grad1)"
-            :stroke-width="0.5 + audioData.mid * 1.5"
-          />
-        </g>
-        
-        <g :style="{ opacity: 0.3 + audioData.mid * 0.6 }">
-          <line
-            v-for="(line, i) in geometry.midLines"
-            :key="`line-mid-${i}`"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="url(#grad2)"
-            :stroke-width="1 + audioData.bass * 2"
-          />
-        </g>
-        
-        <g :style="{ opacity: 0.4 + audioData.bass * 0.5 }">
-          <line
-            v-for="(line, i) in geometry.innerLines"
-            :key="`line-inner-${i}`"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="url(#grad3)"
-            :stroke-width="1.5 + audioData.treble * 2.5"
-          />
-        </g>
-        
-        <!-- Dynamic center shape - morphs between hexagon and star -->
-        <g :transform="`translate(400, 400) rotate(${geometry.hexRotation}) scale(${geometry.hexScale})`">
-          <!-- Outer pulsing hexagon -->
-          <polygon
-            :points="geometry.outerShape"
-            fill="none"
-            stroke="url(#grad1)"
-            :stroke-width="3 + audioData.bass * 6"
-            :opacity="0.6 + audioData.overall * 0.4"
-          />
-          
-          <!-- Middle morphing shape -->
-          <polygon
-            :points="geometry.middleShape"
-            fill="none"
-            stroke="url(#grad2)"
-            :stroke-width="2 + audioData.mid * 5"
-            :opacity="0.7 + audioData.mid * 0.3"
-          />
-          
-          <!-- Inner star burst -->
-          <polygon
-            :points="geometry.innerShape"
-            fill="none"
-            stroke="url(#grad3)"
-            :stroke-width="1.5 + audioData.treble * 4"
-            :opacity="0.8 + audioData.treble * 0.2"
-          />
-          
-          <!-- Center glow point -->
-          <circle
-            cx="0"
-            cy="0"
-            :r="5 + audioData.overall * 20"
-            :fill="`rgba(255, 255, 255, ${audioData.overall * 0.8})`"
-            filter="url(#blur)"
-          />
-        </g>
-        
-        <!-- Triple layer outer rings -->
-        <g
-          v-for="(ring, i) in geometry.rings"
-          :key="`ring-outer-${i}`"
-          :transform="`translate(${ring.x}, ${ring.y}) rotate(${ring.angle})`"
-          :style="{ opacity: 0.3 + audioData.overall * 0.6 }"
-        >
-          <circle
-            cx="0"
-            cy="0"
-            :r="ring.size * 1.2"
-            fill="none"
-            stroke="url(#grad1)"
-            :stroke-width="0.5 + audioData.bass * 1.5"
-          />
-          <circle
-            cx="0"
-            cy="0"
-            :r="ring.size"
-            fill="none"
-            stroke="url(#grad2)"
-            :stroke-width="1 + audioData.treble * 2"
-          />
-          <circle
-            cx="0"
-            cy="0"
-            :r="ring.size * 0.6"
-            fill="none"
-            stroke="url(#grad3)"
-            :stroke-width="0.5 + audioData.mid * 1.5"
-          />
-        </g>
-        
-        <!-- Additional mid-layer rings -->
-        <g
-          v-for="(ring, i) in geometry.midRings"
-          :key="`ring-mid-${i}`"
-          :transform="`translate(${ring.x}, ${ring.y}) rotate(${ring.angle})`"
-          :style="{ opacity: 0.4 + audioData.mid * 0.5 }"
-        >
-          <circle
-            cx="0"
-            cy="0"
-            :r="ring.size"
-            fill="none"
-            stroke="url(#grad2)"
-            :stroke-width="1.5 + audioData.mid * 2.5"
-          />
-          <polygon
-            :points="generateSmallHex(ring.size * 0.7)"
-            fill="none"
-            stroke="url(#grad3)"
-            :stroke-width="0.5 + audioData.bass * 1"
-          />
-        </g>
-        
-        <!-- Connecting arcs - multiple layers -->
-        <g :style="{ opacity: 0.2 + audioData.mid * 0.4 }">
-          <line
-            v-for="(ring, i) in geometry.rings"
-            :key="`arc-outer-${i}`"
-            :x1="ring.x"
-            :y1="ring.y"
-            :x2="geometry.rings[(i + 1) % geometry.rings.length].x"
-            :y2="geometry.rings[(i + 1) % geometry.rings.length].y"
-            stroke="url(#grad1)"
-            :stroke-width="0.5 + audioData.overall * 1.5"
-          />
-        </g>
-        
-        <g :style="{ opacity: 0.3 + audioData.bass * 0.4 }">
-          <line
-            v-for="(ring, i) in geometry.midRings"
-            :key="`arc-mid-${i}`"
-            :x1="ring.x"
-            :y1="ring.y"
-            :x2="geometry.midRings[(i + 1) % geometry.midRings.length].x"
-            :y2="geometry.midRings[(i + 1) % geometry.midRings.length].y"
-            stroke="url(#grad2)"
-            :stroke-width="0.5 + audioData.bass * 2"
-          />
-        </g>
-        
-        <!-- Energy burst lines on bass hits -->
-        <g :style="{ opacity: audioData.bass * 0.7 }">
-          <line
-            v-for="(burst, i) in geometry.energyBursts"
-            :key="`burst-${i}`"
-            :x1="burst.x1"
-            :y1="burst.y1"
-            :x2="burst.x2"
-            :y2="burst.y2"
-            stroke="url(#grad3)"
-            :stroke-width="2 + audioData.bass * 3"
-            stroke-linecap="round"
-          />
-        </g>
-        
-        <!-- Outer orbital particles -->
-        <g :style="{ opacity: 0.6 + audioData.treble * 0.4 }">
-          <circle
-            v-for="(particle, i) in geometry.particles"
-            :key="`particle-${i}`"
-            :cx="particle.x"
-            :cy="particle.y"
-            :r="2 + audioData.overall * 4"
-            :fill="currentPalette.primary"
-            :style="`opacity: ${0.6 + audioData.treble * 0.4}`"
-            filter="url(#blur)"
-          />
+        <!-- Render honeycomb cells -->
+        <g v-for="(cell, idx) in honeycombCells" :key="`cell-${idx}`">
+          <g :transform="`translate(${cell.x}, ${cell.y})`">
+            <!-- Hexagon border -->
+            <polygon
+              points="0,-115.47 100,-57.735 100,57.735 0,115.47 -100,57.735 -100,-57.735"
+              fill="none"
+              :stroke="currentPalette.primary"
+              :stroke-width="cell.isCenter ? 3 : 1"
+              :opacity="cell.isCenter ? 0.6 : 0.2"
+            />
+            
+            <!-- Clipped content -->
+            <g clip-path="url(#hexClip)">
+              <!-- Background glow for this cell -->
+              <circle 
+                cx="0" 
+                cy="0" 
+                :r="80 + audioData.bass * 100" 
+                fill="url(#glow1)" 
+                :opacity="cell.isCenter ? audioData.bass * 0.5 : audioData.bass * 0.2" 
+              />
+              <circle 
+                cx="0" 
+                cy="0" 
+                :r="60 + audioData.treble * 80" 
+                fill="url(#glow2)" 
+                :opacity="cell.isCenter ? audioData.treble * 0.4 : audioData.treble * 0.15" 
+              />
+              
+              <!-- Cell-specific visualization -->
+              <g v-if="cell.isCenter">
+                <!-- CENTER CELL - Main visualization -->
+                <g :style="{ opacity: 0.2 + audioData.treble * 0.5 }">
+                  <line
+                    v-for="(line, i) in getCellGeometry(cell).lines"
+                    :key="`line-outer-${i}`"
+                    :x1="line.x1"
+                    :y1="line.y1"
+                    :x2="line.x2"
+                    :y2="line.y2"
+                    stroke="url(#grad1)"
+                    :stroke-width="0.5 + audioData.mid * 1.5"
+                  />
+                </g>
+                
+                <g :style="{ opacity: 0.3 + audioData.mid * 0.6 }">
+                  <line
+                    v-for="(line, i) in getCellGeometry(cell).midLines"
+                    :key="`line-mid-${i}`"
+                    :x1="line.x1"
+                    :y1="line.y1"
+                    :x2="line.x2"
+                    :y2="line.y2"
+                    stroke="url(#grad2)"
+                    :stroke-width="1 + audioData.bass * 2"
+                  />
+                </g>
+                
+                <g :style="{ opacity: 0.4 + audioData.bass * 0.5 }">
+                  <line
+                    v-for="(line, i) in getCellGeometry(cell).innerLines"
+                    :key="`line-inner-${i}`"
+                    :x1="line.x1"
+                    :y1="line.y1"
+                    :x2="line.x2"
+                    :y2="line.y2"
+                    stroke="url(#grad3)"
+                    :stroke-width="1.5 + audioData.treble * 2.5"
+                  />
+                </g>
+                
+                <g :transform="`rotate(${getCellGeometry(cell).rotation}) scale(${getCellGeometry(cell).scale})`">
+                  <polygon
+                    :points="getCellGeometry(cell).outerShape"
+                    fill="none"
+                    stroke="url(#grad1)"
+                    :stroke-width="2 + audioData.bass * 4"
+                    :opacity="0.6 + audioData.overall * 0.4"
+                  />
+                  <polygon
+                    :points="getCellGeometry(cell).middleShape"
+                    fill="none"
+                    stroke="url(#grad2)"
+                    :stroke-width="1.5 + audioData.mid * 3"
+                    :opacity="0.7 + audioData.mid * 0.3"
+                  />
+                  <polygon
+                    :points="getCellGeometry(cell).innerShape"
+                    fill="none"
+                    stroke="url(#grad3)"
+                    :stroke-width="1 + audioData.treble * 2.5"
+                    :opacity="0.8 + audioData.treble * 0.2"
+                  />
+                  <circle
+                    cx="0"
+                    cy="0"
+                    :r="3 + audioData.overall * 12"
+                    :fill="`rgba(255, 255, 255, ${audioData.overall * 0.8})`"
+                    filter="url(#blur)"
+                  />
+                </g>
+                
+                <g :style="{ opacity: audioData.bass * 0.7 }">
+                  <line
+                    v-for="(burst, i) in getCellGeometry(cell).energyBursts"
+                    :key="`burst-${i}`"
+                    :x1="burst.x1"
+                    :y1="burst.y1"
+                    :x2="burst.x2"
+                    :y2="burst.y2"
+                    stroke="url(#grad3)"
+                    :stroke-width="1.5 + audioData.bass * 2"
+                    stroke-linecap="round"
+                  />
+                </g>
+              </g>
+              
+              <g v-else>
+                <!-- SURROUNDING CELLS - Different pattern types -->
+                <g v-if="cell.pattern === 'spiral'">
+                  <path
+                    v-for="(spiral, i) in getCellGeometry(cell).spirals"
+                    :key="`spiral-${i}`"
+                    :d="spiral.path"
+                    fill="none"
+                    stroke="url(#grad1)"
+                    :stroke-width="0.5 + audioData.mid * 1"
+                    :opacity="0.3 + audioData.overall * 0.4"
+                  />
+                </g>
+                
+                <g v-else-if="cell.pattern === 'concentric'">
+                  <circle
+                    v-for="(ring, i) in getCellGeometry(cell).concentricRings"
+                    :key="`ring-${i}`"
+                    cx="0"
+                    cy="0"
+                    :r="ring.r"
+                    fill="none"
+                    stroke="url(#grad2)"
+                    :stroke-width="ring.strokeWidth"
+                    :opacity="ring.opacity"
+                  />
+                </g>
+                
+                <g v-else-if="cell.pattern === 'radial'">
+                  <line
+                    v-for="(ray, i) in getCellGeometry(cell).rays"
+                    :key="`ray-${i}`"
+                    :x1="ray.x1"
+                    :y1="ray.y1"
+                    :x2="ray.x2"
+                    :y2="ray.y2"
+                    stroke="url(#grad3)"
+                    :stroke-width="0.5 + audioData.treble * 1"
+                    :opacity="0.3 + audioData.mid * 0.5"
+                  />
+                </g>
+                
+                <g v-else-if="cell.pattern === 'geometric'">
+                  <polygon
+                    v-for="(poly, i) in getCellGeometry(cell).polygons"
+                    :key="`poly-${i}`"
+                    :points="poly.points"
+                    fill="none"
+                    :stroke="poly.stroke"
+                    :stroke-width="poly.strokeWidth"
+                    :opacity="poly.opacity"
+                  />
+                </g>
+                
+                <g v-else-if="cell.pattern === 'particles'">
+                  <circle
+                    v-for="(particle, i) in getCellGeometry(cell).particles"
+                    :key="`particle-${i}`"
+                    :cx="particle.x"
+                    :cy="particle.y"
+                    :r="particle.r"
+                    :fill="currentPalette.highlight1"
+                    :opacity="particle.opacity"
+                  />
+                </g>
+                
+                <g v-else-if="cell.pattern === 'wave'">
+                  <path
+                    v-for="(wave, i) in getCellGeometry(cell).waves"
+                    :key="`wave-${i}`"
+                    :d="wave.path"
+                    fill="none"
+                    stroke="url(#grad2)"
+                    :stroke-width="0.5 + audioData.bass * 1"
+                    :opacity="0.3 + audioData.treble * 0.4"
+                  />
+                </g>
+              </g>
+            </g>
+          </g>
         </g>
       </svg>
     </div>
@@ -260,7 +269,7 @@
       </button>
       
       <button @click="cyclePalette" :style="styles.paletteButton">
-        {{ currentPaletteIndex + 1 }}/12
+        {{ currentPalette.name }}
       </button>
     </div>
     
@@ -400,11 +409,260 @@ const source = ref(null);
 const audioElement = ref(null);
 const animationFrame = ref(null);
 const demoTime = ref(0);
+const paletteTimer = ref(null);
 
 const currentPalette = computed(() => colorPalettes[currentPaletteIndex.value]);
 
+const honeycombCells = computed(() => {
+  const cells = [];
+  const hexWidth = 200;
+  const hexHeight = 173.2; // sqrt(3) * 100
+  const patterns = ['spiral', 'concentric', 'radial', 'geometric', 'particles', 'wave'];
+  
+  // Center cell
+  cells.push({
+    x: 800,
+    y: 600,
+    isCenter: true,
+    pattern: null
+  });
+  
+  // First ring (6 cells)
+  for (let i = 0; i < 6; i++) {
+    const angle = (i * 60) * Math.PI / 180;
+    cells.push({
+      x: 800 + Math.cos(angle) * hexWidth,
+      y: 600 + Math.sin(angle) * hexHeight,
+      isCenter: false,
+      pattern: patterns[i % patterns.length]
+    });
+  }
+  
+  // Second ring (12 cells)
+  const ring2Positions = [
+    [2, 0], [1, 1], [0, 2], [-1, 1], [-2, 0], [-1, -1],
+    [0, -2], [1, -1], [2, -2], [2, 2], [-2, 2], [-2, -2]
+  ];
+  
+  ring2Positions.forEach(([q, r], i) => {
+    const x = 800 + hexWidth * (3/2 * q);
+    const y = 600 + hexHeight * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
+    cells.push({
+      x,
+      y,
+      isCenter: false,
+      pattern: patterns[i % patterns.length]
+    });
+  });
+  
+  return cells;
+});
+
+const getCellGeometry = (cell) => {
+  if (cell.isCenter) {
+    return generateCenterGeometry();
+  } else {
+    return generateSurroundingGeometry(cell);
+  }
+};
+
+const generateCenterGeometry = () => {
+  const rotation = audioData.overall * 360;
+  const scale = 0.4 + audioData.bass * 0.4;
+  
+  const morphFactor = audioData.mid;
+  const spikeFactor = audioData.treble;
+  
+  const generateMorphShape = (baseSize, spikes) => {
+    const points = [];
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      const isSpike = i % 2 === 0;
+      const radius = isSpike 
+        ? baseSize * (1 + spikes * 0.5)
+        : baseSize * (1 - morphFactor * 0.3);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      points.push(`${x},${y}`);
+    }
+    return points.join(' ');
+  };
+  
+  const outerShape = generateMorphShape(80 + audioData.bass * 25, spikeFactor);
+  const middleShape = generateMorphShape(55 + audioData.mid * 20, spikeFactor * 0.7);
+  const innerShape = generateMorphShape(35 + audioData.treble * 15, spikeFactor * 1.2);
+  
+  const lineCount = 16;
+  const lines = [];
+  for (let i = 0; i < lineCount; i++) {
+    const angle = (i / lineCount) * 360 + audioData.treble * 120;
+    const r1 = 70 + audioData.bass * 20;
+    const r2 = 100 + audioData.overall * 15;
+    const x1 = Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = Math.sin((angle * Math.PI) / 180) * r2;
+    lines.push({ x1, y1, x2, y2 });
+  }
+  
+  const midLines = [];
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * 360 + audioData.mid * 100;
+    const r1 = 40 + audioData.mid * 15;
+    const r2 = 60 + audioData.bass * 20;
+    const x1 = Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = Math.sin((angle * Math.PI) / 180) * r2;
+    midLines.push({ x1, y1, x2, y2 });
+  }
+  
+  const innerLines = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * 360 + audioData.treble * 150;
+    const r1 = 20 + audioData.treble * 10;
+    const r2 = 35 + audioData.mid * 15;
+    const x1 = Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = Math.sin((angle * Math.PI) / 180) * r2;
+    innerLines.push({ x1, y1, x2, y2 });
+  }
+  
+  const energyBursts = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * 360 + audioData.bass * 360;
+    const r1 = 30;
+    const r2 = 30 + audioData.bass * 60;
+    const x1 = Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = Math.sin((angle * Math.PI) / 180) * r2;
+    energyBursts.push({ x1, y1, x2, y2 });
+  }
+  
+  return {
+    rotation,
+    scale,
+    outerShape,
+    middleShape,
+    innerShape,
+    lines,
+    midLines,
+    innerLines,
+    energyBursts
+  };
+};
+
+const generateSurroundingGeometry = (cell) => {
+  const t = demoTime.value;
+  
+  switch (cell.pattern) {
+    case 'spiral':
+      return {
+        spirals: Array.from({ length: 3 }, (_, i) => {
+          let path = 'M 0,0';
+          const turns = 2 + audioData.overall * 2;
+          const maxRadius = 80 + audioData.bass * 20;
+          for (let j = 0; j <= 50; j++) {
+            const angle = (j / 50) * turns * Math.PI * 2 + t * 2 + i * Math.PI * 2 / 3;
+            const r = (j / 50) * maxRadius;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            path += ` L ${x},${y}`;
+          }
+          return { path };
+        })
+      };
+      
+    case 'concentric':
+      return {
+        concentricRings: Array.from({ length: 8 }, (_, i) => ({
+          r: 15 + i * 10 + audioData.mid * 5,
+          strokeWidth: 0.5 + audioData.bass * 0.5,
+          opacity: 0.2 + (audioData.overall * 0.4) * (1 - i / 8)
+        }))
+      };
+      
+    case 'radial':
+      return {
+        rays: Array.from({ length: 12 }, (_, i) => {
+          const angle = (i / 12) * 360 + t * 50;
+          const r1 = 20;
+          const r2 = 60 + audioData.treble * 30;
+          return {
+            x1: Math.cos((angle * Math.PI) / 180) * r1,
+            y1: Math.sin((angle * Math.PI) / 180) * r1,
+            x2: Math.cos((angle * Math.PI) / 180) * r2,
+            y2: Math.sin((angle * Math.PI) / 180) * r2
+          };
+        })
+      };
+      
+    case 'geometric':
+      return {
+        polygons: Array.from({ length: 4 }, (_, i) => {
+          const size = 30 + i * 15 + audioData.mid * 10;
+          const rotation = t * 30 * (i % 2 === 0 ? 1 : -1);
+          const sides = 6;
+          const points = [];
+          for (let j = 0; j < sides; j++) {
+            const angle = (j / sides) * Math.PI * 2 + (rotation * Math.PI / 180);
+            const x = Math.cos(angle) * size;
+            const y = Math.sin(angle) * size;
+            points.push(`${x},${y}`);
+          }
+          return {
+            points: points.join(' '),
+            stroke: i % 2 === 0 ? 'url(#grad1)' : 'url(#grad2)',
+            strokeWidth: 0.5 + audioData.bass * 0.5,
+            opacity: 0.3 + audioData.overall * 0.3
+          };
+        })
+      };
+      
+    case 'particles':
+      return {
+        particles: Array.from({ length: 20 }, (_, i) => {
+          const angle = (i / 20) * 360 + t * 100;
+          const r = 30 + Math.sin(t * 3 + i) * 20 + audioData.overall * 20;
+          return {
+            x: Math.cos((angle * Math.PI) / 180) * r,
+            y: Math.sin((angle * Math.PI) / 180) * r,
+            r: 1 + audioData.treble * 2,
+            opacity: 0.3 + audioData.mid * 0.5
+          };
+        })
+      };
+      
+    case 'wave':
+      return {
+        waves: Array.from({ length: 5 }, (_, i) => {
+          let path = `M -80,${i * 15 - 30}`;
+          for (let j = 0; j <= 20; j++) {
+            const x = -80 + (j / 20) * 160;
+            const y = i * 15 - 30 + Math.sin(j / 3 + t * 2 + i) * (10 + audioData.bass * 10);
+            path += ` L ${x},${y}`;
+          }
+          return { path };
+        })
+      };
+      
+    default:
+      return {};
+  }
+};
+
 const cyclePalette = () => {
   currentPaletteIndex.value = (currentPaletteIndex.value + 1) % colorPalettes.length;
+};
+
+const startPaletteCycle = () => {
+  const cycleInterval = 5000 + Math.random() * 3000; // 5-8 seconds
+  paletteTimer.value = setTimeout(() => {
+    cyclePalette();
+    startPaletteCycle();
+  }, cycleInterval);
 };
 
 const initAudio = async () => {
@@ -484,138 +742,6 @@ const animateDemo = () => {
   animationFrame.value = requestAnimationFrame(animateDemo);
 };
 
-const generateSmallHex = (size) => {
-  const points = [];
-  for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(angle) * size;
-    const y = Math.sin(angle) * size;
-    points.push(`${x},${y}`);
-  }
-  return points.join(' ');
-};
-
-const geometry = computed(() => {
-  const hexRotation = audioData.overall * 360;
-  const hexScale = 0.6 + audioData.bass * 0.8;
-  
-  const morphFactor = audioData.mid;
-  const spikeFactor = audioData.treble;
-  
-  const generateMorphShape = (baseSize, spikes) => {
-    const points = [];
-    for (let i = 0; i < 12; i++) {
-      const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-      const isSpike = i % 2 === 0;
-      const radius = isSpike 
-        ? baseSize * (1 + spikes * 0.5)
-        : baseSize * (1 - morphFactor * 0.3);
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      points.push(`${x},${y}`);
-    }
-    return points.join(' ');
-  };
-  
-  const outerShape = generateMorphShape(120 + audioData.bass * 40, spikeFactor);
-  const middleShape = generateMorphShape(80 + audioData.mid * 30, spikeFactor * 0.7);
-  const innerShape = generateMorphShape(50 + audioData.treble * 20, spikeFactor * 1.2);
-  
-  const ringCount = 6;
-  const rings = [];
-  for (let i = 0; i < ringCount; i++) {
-    const angle = (i / ringCount) * 360 + audioData.mid * 90;
-    const radius = 240 + audioData.treble * 100;
-    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
-    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
-    const size = 50 + audioData.bass * 40;
-    rings.push({ x, y, size, angle: angle + audioData.overall * 240 });
-  }
-  
-  const midRings = [];
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * 360 + audioData.bass * 120;
-    const radius = 160 + audioData.mid * 60;
-    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
-    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
-    const size = 25 + audioData.treble * 20;
-    midRings.push({ x, y, size, angle: angle - audioData.overall * 180 });
-  }
-  
-  const lineCount = 24;
-  const lines = [];
-  for (let i = 0; i < lineCount; i++) {
-    const angle = (i / lineCount) * 360 + audioData.treble * 180;
-    const r1 = 280 + audioData.bass * 60;
-    const r2 = 360 + audioData.overall * 80;
-    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
-    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
-    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
-    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
-    lines.push({ x1, y1, x2, y2 });
-  }
-  
-  const midLines = [];
-  for (let i = 0; i < 18; i++) {
-    const angle = (i / 18) * 360 + audioData.mid * 150;
-    const r1 = 150 + audioData.mid * 40;
-    const r2 = 220 + audioData.bass * 50;
-    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
-    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
-    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
-    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
-    midLines.push({ x1, y1, x2, y2 });
-  }
-  
-  const innerLines = [];
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * 360 + audioData.treble * 200;
-    const r1 = 80 + audioData.treble * 30;
-    const r2 = 130 + audioData.mid * 40;
-    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
-    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
-    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
-    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
-    innerLines.push({ x1, y1, x2, y2 });
-  }
-  
-  const energyBursts = [];
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * 360 + audioData.bass * 360;
-    const r1 = 50;
-    const r2 = 50 + audioData.bass * 150;
-    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
-    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
-    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
-    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
-    energyBursts.push({ x1, y1, x2, y2 });
-  }
-  
-  const particles = [];
-  for (let i = 0; i < 16; i++) {
-    const angle = (i / 16) * 360 + audioData.overall * 720;
-    const radius = 320 + Math.sin(audioData.treble * Math.PI * 2 + i) * 40;
-    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
-    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
-    particles.push({ x, y });
-  }
-  
-  return {
-    hexRotation,
-    hexScale,
-    outerShape,
-    middleShape,
-    innerShape,
-    rings,
-    midRings,
-    lines,
-    midLines,
-    innerLines,
-    energyBursts,
-    particles
-  };
-});
-
 const styles = {
   container: {
     width: '100vw',
@@ -630,10 +756,8 @@ const styles = {
     position: 'relative'
   },
   visualizerWrapper: {
-    width: '95vmin',
-    height: '95vmin',
-    maxWidth: '900px',
-    maxHeight: '900px',
+    width: '100%',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -706,11 +830,15 @@ const styles = {
 
 onMounted(() => {
   animateDemo();
+  startPaletteCycle();
 });
 
 onUnmounted(() => {
   if (animationFrame.value) {
     cancelAnimationFrame(animationFrame.value);
+  }
+  if (paletteTimer.value) {
+    clearTimeout(paletteTimer.value);
   }
 });
 </script>
