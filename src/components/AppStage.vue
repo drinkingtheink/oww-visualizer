@@ -12,42 +12,125 @@
             <stop offset="0%" style="stop-color: #f093fb; stop-opacity: 0.6" />
             <stop offset="100%" style="stop-color: #f5576c; stop-opacity: 0.6" />
           </linearGradient>
+          
+          <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color: #4facfe; stop-opacity: 0.7" />
+            <stop offset="100%" style="stop-color: #00f2fe; stop-opacity: 0.7" />
+          </linearGradient>
+          
+          <radialGradient id="glow1">
+            <stop offset="0%" :style="`stop-color: #667eea; stop-opacity: ${audioData.bass * 0.8}`" />
+            <stop offset="100%" style="stop-color: #667eea; stop-opacity: 0" />
+          </radialGradient>
+          
+          <radialGradient id="glow2">
+            <stop offset="0%" :style="`stop-color: #f5576c; stop-opacity: ${audioData.treble * 0.6}`" />
+            <stop offset="100%" style="stop-color: #f5576c; stop-opacity: 0" />
+          </radialGradient>
+          
+          <filter id="blur">
+            <feGaussianBlur :stdDeviation="2 + audioData.overall * 4" />
+          </filter>
         </defs>
         
-        <g :style="{ opacity: 0.3 + audioData.treble * 0.4 }">
+        <!-- Background glow effects -->
+        <circle cx="400" cy="400" :r="150 + audioData.bass * 200" fill="url(#glow1)" :opacity="audioData.bass * 0.5" />
+        <circle cx="400" cy="400" :r="100 + audioData.treble * 150" fill="url(#glow2)" :opacity="audioData.treble * 0.4" />
+        
+        <!-- Triple layer fractal lines -->
+        <g :style="{ opacity: 0.2 + audioData.treble * 0.5 }">
           <line
             v-for="(line, i) in geometry.lines"
-            :key="`line-${i}`"
+            :key="`line-outer-${i}`"
             :x1="line.x1"
             :y1="line.y1"
             :x2="line.x2"
             :y2="line.y2"
             stroke="url(#grad1)"
-            :stroke-width="1 + audioData.mid * 2"
+            :stroke-width="0.5 + audioData.mid * 1.5"
           />
         </g>
         
+        <g :style="{ opacity: 0.3 + audioData.mid * 0.6 }">
+          <line
+            v-for="(line, i) in geometry.midLines"
+            :key="`line-mid-${i}`"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            stroke="url(#grad2)"
+            :stroke-width="1 + audioData.bass * 2"
+          />
+        </g>
+        
+        <g :style="{ opacity: 0.4 + audioData.bass * 0.5 }">
+          <line
+            v-for="(line, i) in geometry.innerLines"
+            :key="`line-inner-${i}`"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            stroke="url(#grad3)"
+            :stroke-width="1.5 + audioData.treble * 2.5"
+          />
+        </g>
+        
+        <!-- Dynamic center shape - morphs between hexagon and star -->
         <g :transform="`translate(400, 400) rotate(${geometry.hexRotation}) scale(${geometry.hexScale})`">
+          <!-- Outer pulsing hexagon -->
           <polygon
-            points="0,-100 86.6,-50 86.6,50 0,100 -86.6,50 -86.6,-50"
+            :points="geometry.outerShape"
             fill="none"
             stroke="url(#grad1)"
-            :stroke-width="2 + audioData.bass * 4"
+            :stroke-width="3 + audioData.bass * 6"
+            :opacity="0.6 + audioData.overall * 0.4"
           />
+          
+          <!-- Middle morphing shape -->
           <polygon
-            points="0,-70 60.6,-35 60.6,35 0,70 -60.6,35 -60.6,-35"
+            :points="geometry.middleShape"
             fill="none"
             stroke="url(#grad2)"
-            :stroke-width="1.5 + audioData.mid * 3"
+            :stroke-width="2 + audioData.mid * 5"
+            :opacity="0.7 + audioData.mid * 0.3"
+          />
+          
+          <!-- Inner star burst -->
+          <polygon
+            :points="geometry.innerShape"
+            fill="none"
+            stroke="url(#grad3)"
+            :stroke-width="1.5 + audioData.treble * 4"
+            :opacity="0.8 + audioData.treble * 0.2"
+          />
+          
+          <!-- Center glow point -->
+          <circle
+            cx="0"
+            cy="0"
+            :r="5 + audioData.overall * 20"
+            :fill="`rgba(255, 255, 255, ${audioData.overall * 0.8})`"
+            filter="url(#blur)"
           />
         </g>
         
+        <!-- Triple layer outer rings -->
         <g
           v-for="(ring, i) in geometry.rings"
-          :key="`ring-${i}`"
+          :key="`ring-outer-${i}`"
           :transform="`translate(${ring.x}, ${ring.y}) rotate(${ring.angle})`"
-          :style="{ opacity: 0.4 + audioData.overall * 0.6 }"
+          :style="{ opacity: 0.3 + audioData.overall * 0.6 }"
         >
+          <circle
+            cx="0"
+            cy="0"
+            :r="ring.size * 1.2"
+            fill="none"
+            stroke="url(#grad1)"
+            :stroke-width="0.5 + audioData.bass * 1.5"
+          />
           <circle
             cx="0"
             cy="0"
@@ -61,15 +144,39 @@
             cy="0"
             :r="ring.size * 0.6"
             fill="none"
-            stroke="url(#grad1)"
-            :stroke-width="0.5 + audioData.bass * 1.5"
+            stroke="url(#grad3)"
+            :stroke-width="0.5 + audioData.mid * 1.5"
           />
         </g>
         
-        <g :style="{ opacity: 0.2 + audioData.mid * 0.5 }">
+        <!-- Additional mid-layer rings -->
+        <g
+          v-for="(ring, i) in geometry.midRings"
+          :key="`ring-mid-${i}`"
+          :transform="`translate(${ring.x}, ${ring.y}) rotate(${ring.angle})`"
+          :style="{ opacity: 0.4 + audioData.mid * 0.5 }"
+        >
+          <circle
+            cx="0"
+            cy="0"
+            :r="ring.size"
+            fill="none"
+            stroke="url(#grad2)"
+            :stroke-width="1.5 + audioData.mid * 2.5"
+          />
+          <polygon
+            :points="generateSmallHex(ring.size * 0.7)"
+            fill="none"
+            stroke="url(#grad3)"
+            :stroke-width="0.5 + audioData.bass * 1"
+          />
+        </g>
+        
+        <!-- Connecting arcs - multiple layers -->
+        <g :style="{ opacity: 0.2 + audioData.mid * 0.4 }">
           <line
             v-for="(ring, i) in geometry.rings"
-            :key="`arc-${i}`"
+            :key="`arc-outer-${i}`"
             :x1="ring.x"
             :y1="ring.y"
             :x2="geometry.rings[(i + 1) % geometry.rings.length].x"
@@ -78,8 +185,57 @@
             :stroke-width="0.5 + audioData.overall * 1.5"
           />
         </g>
+        
+        <g :style="{ opacity: 0.3 + audioData.bass * 0.4 }">
+          <line
+            v-for="(ring, i) in geometry.midRings"
+            :key="`arc-mid-${i}`"
+            :x1="ring.x"
+            :y1="ring.y"
+            :x2="geometry.midRings[(i + 1) % geometry.midRings.length].x"
+            :y2="geometry.midRings[(i + 1) % geometry.midRings.length].y"
+            stroke="url(#grad2)"
+            :stroke-width="0.5 + audioData.bass * 2"
+          />
+        </g>
+        
+        <!-- Energy burst lines on bass hits -->
+        <g :style="{ opacity: audioData.bass * 0.7 }">
+          <line
+            v-for="(burst, i) in geometry.energyBursts"
+            :key="`burst-${i}`"
+            :x1="burst.x1"
+            :y1="burst.y1"
+            :x2="burst.x2"
+            :y2="burst.y2"
+            stroke="url(#grad3)"
+            :stroke-width="2 + audioData.bass * 3"
+            stroke-linecap="round"
+          />
+        </g>
+        
+        <!-- Outer orbital particles -->
+        <g :style="{ opacity: 0.6 + audioData.treble * 0.4 }">
+          <circle
+            v-for="(particle, i) in geometry.particles"
+            :key="`particle-${i}`"
+            :cx="particle.x"
+            :cy="particle.y"
+            :r="2 + audioData.overall * 4"
+            :fill="`rgba(102, 126, 234, ${0.6 + audioData.treble * 0.4})`"
+            filter="url(#blur)"
+          />
+        </g>
       </svg>
     </div>
+    
+    <!-- Flash overlay for extreme bass hits -->
+    <div 
+      :style="{
+        ...styles.flashOverlay,
+        opacity: audioData.bass > 0.7 ? (audioData.bass - 0.7) * 2 : 0
+      }"
+    />
     
     <div v-if="isDemoMode" :style="styles.demoLabel">
       Demo Mode - Upload audio to visualize your music
@@ -204,40 +360,144 @@ const animateDemo = () => {
   animationFrame.value = requestAnimationFrame(animateDemo);
 };
 
+const generateSmallHex = (size) => {
+  const points = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(angle) * size;
+    const y = Math.sin(angle) * size;
+    points.push(`${x},${y}`);
+  }
+  return points.join(' ');
+};
+
 const geometry = computed(() => {
   const hexRotation = audioData.overall * 360;
-  const hexScale = 0.8 + audioData.bass * 0.4;
+  const hexScale = 0.6 + audioData.bass * 0.8;
   
+  // Morph between hexagon and star based on audio
+  const morphFactor = audioData.mid;
+  const spikeFactor = audioData.treble;
+  
+  const generateMorphShape = (baseSize, spikes) => {
+    const points = [];
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      const isSpike = i % 2 === 0;
+      const radius = isSpike 
+        ? baseSize * (1 + spikes * 0.5)
+        : baseSize * (1 - morphFactor * 0.3);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      points.push(`${x},${y}`);
+    }
+    return points.join(' ');
+  };
+  
+  const outerShape = generateMorphShape(120 + audioData.bass * 40, spikeFactor);
+  const middleShape = generateMorphShape(80 + audioData.mid * 30, spikeFactor * 0.7);
+  const innerShape = generateMorphShape(50 + audioData.treble * 20, spikeFactor * 1.2);
+  
+  // Outer rings - 6 elements
   const ringCount = 6;
   const rings = [];
-  
   for (let i = 0; i < ringCount; i++) {
-    const angle = (i / ringCount) * 360 + audioData.mid * 60;
-    const radius = 200 + audioData.treble * 80;
+    const angle = (i / ringCount) * 360 + audioData.mid * 90;
+    const radius = 240 + audioData.treble * 100;
     const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
     const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
-    const size = 40 + audioData.bass * 30;
-    
-    rings.push({ x, y, size, angle: angle + audioData.overall * 180 });
+    const size = 50 + audioData.bass * 40;
+    rings.push({ x, y, size, angle: angle + audioData.overall * 240 });
   }
   
-  const lineCount = 12;
-  const lines = [];
+  // Mid-layer rings - 12 elements
+  const midRings = [];
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * 360 + audioData.bass * 120;
+    const radius = 160 + audioData.mid * 60;
+    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
+    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
+    const size = 25 + audioData.treble * 20;
+    midRings.push({ x, y, size, angle: angle - audioData.overall * 180 });
+  }
   
+  // Outer radial lines - 24 lines
+  const lineCount = 24;
+  const lines = [];
   for (let i = 0; i < lineCount; i++) {
-    const angle = (i / lineCount) * 360 + audioData.treble * 120;
-    const r1 = 100 + audioData.mid * 50;
-    const r2 = 180 + audioData.bass * 60;
-    
+    const angle = (i / lineCount) * 360 + audioData.treble * 180;
+    const r1 = 280 + audioData.bass * 60;
+    const r2 = 360 + audioData.overall * 80;
     const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
     const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
     const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
     const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
-    
     lines.push({ x1, y1, x2, y2 });
   }
   
-  return { hexRotation, hexScale, rings, lines };
+  // Mid-layer lines - 18 lines
+  const midLines = [];
+  for (let i = 0; i < 18; i++) {
+    const angle = (i / 18) * 360 + audioData.mid * 150;
+    const r1 = 150 + audioData.mid * 40;
+    const r2 = 220 + audioData.bass * 50;
+    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
+    midLines.push({ x1, y1, x2, y2 });
+  }
+  
+  // Inner lines - 12 lines
+  const innerLines = [];
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * 360 + audioData.treble * 200;
+    const r1 = 80 + audioData.treble * 30;
+    const r2 = 130 + audioData.mid * 40;
+    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
+    innerLines.push({ x1, y1, x2, y2 });
+  }
+  
+  // Energy bursts on bass hits - 8 bursts
+  const energyBursts = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * 360 + audioData.bass * 360;
+    const r1 = 50;
+    const r2 = 50 + audioData.bass * 150;
+    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
+    energyBursts.push({ x1, y1, x2, y2 });
+  }
+  
+  // Orbital particles - 16 particles
+  const particles = [];
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * 360 + audioData.overall * 720;
+    const radius = 320 + Math.sin(audioData.treble * Math.PI * 2 + i) * 40;
+    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
+    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
+    particles.push({ x, y });
+  }
+  
+  return {
+    hexRotation,
+    hexScale,
+    outerShape,
+    middleShape,
+    innerShape,
+    rings,
+    midRings,
+    lines,
+    midLines,
+    innerLines,
+    energyBursts,
+    particles
+  };
 });
 
 const styles = {
@@ -250,13 +510,14 @@ const styles = {
     justifyContent: 'center',
     background: '#0a0a0a',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    position: 'relative'
   },
   visualizerWrapper: {
-    width: '90vmin',
-    height: '90vmin',
-    maxWidth: '800px',
-    maxHeight: '800px',
+    width: '95vmin',
+    height: '95vmin',
+    maxWidth: '900px',
+    maxHeight: '900px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -264,7 +525,17 @@ const styles = {
   svg: {
     width: '100%',
     height: '100%',
-    filter: 'drop-shadow(0 0 20px rgba(102, 126, 234, 0.3))'
+    filter: 'drop-shadow(0 0 30px rgba(102, 126, 234, 0.4))'
+  },
+  flashOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, rgba(10, 10, 10, 0) 70%)',
+    pointerEvents: 'none',
+    transition: 'opacity 0.1s ease-out'
   },
   demoLabel: {
     position: 'fixed',
