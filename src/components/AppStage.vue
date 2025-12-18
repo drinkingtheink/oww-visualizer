@@ -4,28 +4,28 @@
       <svg viewBox="0 0 800 800" :style="styles.svg">
         <defs>
           <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color: #667eea; stop-opacity: 0.8" />
-            <stop offset="100%" style="stop-color: #764ba2; stop-opacity: 0.8" />
+            <stop offset="0%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: 0.8`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.secondary}; stop-opacity: 0.8`" />
           </linearGradient>
           
           <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color: #f093fb; stop-opacity: 0.6" />
-            <stop offset="100%" style="stop-color: #f5576c; stop-opacity: 0.6" />
+            <stop offset="0%" :style="`stop-color: ${currentPalette.accent1}; stop-opacity: 0.6`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0.6`" />
           </linearGradient>
           
           <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color: #4facfe; stop-opacity: 0.7" />
-            <stop offset="100%" style="stop-color: #00f2fe; stop-opacity: 0.7" />
+            <stop offset="0%" :style="`stop-color: ${currentPalette.highlight1}; stop-opacity: 0.7`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.highlight2}; stop-opacity: 0.7`" />
           </linearGradient>
           
           <radialGradient id="glow1">
-            <stop offset="0%" :style="`stop-color: #667eea; stop-opacity: ${audioData.bass * 0.8}`" />
-            <stop offset="100%" style="stop-color: #667eea; stop-opacity: 0" />
+            <stop offset="0%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: ${audioData.bass * 0.8}`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: 0`" />
           </radialGradient>
           
           <radialGradient id="glow2">
-            <stop offset="0%" :style="`stop-color: #f5576c; stop-opacity: ${audioData.treble * 0.6}`" />
-            <stop offset="100%" style="stop-color: #f5576c; stop-opacity: 0" />
+            <stop offset="0%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: ${audioData.treble * 0.6}`" />
+            <stop offset="100%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0`" />
           </radialGradient>
           
           <filter id="blur">
@@ -222,7 +222,8 @@
             :cx="particle.x"
             :cy="particle.y"
             :r="2 + audioData.overall * 4"
-            :fill="`rgba(102, 126, 234, ${0.6 + audioData.treble * 0.4})`"
+            :fill="currentPalette.primary"
+            :style="`opacity: ${0.6 + audioData.treble * 0.4}`"
             filter="url(#blur)"
           />
         </g>
@@ -233,6 +234,7 @@
     <div 
       :style="{
         ...styles.flashOverlay,
+        background: `radial-gradient(circle, ${currentPalette.primary}33 0%, rgba(10, 10, 10, 0) 70%)`,
         opacity: audioData.bass > 0.7 ? (audioData.bass - 0.7) * 2 : 0
       }"
     />
@@ -256,6 +258,10 @@
       <button v-if="audioElement?.src" @click="togglePlayPause" :style="styles.playButton">
         {{ isPlaying ? 'Pause' : 'Play' }}
       </button>
+      
+      <button @click="cyclePalette" :style="styles.paletteButton">
+        {{ currentPaletteIndex + 1 }}/12
+      </button>
     </div>
     
     <audio ref="audioElement" style="display: none" />
@@ -264,6 +270,117 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+
+const colorPalettes = [
+  {
+    name: 'Purple Dream',
+    primary: '#667eea',
+    secondary: '#764ba2',
+    accent1: '#f093fb',
+    accent2: '#f5576c',
+    highlight1: '#4facfe',
+    highlight2: '#00f2fe'
+  },
+  {
+    name: 'Sunset Blaze',
+    primary: '#ff6b6b',
+    secondary: '#ee5a6f',
+    accent1: '#feca57',
+    accent2: '#ff9ff3',
+    highlight1: '#ff6348',
+    highlight2: '#ffa502'
+  },
+  {
+    name: 'Ocean Deep',
+    primary: '#00d2ff',
+    secondary: '#3a7bd5',
+    accent1: '#00f260',
+    accent2: '#0575e6',
+    highlight1: '#2af598',
+    highlight2: '#009efd'
+  },
+  {
+    name: 'Emerald Forest',
+    primary: '#11998e',
+    secondary: '#38ef7d',
+    accent1: '#56ab2f',
+    accent2: '#a8e063',
+    highlight1: '#06beb6',
+    highlight2: '#48b1bf'
+  },
+  {
+    name: 'Electric Neon',
+    primary: '#f953c6',
+    secondary: '#b91d73',
+    accent1: '#00f5ff',
+    accent2: '#fc00ff',
+    highlight1: '#ff00cc',
+    highlight2: '#333399'
+  },
+  {
+    name: 'Golden Hour',
+    primary: '#f7971e',
+    secondary: '#ffd200',
+    accent1: '#ff6b95',
+    accent2: '#ffaa00',
+    highlight1: '#ffdd00',
+    highlight2: '#fbb034'
+  },
+  {
+    name: 'Arctic Aurora',
+    primary: '#a8edea',
+    secondary: '#fed6e3',
+    accent1: '#c471f5',
+    accent2: '#fa709a',
+    highlight1: '#30cfd0',
+    highlight2: '#330867'
+  },
+  {
+    name: 'Crimson Fire',
+    primary: '#eb3349',
+    secondary: '#f45c43',
+    accent1: '#fc4a1a',
+    accent2: '#f7b733',
+    highlight1: '#ff0844',
+    highlight2: '#ffb199'
+  },
+  {
+    name: 'Cyber Synthwave',
+    primary: '#ff00ff',
+    secondary: '#7700ff',
+    accent1: '#00ffff',
+    accent2: '#ff006e',
+    highlight1: '#8338ec',
+    highlight2: '#3a86ff'
+  },
+  {
+    name: 'Mint Fresh',
+    primary: '#00b4db',
+    secondary: '#0083b0',
+    accent1: '#7bed9f',
+    accent2: '#2ed573',
+    highlight1: '#70a1ff',
+    highlight2: '#5f27cd'
+  },
+  {
+    name: 'Rose Gold',
+    primary: '#eb9fac',
+    secondary: '#d4a5a5',
+    accent1: '#ffafbd',
+    accent2: '#ffc3a0',
+    highlight1: '#ff9a9e',
+    highlight2: '#fad0c4'
+  },
+  {
+    name: 'Cosmic Void',
+    primary: '#667eea',
+    secondary: '#764ba2',
+    accent1: '#fa709a',
+    accent2: '#fee140',
+    highlight1: '#30cfd0',
+    highlight2: '#a8edea'
+  }
+];
 
 const audioData = reactive({
   bass: 0,
@@ -274,6 +391,7 @@ const audioData = reactive({
 
 const isPlaying = ref(false);
 const isDemoMode = ref(true);
+const currentPaletteIndex = ref(0);
 
 const audioContext = ref(null);
 const analyser = ref(null);
@@ -282,6 +400,12 @@ const source = ref(null);
 const audioElement = ref(null);
 const animationFrame = ref(null);
 const demoTime = ref(0);
+
+const currentPalette = computed(() => colorPalettes[currentPaletteIndex.value]);
+
+const cyclePalette = () => {
+  currentPaletteIndex.value = (currentPaletteIndex.value + 1) % colorPalettes.length;
+};
 
 const initAudio = async () => {
   if (!audioContext.value) {
@@ -375,7 +499,6 @@ const geometry = computed(() => {
   const hexRotation = audioData.overall * 360;
   const hexScale = 0.6 + audioData.bass * 0.8;
   
-  // Morph between hexagon and star based on audio
   const morphFactor = audioData.mid;
   const spikeFactor = audioData.treble;
   
@@ -398,7 +521,6 @@ const geometry = computed(() => {
   const middleShape = generateMorphShape(80 + audioData.mid * 30, spikeFactor * 0.7);
   const innerShape = generateMorphShape(50 + audioData.treble * 20, spikeFactor * 1.2);
   
-  // Outer rings - 6 elements
   const ringCount = 6;
   const rings = [];
   for (let i = 0; i < ringCount; i++) {
@@ -410,7 +532,6 @@ const geometry = computed(() => {
     rings.push({ x, y, size, angle: angle + audioData.overall * 240 });
   }
   
-  // Mid-layer rings - 12 elements
   const midRings = [];
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * 360 + audioData.bass * 120;
@@ -421,7 +542,6 @@ const geometry = computed(() => {
     midRings.push({ x, y, size, angle: angle - audioData.overall * 180 });
   }
   
-  // Outer radial lines - 24 lines
   const lineCount = 24;
   const lines = [];
   for (let i = 0; i < lineCount; i++) {
@@ -435,7 +555,6 @@ const geometry = computed(() => {
     lines.push({ x1, y1, x2, y2 });
   }
   
-  // Mid-layer lines - 18 lines
   const midLines = [];
   for (let i = 0; i < 18; i++) {
     const angle = (i / 18) * 360 + audioData.mid * 150;
@@ -448,7 +567,6 @@ const geometry = computed(() => {
     midLines.push({ x1, y1, x2, y2 });
   }
   
-  // Inner lines - 12 lines
   const innerLines = [];
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * 360 + audioData.treble * 200;
@@ -461,7 +579,6 @@ const geometry = computed(() => {
     innerLines.push({ x1, y1, x2, y2 });
   }
   
-  // Energy bursts on bass hits - 8 bursts
   const energyBursts = [];
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * 360 + audioData.bass * 360;
@@ -474,7 +591,6 @@ const geometry = computed(() => {
     energyBursts.push({ x1, y1, x2, y2 });
   }
   
-  // Orbital particles - 16 particles
   const particles = [];
   for (let i = 0; i < 16; i++) {
     const angle = (i / 16) * 360 + audioData.overall * 720;
@@ -533,7 +649,6 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, rgba(10, 10, 10, 0) 70%)',
     pointerEvents: 'none',
     transition: 'opacity 0.1s ease-out'
   },
@@ -569,6 +684,17 @@ const styles = {
     padding: '12px 24px',
     background: 'rgba(245, 87, 108, 0.2)',
     border: '1px solid rgba(245, 87, 108, 0.4)',
+    borderRadius: '8px',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.2s ease'
+  },
+  paletteButton: {
+    padding: '12px 24px',
+    background: 'rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
     borderRadius: '8px',
     color: '#fff',
     cursor: 'pointer',
