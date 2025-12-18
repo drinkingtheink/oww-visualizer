@@ -1,553 +1,319 @@
 <template>
-  <div class="visualizer-container">
-    <h1 class="title">◢ ONE WAX WING VISUALIZER ◣</h1>
-    
-    <div class="canvas-wrapper">
-      <canvas ref="canvas"></canvas>
-      <div class="scanlines"></div>
-    </div>
-
-    <div class="controls">
-      <div class="file-input-wrapper">
-        <span class="file-input-label">
-          {{ fileName || 'Select Audio File' }}
-        </span>
-        <input 
-          type="file" 
-          accept="audio/*" 
-          @change="handleFileSelect"
-        />
-      </div>
-
-      <div class="button-group">
-        <button @click="togglePlay" :disabled="!audioLoaded">
-          {{ isPlaying ? '⏸ Pause' : '▶ Play' }}
-        </button>
-        <button 
-          @click="changeVisualizationMode" 
-          :disabled="!audioLoaded"
-          class="active"
+  <div :style="styles.container">
+    <div :style="styles.visualizerWrapper">
+      <svg viewBox="0 0 800 800" :style="styles.svg">
+        <defs>
+          <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color: #667eea; stop-opacity: 0.8" />
+            <stop offset="100%" style="stop-color: #764ba2; stop-opacity: 0.8" />
+          </linearGradient>
+          
+          <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color: #f093fb; stop-opacity: 0.6" />
+            <stop offset="100%" style="stop-color: #f5576c; stop-opacity: 0.6" />
+          </linearGradient>
+        </defs>
+        
+        <g :style="{ opacity: 0.3 + audioData.treble * 0.4 }">
+          <line
+            v-for="(line, i) in geometry.lines"
+            :key="`line-${i}`"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            stroke="url(#grad1)"
+            :stroke-width="1 + audioData.mid * 2"
+          />
+        </g>
+        
+        <g :transform="`translate(400, 400) rotate(${geometry.hexRotation}) scale(${geometry.hexScale})`">
+          <polygon
+            points="0,-100 86.6,-50 86.6,50 0,100 -86.6,50 -86.6,-50"
+            fill="none"
+            stroke="url(#grad1)"
+            :stroke-width="2 + audioData.bass * 4"
+          />
+          <polygon
+            points="0,-70 60.6,-35 60.6,35 0,70 -60.6,35 -60.6,-35"
+            fill="none"
+            stroke="url(#grad2)"
+            :stroke-width="1.5 + audioData.mid * 3"
+          />
+        </g>
+        
+        <g
+          v-for="(ring, i) in geometry.rings"
+          :key="`ring-${i}`"
+          :transform="`translate(${ring.x}, ${ring.y}) rotate(${ring.angle})`"
+          :style="{ opacity: 0.4 + audioData.overall * 0.6 }"
         >
-          Mode: {{ visualizationMode }}
-        </button>
-      </div>
-
-      <div class="status" v-if="status">{{ status }}</div>
+          <circle
+            cx="0"
+            cy="0"
+            :r="ring.size"
+            fill="none"
+            stroke="url(#grad2)"
+            :stroke-width="1 + audioData.treble * 2"
+          />
+          <circle
+            cx="0"
+            cy="0"
+            :r="ring.size * 0.6"
+            fill="none"
+            stroke="url(#grad1)"
+            :stroke-width="0.5 + audioData.bass * 1.5"
+          />
+        </g>
+        
+        <g :style="{ opacity: 0.2 + audioData.mid * 0.5 }">
+          <line
+            v-for="(ring, i) in geometry.rings"
+            :key="`arc-${i}`"
+            :x1="ring.x"
+            :y1="ring.y"
+            :x2="geometry.rings[(i + 1) % geometry.rings.length].x"
+            :y2="geometry.rings[(i + 1) % geometry.rings.length].y"
+            stroke="url(#grad1)"
+            :stroke-width="0.5 + audioData.overall * 1.5"
+          />
+        </g>
+      </svg>
     </div>
-
-    <audio ref="audio" style="display: none;"></audio>
+    
+    <div v-if="isDemoMode" :style="styles.demoLabel">
+      Demo Mode - Upload audio to visualize your music
+    </div>
+    
+    <div :style="styles.controls">
+      <input
+        type="file"
+        accept="audio/*"
+        @change="handleFileUpload"
+        :style="styles.fileInput"
+        id="audio-upload"
+      />
+      <label for="audio-upload" :style="styles.uploadLabel">
+        Choose Audio File
+      </label>
+      
+      <button v-if="audioElement?.src" @click="togglePlayPause" :style="styles.playButton">
+        {{ isPlaying ? 'Pause' : 'Play' }}
+      </button>
+    </div>
+    
+    <audio ref="audioElement" style="display: none" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 
-// Refs
-const canvas = ref(null);
-const audio = ref(null);
+const audioData = reactive({
+  bass: 0,
+  mid: 0,
+  treble: 0,
+  overall: 0
+});
+
 const isPlaying = ref(false);
-const audioLoaded = ref(false);
-const fileName = ref('');
-const status = ref('');
-const visualizationMode = ref('Particles');
+const isDemoMode = ref(true);
 
-// Non-reactive state
-let ctx = null;
-let audioContext = null;
-let analyser = null;
-let source = null;
-let dataArray = null;
-let bufferLength = null;
-let animationId = null;
-let startTime = Date.now();
+const audioContext = ref(null);
+const analyser = ref(null);
+const dataArray = ref(null);
+const source = ref(null);
+const audioElement = ref(null);
+const animationFrame = ref(null);
+const demoTime = ref(0);
 
-const modes = ['Particles', 'Fluid', 'Spirograph', 'Kaleidoscope'];
-let currentModeIndex = 0;
-
-// Methods
-const initCanvas = () => {
-  if (!canvas.value) return;
-  
-  ctx = canvas.value.getContext('2d');
-  const resizeCanvas = () => {
-    const wrapper = canvas.value.parentElement;
-    canvas.value.width = wrapper.offsetWidth;
-    canvas.value.height = wrapper.offsetHeight;
-  };
-  
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+const initAudio = async () => {
+  if (!audioContext.value) {
+    audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
+    analyser.value = audioContext.value.createAnalyser();
+    analyser.value.fftSize = 256;
+    
+    const bufferLength = analyser.value.frequencyBinCount;
+    dataArray.value = new Uint8Array(bufferLength);
+  }
 };
 
-const setupAudioContext = () => {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512;
+const analyzeAudio = () => {
+  if (!analyser.value || !dataArray.value) return;
   
-  source = audioContext.createMediaElementSource(audio.value);
-  source.connect(analyser);
-  analyser.connect(audioContext.destination);
+  analyser.value.getByteFrequencyData(dataArray.value);
   
-  bufferLength = analyser.frequencyBinCount;
-  dataArray = new Uint8Array(bufferLength);
+  const bass = dataArray.value.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
+  const mid = dataArray.value.slice(10, 50).reduce((a, b) => a + b, 0) / 40;
+  const treble = dataArray.value.slice(50, 100).reduce((a, b) => a + b, 0) / 50;
+  const overall = dataArray.value.reduce((a, b) => a + b, 0) / dataArray.value.length;
+  
+  audioData.bass = bass / 255;
+  audioData.mid = mid / 255;
+  audioData.treble = treble / 255;
+  audioData.overall = overall / 255;
+  
+  animationFrame.value = requestAnimationFrame(analyzeAudio);
 };
 
-const handleFileSelect = (event) => {
-  const file = event.target.files[0];
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
   if (!file) return;
-
-  fileName.value = file.name;
+  
+  isDemoMode.value = false;
+  await initAudio();
+  
+  if (source.value) {
+    source.value.disconnect();
+  }
+  
   const url = URL.createObjectURL(file);
-  audio.value.src = url;
-  audio.value.load();
-  audioLoaded.value = true;
-  status.value = 'Audio loaded - Ready to play!';
+  audioElement.value.src = url;
   
-  if (!audioContext) {
-    setupAudioContext();
+  if (!source.value) {
+    source.value = audioContext.value.createMediaElementSource(audioElement.value);
+    source.value.connect(analyser.value);
+    analyser.value.connect(audioContext.value.destination);
   }
+  
+  audioElement.value.play();
+  isPlaying.value = true;
+  analyzeAudio();
 };
 
-const togglePlay = () => {
+const togglePlayPause = () => {
   if (isPlaying.value) {
-    audio.value.pause();
-    isPlaying.value = false;
-    status.value = 'Paused';
-    cancelAnimationFrame(animationId);
+    audioElement.value.pause();
   } else {
-    audio.value.play();
-    isPlaying.value = true;
-    status.value = 'Playing...';
-    startTime = Date.now();
-    visualize();
+    audioElement.value.play();
+  }
+  isPlaying.value = !isPlaying.value;
+};
+
+const animateDemo = () => {
+  if (!isDemoMode.value) return;
+  
+  demoTime.value += 0.016;
+  const t = demoTime.value;
+  
+  audioData.bass = (Math.sin(t * 1.5) + 1) / 2;
+  audioData.mid = (Math.sin(t * 2.3) + 1) / 2;
+  audioData.treble = (Math.sin(t * 3.7) + 1) / 2;
+  audioData.overall = (Math.sin(t * 1.1) + 1) / 2;
+  
+  animationFrame.value = requestAnimationFrame(animateDemo);
+};
+
+const geometry = computed(() => {
+  const hexRotation = audioData.overall * 360;
+  const hexScale = 0.8 + audioData.bass * 0.4;
+  
+  const ringCount = 6;
+  const rings = [];
+  
+  for (let i = 0; i < ringCount; i++) {
+    const angle = (i / ringCount) * 360 + audioData.mid * 60;
+    const radius = 200 + audioData.treble * 80;
+    const x = 400 + Math.cos((angle * Math.PI) / 180) * radius;
+    const y = 400 + Math.sin((angle * Math.PI) / 180) * radius;
+    const size = 40 + audioData.bass * 30;
+    
+    rings.push({ x, y, size, angle: angle + audioData.overall * 180 });
+  }
+  
+  const lineCount = 12;
+  const lines = [];
+  
+  for (let i = 0; i < lineCount; i++) {
+    const angle = (i / lineCount) * 360 + audioData.treble * 120;
+    const r1 = 100 + audioData.mid * 50;
+    const r2 = 180 + audioData.bass * 60;
+    
+    const x1 = 400 + Math.cos((angle * Math.PI) / 180) * r1;
+    const y1 = 400 + Math.sin((angle * Math.PI) / 180) * r1;
+    const x2 = 400 + Math.cos((angle * Math.PI) / 180) * r2;
+    const y2 = 400 + Math.sin((angle * Math.PI) / 180) * r2;
+    
+    lines.push({ x1, y1, x2, y2 });
+  }
+  
+  return { hexRotation, hexScale, rings, lines };
+});
+
+const styles = {
+  container: {
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#0a0a0a',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    overflow: 'hidden'
+  },
+  visualizerWrapper: {
+    width: '90vmin',
+    height: '90vmin',
+    maxWidth: '800px',
+    maxHeight: '800px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  svg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 20px rgba(102, 126, 234, 0.3))'
+  },
+  demoLabel: {
+    position: 'fixed',
+    top: '40px',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '14px',
+    fontWeight: '400'
+  },
+  controls: {
+    position: 'fixed',
+    bottom: '40px',
+    display: 'flex',
+    gap: '16px',
+    zIndex: 10
+  },
+  fileInput: {
+    display: 'none'
+  },
+  uploadLabel: {
+    padding: '12px 24px',
+    background: 'rgba(102, 126, 234, 0.2)',
+    border: '1px solid rgba(102, 126, 234, 0.4)',
+    borderRadius: '8px',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.2s ease'
+  },
+  playButton: {
+    padding: '12px 24px',
+    background: 'rgba(245, 87, 108, 0.2)',
+    border: '1px solid rgba(245, 87, 108, 0.4)',
+    borderRadius: '8px',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.2s ease'
   }
 };
 
-const changeVisualizationMode = () => {
-  currentModeIndex = (currentModeIndex + 1) % modes.length;
-  visualizationMode.value = modes[currentModeIndex];
-};
-
-const visualize = () => {
-  animationId = requestAnimationFrame(visualize);
-  
-  if (!analyser || !ctx) return;
-  
-  analyser.getByteFrequencyData(dataArray);
-  
-  const width = canvas.value.width;
-  const height = canvas.value.height;
-  
-  // Subtle fade instead of complete clear
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-  ctx.fillRect(0, 0, width, height);
-  
-  switch(visualizationMode.value) {
-    case 'Particles':
-      drawParticles(width, height);
-      break;
-    case 'Fluid':
-      drawFluid(width, height);
-      break;
-    case 'Spirograph':
-      drawSpirograph(width, height);
-      break;
-    case 'Kaleidoscope':
-      drawKaleidoscope(width, height);
-      break;
-  }
-};
-
-const drawParticles = (width, height) => {
-  const time = (Date.now() - startTime) * 0.001;
-  const centerY = height / 2;
-  
-  for (let i = 0; i < bufferLength; i += 2) {
-    const frequency = dataArray[i] / 255;
-    const x = (i / bufferLength) * width;
-    const baseRadius = frequency * height * 0.4;
-    
-    // Create flowing particle trails
-    for (let j = 0; j < 4; j++) {
-      const offset = (time * 0.5 + i * 0.05 + j * 0.25) % 1;
-      const angle = time + i * 0.1 + j * Math.PI * 0.5;
-      const y = centerY + Math.sin(angle) * (baseRadius * 0.6);
-      const size = baseRadius * (1 - offset) * 0.2;
-      
-      const hue = (i / bufferLength * 360 + time * 30 + j * 90) % 360;
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
-      gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, ${0.8 * (1 - offset)})`);
-      gradient.addColorStop(0.5, `hsla(${hue}, 100%, 50%, ${0.4 * (1 - offset)})`);
-      gradient.addColorStop(1, `hsla(${hue}, 100%, 30%, 0)`);
-      
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(x, y, size * 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-};
-
-const drawFluid = (width, height) => {
-  const time = (Date.now() - startTime) * 0.001;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  
-  ctx.globalCompositeOperation = 'lighter';
-  
-  for (let i = 0; i < bufferLength; i += 3) {
-    const frequency = dataArray[i] / 255;
-    const angle = (i / bufferLength) * Math.PI * 2;
-    const radius = 50 + frequency * Math.min(width, height) * 0.35;
-    
-    const x = centerX + Math.cos(angle + time * 0.5) * radius;
-    const y = centerY + Math.sin(angle + time * 0.5) * radius;
-    
-    // Create flowing blobs
-    const blobSize = frequency * 40 + 10;
-    const hue = (i / bufferLength * 360 + time * 20) % 360;
-    
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, blobSize);
-    gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.6)`);
-    gradient.addColorStop(0.5, `hsla(${(hue + 60) % 360}, 100%, 50%, 0.3)`);
-    gradient.addColorStop(1, `hsla(${(hue + 120) % 360}, 100%, 40%, 0)`);
-    
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    
-    // Create organic shapes
-    for (let j = 0; j < 6; j++) {
-      const a = (j / 6) * Math.PI * 2;
-      const r = blobSize * (0.8 + Math.sin(time * 2 + j + i * 0.1) * 0.2);
-      const px = x + Math.cos(a) * r;
-      const py = y + Math.sin(a) * r;
-      
-      if (j === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-  
-  ctx.globalCompositeOperation = 'source-over';
-};
-
-const drawSpirograph = (width, height) => {
-  const time = (Date.now() - startTime) * 0.001;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const maxRadius = Math.min(width, height) * 0.4;
-  
-  ctx.globalCompositeOperation = 'lighter';
-  
-  // Create multiple spirograph patterns
-  for (let layer = 0; layer < 3; layer++) {
-    ctx.beginPath();
-    
-    for (let i = 0; i < bufferLength; i++) {
-      const frequency = dataArray[i] / 255;
-      const angle = (i / bufferLength) * Math.PI * 2 * 5;
-      
-      const r1 = maxRadius * 0.5 + layer * 20;
-      const r2 = r1 * 0.5 * (1 + frequency);
-      const r3 = r2 * 0.3;
-      
-      const x = centerX + 
-        Math.cos(angle + time * (0.5 + layer * 0.2)) * r1 +
-        Math.cos(angle * -3 + time) * r2 +
-        Math.cos(angle * 7 + time * 2) * r3;
-      const y = centerY + 
-        Math.sin(angle + time * (0.5 + layer * 0.2)) * r1 +
-        Math.sin(angle * -3 + time) * r2 +
-        Math.sin(angle * 7 + time * 2) * r3;
-      
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    }
-    
-    const hue = (time * 30 + layer * 120) % 360;
-    ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 0.5)`;
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = `hsla(${hue}, 100%, 50%, 0.8)`;
-    ctx.stroke();
-  }
-  
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.shadowBlur = 0;
-};
-
-const drawKaleidoscope = (width, height) => {
-  const time = (Date.now() - startTime) * 0.001;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const segments = 8;
-  
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  
-  for (let seg = 0; seg < segments; seg++) {
-    ctx.save();
-    ctx.rotate((Math.PI * 2 / segments) * seg);
-    
-    if (seg % 2 === 0) {
-      ctx.scale(1, -1);
-    }
-    
-    ctx.globalCompositeOperation = 'lighter';
-    
-    for (let i = 0; i < bufferLength; i += 4) {
-      const frequency = dataArray[i] / 255;
-      const distance = (i / bufferLength) * Math.min(width, height) * 0.4;
-      const angle = time + i * 0.1;
-      
-      const x = Math.cos(angle) * distance;
-      const y = Math.sin(angle) * distance * frequency;
-      const size = frequency * 15 + 5;
-      
-      const hue = (i / bufferLength * 360 + time * 50 + seg * 45) % 360;
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-      gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, 0.8)`);
-      gradient.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
-      
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    ctx.restore();
-  }
-  
-  ctx.restore();
-  ctx.globalCompositeOperation = 'source-over';
-};
-
-const handleAudioEnded = () => {
-  isPlaying.value = false;
-  status.value = 'Track ended';
-  cancelAnimationFrame(animationId);
-};
-
-const cleanup = () => {
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-  }
-  if (audioContext) {
-    audioContext.close();
-  }
-};
-
-// Lifecycle Hooks
 onMounted(() => {
-  initCanvas();
-  audio.value.addEventListener('ended', handleAudioEnded);
+  animateDemo();
 });
 
 onUnmounted(() => {
-  cleanup();
+  if (animationFrame.value) {
+    cancelAnimationFrame(animationFrame.value);
+  }
 });
 </script>
-
-<style scoped>
-.visualizer-container {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 3px solid #ff00ff;
-  border-radius: 10px;
-  padding: 30px;
-  box-shadow: 
-    0 0 20px rgba(255, 0, 255, 0.5),
-    0 0 40px rgba(0, 255, 255, 0.3),
-    inset 0 0 30px rgba(255, 0, 255, 0.1);
-}
-
-.title {
-  text-align: center;
-  color: #00ffff;
-  font-size: clamp(24px, 5vw, 42px);
-  text-shadow: 
-    0 0 10px #00ffff,
-    0 0 20px #00ffff,
-    0 0 30px #ff00ff;
-  margin-bottom: 30px;
-  letter-spacing: 3px;
-  animation: glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes glow {
-  from {
-    text-shadow: 
-      0 0 10px #00ffff,
-      0 0 20px #00ffff,
-      0 0 30px #ff00ff;
-  }
-  to {
-    text-shadow: 
-      0 0 20px #00ffff,
-      0 0 30px #00ffff,
-      0 0 40px #ff00ff,
-      0 0 50px #ff00ff;
-  }
-}
-
-.canvas-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: rgba(0, 0, 0, 0.8);
-  border: 2px solid #00ffff;
-  border-radius: 5px;
-  overflow: hidden;
-  box-shadow: 
-    inset 0 0 20px rgba(0, 255, 255, 0.2),
-    0 0 15px rgba(255, 0, 255, 0.3);
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.controls {
-  margin-top: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  align-items: center;
-}
-
-.file-input-wrapper {
-  position: relative;
-  display: inline-block;
-  overflow: hidden;
-}
-
-.file-input-label {
-  display: inline-block;
-  padding: 15px 40px;
-  background: linear-gradient(135deg, #ff00ff, #00ffff);
-  color: #000;
-  font-weight: bold;
-  font-size: 16px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-  position: relative;
-  z-index: 1;
-}
-
-.file-input-label:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(255, 0, 255, 0.8);
-}
-
-input[type="file"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.button-group {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-button {
-  padding: 12px 30px;
-  background: rgba(0, 255, 255, 0.2);
-  border: 2px solid #00ffff;
-  color: #00ffff;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  font-weight: bold;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-}
-
-button:hover:not(:disabled) {
-  background: rgba(0, 255, 255, 0.4);
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
-  transform: translateY(-2px);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-button.active {
-  background: rgba(255, 0, 255, 0.4);
-  border-color: #ff00ff;
-  color: #ff00ff;
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.6);
-}
-
-.status {
-  margin-top: 20px;
-  color: #00ff00;
-  font-size: 14px;
-  text-align: center;
-  text-shadow: 0 0 5px #00ff00;
-}
-
-.scanlines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15),
-    rgba(0, 0, 0, 0.15) 1px,
-    transparent 1px,
-    transparent 2px
-  );
-  pointer-events: none;
-  z-index: 10;
-}
-
-@media (max-width: 768px) {
-  .visualizer-container {
-    padding: 20px;
-  }
-
-  .title {
-    margin-bottom: 20px;
-  }
-
-  .controls {
-    margin-top: 20px;
-    gap: 15px;
-  }
-
-  button, .file-input-label {
-    padding: 10px 20px;
-    font-size: 12px;
-  }
-}
-</style>
