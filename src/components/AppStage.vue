@@ -35,24 +35,6 @@
             <stop offset="100%" style="stop-color: #ffffff; stop-opacity: 0" />
           </radialGradient>
           
-          <radialGradient id="bubbleGrad1">
-            <stop offset="0%" :style="`stop-color: ${currentPalette.primary}; stop-opacity: 0.8`" />
-            <stop offset="70%" :style="`stop-color: ${currentPalette.secondary}; stop-opacity: 0.6`" />
-            <stop offset="100%" :style="`stop-color: ${currentPalette.secondary}; stop-opacity: 0`" />
-          </radialGradient>
-          
-          <radialGradient id="bubbleGrad2">
-            <stop offset="0%" :style="`stop-color: ${currentPalette.accent1}; stop-opacity: 0.8`" />
-            <stop offset="70%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0.6`" />
-            <stop offset="100%" :style="`stop-color: ${currentPalette.accent2}; stop-opacity: 0`" />
-          </radialGradient>
-          
-          <radialGradient id="bubbleGrad3">
-            <stop offset="0%" :style="`stop-color: ${currentPalette.highlight1}; stop-opacity: 0.8`" />
-            <stop offset="70%" :style="`stop-color: ${currentPalette.highlight2}; stop-opacity: 0.6`" />
-            <stop offset="100%" :style="`stop-color: ${currentPalette.highlight2}; stop-opacity: 0`" />
-          </radialGradient>
-          
           <filter id="blur">
             <feGaussianBlur :stdDeviation="3 + audioData.overall * 8" />
           </filter>
@@ -65,20 +47,8 @@
             </feMerge>
           </filter>
           
-          <filter id="bubbleGlow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          
           <clipPath id="hexClipSmall">
             <polygon points="0,-115.47 100,-57.735 100,57.735 0,115.47 -100,57.735 -100,-57.735" />
-          </clipPath>
-          
-          <clipPath id="hexClipLarge">
-            <polygon points="0,-577.35 500,-288.675 500,288.675 0,577.35 -500,288.675 -500,-288.675" />
           </clipPath>
         </defs>
         
@@ -191,226 +161,271 @@
           </g>
         </g>
         
-        <!-- FLOATING BUBBLES - rendered before center so they appear behind -->
-        <g v-for="(bubble, idx) in bubbles" :key="`bubble-${idx}`">
-          <circle
-            :cx="bubble.x"
-            :cy="bubble.y"
-            :r="bubble.size"
-            :fill="bubble.gradient"
-            :opacity="bubble.opacity"
-            filter="url(#bubbleGlow)"
-          />
-          <!-- Bubble highlight -->
-          <circle
-            :cx="bubble.x - bubble.size * 0.3"
-            :cy="bubble.y - bubble.size * 0.3"
-            :r="bubble.size * 0.3"
-            fill="rgba(255, 255, 255, 0.4)"
-            :opacity="bubble.opacity * 0.6"
-          />
-          <!-- Bubble rim -->
-          <circle
-            :cx="bubble.x"
-            :cy="bubble.y"
-            :r="bubble.size"
-            fill="none"
-            :stroke="`rgba(255, 255, 255, ${bubble.opacity * 0.3})`"
-            :stroke-width="bubble.size * 0.05"
-          />
-        </g>
-        
-        <!-- CENTER CELL - 5x larger, dominant -->
+        <!-- FULL-SCREEN ANIMATED LINE DRAWINGS - No clipping, fills entire viewport -->
         <g transform="translate(1200, 800)">
-          <!-- Massive background glow pulses -->
+          
+          <!-- Massive background glow pulses that extend across screen -->
           <circle 
             cx="0" 
             cy="0" 
-            :r="400 + audioData.bass * 300" 
+            :r="600 + audioData.bass * 500" 
             fill="url(#glow1)" 
-            :opacity="0.4 + audioData.bass * 0.5" 
+            :opacity="0.3 + audioData.bass * 0.4" 
           />
           <circle 
             cx="0" 
             cy="0" 
-            :r="350 + audioData.treble * 250" 
+            :r="500 + audioData.treble * 450" 
             fill="url(#glow2)" 
-            :opacity="0.3 + audioData.treble * 0.6" 
+            :opacity="0.25 + audioData.treble * 0.5" 
           />
           <circle 
             cx="0" 
             cy="0" 
-            :r="250 + audioData.mid * 200" 
+            :r="400 + audioData.mid * 400" 
             fill="url(#centerGlow)" 
-            :opacity="0.2 + audioData.mid * 0.5" 
+            :opacity="0.2 + audioData.mid * 0.4" 
             filter="url(#blur)"
           />
           
-          <!-- Hexagon border - thick and prominent -->
+          <!-- Drawing 1: Massive spiraling mandala that fills the screen -->
+          <path
+            v-for="(drawing, i) in drawings.mandala"
+            :key="`mandala-${i}`"
+            :d="drawing.path"
+            fill="none"
+            stroke="url(#grad1)"
+            :stroke-width="3 + audioData.bass * 6"
+            :stroke-dasharray="drawing.length"
+            :stroke-dashoffset="drawing.length - (audioData.overall * drawing.length)"
+            stroke-linecap="round"
+            :opacity="0.4 + audioData.mid * 0.5"
+            filter="url(#glow)"
+          />
+          
+          <!-- Drawing 2: Flowing curves that extend to edges -->
+          <path
+            v-for="(drawing, i) in drawings.curves"
+            :key="`curve-${i}`"
+            :d="drawing.path"
+            fill="none"
+            stroke="url(#grad2)"
+            :stroke-width="4 + audioData.mid * 8"
+            :stroke-dasharray="drawing.length"
+            :stroke-dashoffset="drawing.length - (audioData.bass * drawing.length)"
+            stroke-linecap="round"
+            :opacity="0.5 + audioData.treble * 0.4"
+            filter="url(#glow)"
+          />
+          
+          <!-- Drawing 3: Sacred geometry patterns - screen-filling -->
+          <path
+            v-for="(drawing, i) in drawings.geometry"
+            :key="`geometry-${i}`"
+            :d="drawing.path"
+            fill="none"
+            stroke="url(#grad3)"
+            :stroke-width="3.5 + audioData.treble * 8"
+            :stroke-dasharray="drawing.length"
+            :stroke-dashoffset="drawing.length - (audioData.treble * drawing.length)"
+            stroke-linecap="round"
+            :opacity="0.6 + audioData.overall * 0.4"
+            filter="url(#glow)"
+          />
+          
+          <!-- Drawing 4: Interlocking circles (flower of life style) - expanded -->
+          <circle
+            v-for="(circle, i) in drawings.circles"
+            :key="`circle-${i}`"
+            :cx="circle.x"
+            :cy="circle.y"
+            :r="circle.r"
+            fill="none"
+            :stroke="circle.gradient"
+            :stroke-width="3 + audioData.mid * 5"
+            :stroke-dasharray="circle.circumference"
+            :stroke-dashoffset="circle.circumference - (audioData.mid * circle.circumference)"
+            :opacity="0.5 + audioData.bass * 0.4"
+            filter="url(#glow)"
+          />
+          
+          <!-- Drawing 5: Radial wave patterns extending to screen edges -->
+          <path
+            v-for="(drawing, i) in drawings.waves"
+            :key="`wave-draw-${i}`"
+            :d="drawing.path"
+            fill="none"
+            :stroke="drawing.gradient"
+            :stroke-width="2.5 + audioData.overall * 6"
+            :stroke-dasharray="drawing.length"
+            :stroke-dashoffset="drawing.length - ((audioData.bass + audioData.treble) / 2 * drawing.length)"
+            stroke-linecap="round"
+            :opacity="0.4 + audioData.mid * 0.5"
+          />
+          
+          <!-- Explosive outer radial lines - extending far beyond center -->
+          <g :style="{ opacity: 0.3 + audioData.treble * 0.7 }">
+            <line
+              v-for="(line, i) in centerGeometry.outerLines"
+              :key="`line-outer-${i}`"
+              :x1="line.x1"
+              :y1="line.y1"
+              :x2="line.x2"
+              :y2="line.y2"
+              stroke="url(#grad1)"
+              :stroke-width="3 + audioData.mid * 8"
+              stroke-linecap="round"
+            />
+          </g>
+          
+          <!-- Pulsing mid-layer lines -->
+          <g :style="{ opacity: 0.4 + audioData.mid * 0.6 }">
+            <line
+              v-for="(line, i) in centerGeometry.midLines"
+              :key="`line-mid-${i}`"
+              :x1="line.x1"
+              :y1="line.y1"
+              :x2="line.x2"
+              :y2="line.y2"
+              stroke="url(#grad2)"
+              :stroke-width="4 + audioData.bass * 10"
+              stroke-linecap="round"
+            />
+          </g>
+          
+          <!-- Inner radial burst -->
+          <g :style="{ opacity: 0.5 + audioData.bass * 0.5 }">
+            <line
+              v-for="(line, i) in centerGeometry.innerLines"
+              :key="`line-inner-${i}`"
+              :x1="line.x1"
+              :y1="line.y1"
+              :x2="line.x2"
+              :y2="line.y2"
+              stroke="url(#grad3)"
+              :stroke-width="5 + audioData.treble * 12"
+              stroke-linecap="round"
+            />
+          </g>
+          
+          <!-- Orbital ring elements - larger spread -->
+          <g v-for="(ring, i) in centerGeometry.orbitRings" :key="`orbit-${i}`">
+            <circle
+              :cx="ring.x"
+              :cy="ring.y"
+              :r="ring.size"
+              fill="none"
+              :stroke="ring.stroke"
+              :stroke-width="3 + audioData.overall * 6"
+              :opacity="0.4 + audioData.mid * 0.6"
+              filter="url(#glow)"
+            />
+          </g>
+          
+          <!-- Main morphing center shape -->
+          <g :transform="`rotate(${centerGeometry.rotation}) scale(${centerGeometry.scale})`">
+            <!-- Outermost explosive layer -->
+            <polygon
+              :points="centerGeometry.outerShape"
+              fill="none"
+              stroke="url(#grad1)"
+              :stroke-width="6 + audioData.bass * 18"
+              :opacity="0.5 + audioData.overall * 0.5"
+              filter="url(#glow)"
+            />
+            
+            <!-- Middle morphing layer -->
+            <polygon
+              :points="centerGeometry.middleShape"
+              fill="none"
+              stroke="url(#grad2)"
+              :stroke-width="5 + audioData.mid * 15"
+              :opacity="0.6 + audioData.mid * 0.4"
+              filter="url(#glow)"
+            />
+            
+            <!-- Inner sharp layer -->
+            <polygon
+              :points="centerGeometry.innerShape"
+              fill="none"
+              stroke="url(#grad3)"
+              :stroke-width="4 + audioData.treble * 12"
+              :opacity="0.7 + audioData.treble * 0.3"
+              filter="url(#glow)"
+            />
+            
+            <!-- Core layer -->
+            <polygon
+              :points="centerGeometry.coreShape"
+              fill="none"
+              :stroke="`rgba(255, 255, 255, ${0.8 + audioData.overall * 0.2})`"
+              :stroke-width="3 + audioData.overall * 10"
+              filter="url(#glow)"
+            />
+            
+            <!-- Brilliant center point -->
+            <circle
+              cx="0"
+              cy="0"
+              :r="20 + audioData.overall * 60"
+              :fill="`rgba(255, 255, 255, ${0.6 + audioData.overall * 0.4})`"
+              filter="url(#blur)"
+            />
+          </g>
+          
+          <!-- Massive energy bursts on bass hits - reaching screen edges -->
+          <g :style="{ opacity: audioData.bass * 0.9 }">
+            <line
+              v-for="(burst, i) in centerGeometry.energyBursts"
+              :key="`burst-${i}`"
+              :x1="burst.x1"
+              :y1="burst.y1"
+              :x2="burst.x2"
+              :y2="burst.y2"
+              stroke="url(#grad3)"
+              :stroke-width="6 + audioData.bass * 15"
+              stroke-linecap="round"
+              :opacity="0.6 + audioData.bass * 0.4"
+              filter="url(#glow)"
+            />
+          </g>
+          
+          <!-- Treble sparkles - spread across screen -->
+          <g :style="{ opacity: 0.4 + audioData.treble * 0.6 }">
+            <circle
+              v-for="(sparkle, i) in centerGeometry.sparkles"
+              :key="`sparkle-${i}`"
+              :cx="sparkle.x"
+              :cy="sparkle.y"
+              :r="sparkle.r"
+              :fill="currentPalette.highlight2"
+              :opacity="sparkle.opacity"
+              filter="url(#blur)"
+            />
+          </g>
+          
+          <!-- Swirling particles - larger spread -->
+          <g :style="{ opacity: 0.5 + audioData.mid * 0.5 }">
+            <circle
+              v-for="(particle, i) in centerGeometry.particles"
+              :key="`particle-${i}`"
+              :cx="particle.x"
+              :cy="particle.y"
+              :r="particle.r"
+              :fill="currentPalette.primary"
+              :opacity="particle.opacity"
+            />
+          </g>
+          
+          <!-- Center hexagon border on top -->
           <polygon
             points="0,-577.35 500,-288.675 500,288.675 0,577.35 -500,288.675 -500,-288.675"
             fill="none"
             :stroke="currentPalette.primary"
             :stroke-width="4 + audioData.overall * 8"
-            :opacity="0.7 + audioData.overall * 0.3"
+            :opacity="0.5 + audioData.overall * 0.3"
             filter="url(#glow)"
           />
-          
-          <g clip-path="url(#hexClipLarge)">
-            <!-- Explosive outer radial lines -->
-            <g :style="{ opacity: 0.3 + audioData.treble * 0.7 }">
-              <line
-                v-for="(line, i) in centerGeometry.outerLines"
-                :key="`line-outer-${i}`"
-                :x1="line.x1"
-                :y1="line.y1"
-                :x2="line.x2"
-                :y2="line.y2"
-                stroke="url(#grad1)"
-                :stroke-width="2 + audioData.mid * 6"
-                stroke-linecap="round"
-              />
-            </g>
-            
-            <!-- Pulsing mid-layer lines -->
-            <g :style="{ opacity: 0.4 + audioData.mid * 0.6 }">
-              <line
-                v-for="(line, i) in centerGeometry.midLines"
-                :key="`line-mid-${i}`"
-                :x1="line.x1"
-                :y1="line.y1"
-                :x2="line.x2"
-                :y2="line.y2"
-                stroke="url(#grad2)"
-                :stroke-width="3 + audioData.bass * 8"
-                stroke-linecap="round"
-              />
-            </g>
-            
-            <!-- Inner radial burst -->
-            <g :style="{ opacity: 0.5 + audioData.bass * 0.5 }">
-              <line
-                v-for="(line, i) in centerGeometry.innerLines"
-                :key="`line-inner-${i}`"
-                :x1="line.x1"
-                :y1="line.y1"
-                :x2="line.x2"
-                :y2="line.y2"
-                stroke="url(#grad3)"
-                :stroke-width="4 + audioData.treble * 10"
-                stroke-linecap="round"
-              />
-            </g>
-            
-            <!-- Orbital ring elements -->
-            <g v-for="(ring, i) in centerGeometry.orbitRings" :key="`orbit-${i}`">
-              <circle
-                :cx="ring.x"
-                :cy="ring.y"
-                :r="ring.size"
-                fill="none"
-                :stroke="ring.stroke"
-                :stroke-width="2 + audioData.overall * 4"
-                :opacity="0.4 + audioData.mid * 0.6"
-                filter="url(#glow)"
-              />
-            </g>
-            
-            <!-- Main morphing center shape -->
-            <g :transform="`rotate(${centerGeometry.rotation}) scale(${centerGeometry.scale})`">
-              <!-- Outermost explosive layer -->
-              <polygon
-                :points="centerGeometry.outerShape"
-                fill="none"
-                stroke="url(#grad1)"
-                :stroke-width="5 + audioData.bass * 15"
-                :opacity="0.5 + audioData.overall * 0.5"
-                filter="url(#glow)"
-              />
-              
-              <!-- Middle morphing layer -->
-              <polygon
-                :points="centerGeometry.middleShape"
-                fill="none"
-                stroke="url(#grad2)"
-                :stroke-width="4 + audioData.mid * 12"
-                :opacity="0.6 + audioData.mid * 0.4"
-                filter="url(#glow)"
-              />
-              
-              <!-- Inner sharp layer -->
-              <polygon
-                :points="centerGeometry.innerShape"
-                fill="none"
-                stroke="url(#grad3)"
-                :stroke-width="3 + audioData.treble * 10"
-                :opacity="0.7 + audioData.treble * 0.3"
-                filter="url(#glow)"
-              />
-              
-              <!-- Core layer -->
-              <polygon
-                :points="centerGeometry.coreShape"
-                fill="none"
-                :stroke="`rgba(255, 255, 255, ${0.8 + audioData.overall * 0.2})`"
-                :stroke-width="2 + audioData.overall * 8"
-                filter="url(#glow)"
-              />
-              
-              <!-- Brilliant center point -->
-              <circle
-                cx="0"
-                cy="0"
-                :r="15 + audioData.overall * 50"
-                :fill="`rgba(255, 255, 255, ${0.6 + audioData.overall * 0.4})`"
-                filter="url(#blur)"
-              />
-            </g>
-            
-            <!-- Massive energy bursts on bass hits -->
-            <g :style="{ opacity: audioData.bass * 0.9 }">
-              <line
-                v-for="(burst, i) in centerGeometry.energyBursts"
-                :key="`burst-${i}`"
-                :x1="burst.x1"
-                :y1="burst.y1"
-                :x2="burst.x2"
-                :y2="burst.y2"
-                stroke="url(#grad3)"
-                :stroke-width="5 + audioData.bass * 12"
-                stroke-linecap="round"
-                :opacity="0.6 + audioData.bass * 0.4"
-                filter="url(#glow)"
-              />
-            </g>
-            
-            <!-- Treble sparkles -->
-            <g :style="{ opacity: 0.4 + audioData.treble * 0.6 }">
-              <circle
-                v-for="(sparkle, i) in centerGeometry.sparkles"
-                :key="`sparkle-${i}`"
-                :cx="sparkle.x"
-                :cy="sparkle.y"
-                :r="sparkle.r"
-                :fill="currentPalette.highlight2"
-                :opacity="sparkle.opacity"
-                filter="url(#blur)"
-              />
-            </g>
-            
-            <!-- Swirling particles -->
-            <g :style="{ opacity: 0.5 + audioData.mid * 0.5 }">
-              <circle
-                v-for="(particle, i) in centerGeometry.particles"
-                :key="`particle-${i}`"
-                :cx="particle.x"
-                :cy="particle.y"
-                :r="particle.r"
-                :fill="currentPalette.primary"
-                :opacity="particle.opacity"
-              />
-            </g>
-          </g>
         </g>
       </svg>
     </div>
@@ -595,13 +610,151 @@ const audioElement = ref(null);
 const animationFrame = ref(null);
 const demoTime = ref(0);
 const paletteTimer = ref(null);
-const bubbleList = ref([]);
-const bubbleIdCounter = ref(0);
-const lastBubbleTime = ref(0);
 
 const currentPalette = computed(() => colorPalettes[currentPaletteIndex.value]);
 
-const bubbles = computed(() => bubbleList.value);
+// Generate massive screen-filling SVG paths for animated line drawings
+const drawings = computed(() => {
+  const t = demoTime.value;
+  
+  // Spiraling mandala patterns - MUCH LARGER to fill screen
+  const mandala = [];
+  for (let layer = 0; layer < 8; layer++) {
+    let path = '';
+    const radius = 200 + layer * 120; // Doubled size
+    const petals = 8 + layer * 2;
+    
+    for (let i = 0; i <= petals; i++) {
+      const angle = (i / petals) * Math.PI * 2;
+      const petalRadius = radius + Math.sin(i * 3 + t) * 60;
+      const x = Math.cos(angle) * petalRadius;
+      const y = Math.sin(angle) * petalRadius;
+      
+      if (i === 0) {
+        path += `M ${x} ${y}`;
+      } else {
+        const prevAngle = ((i - 1) / petals) * Math.PI * 2;
+        const prevRadius = radius + Math.sin((i - 1) * 3 + t) * 60;
+        const cpx1 = Math.cos(prevAngle + 0.2) * (prevRadius + radius) / 2;
+        const cpy1 = Math.sin(prevAngle + 0.2) * (prevRadius + radius) / 2;
+        const cpx2 = Math.cos(angle - 0.2) * (petalRadius + radius) / 2;
+        const cpy2 = Math.sin(angle - 0.2) * (petalRadius + radius) / 2;
+        path += ` C ${cpx1} ${cpy1}, ${cpx2} ${cpy2}, ${x} ${y}`;
+      }
+    }
+    
+    const length = radius * Math.PI * 2 * 1.5;
+    mandala.push({ path, length });
+  }
+  
+  // Flowing organic curves - extending to screen edges
+  const curves = [];
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    let path = 'M 0 0';
+    
+    for (let j = 1; j <= 80; j++) { // Extended range
+      const r = j * 15; // Larger steps
+      const waveAngle = angle + Math.sin(j * 0.2 + t * 2) * 0.5;
+      const x = Math.cos(waveAngle) * r;
+      const y = Math.sin(waveAngle) * r;
+      
+      if (j === 1) {
+        path = `M ${x} ${y}`;
+      } else {
+        path += ` L ${x} ${y}`;
+      }
+    }
+    
+    const length = 1200;
+    curves.push({ path, length });
+  }
+  
+  // Sacred geometry - massive triangles
+  const geometry = [];
+  for (let i = 0; i < 4; i++) {
+    const rotation = (i / 4) * 90 + t * 10;
+    const size = 400 + i * 180; // Much larger
+    
+    let path = '';
+    for (let j = 0; j < 3; j++) {
+      const angle = (j / 3) * Math.PI * 2 + (rotation * Math.PI / 180);
+      const x = Math.cos(angle) * size;
+      const y = Math.sin(angle) * size;
+      
+      if (j === 0) {
+        path += `M ${x} ${y}`;
+      } else {
+        path += ` L ${x} ${y}`;
+      }
+    }
+    path += ' Z';
+    
+    const length = size * 3;
+    geometry.push({ path, length });
+  }
+  
+  // Flower of life circles - larger and more spread out
+  const circles = [];
+  const scale = 2.5; // Scale multiplier
+  const circlePositions = [
+    { x: 0, y: 0 },
+    { x: 150 * scale, y: 0 },
+    { x: -150 * scale, y: 0 },
+    { x: 75 * scale, y: 130 * scale },
+    { x: -75 * scale, y: 130 * scale },
+    { x: 75 * scale, y: -130 * scale },
+    { x: -75 * scale, y: -130 * scale },
+    { x: 225 * scale, y: 130 * scale },
+    { x: -225 * scale, y: 130 * scale },
+    { x: 225 * scale, y: -130 * scale },
+    { x: -225 * scale, y: -130 * scale },
+  ];
+  
+  circlePositions.forEach((pos, i) => {
+    const r = 150 * scale;
+    const circumference = 2 * Math.PI * r;
+    const gradients = ['url(#grad1)', 'url(#grad2)', 'url(#grad3)'];
+    circles.push({
+      x: pos.x,
+      y: pos.y,
+      r,
+      circumference,
+      gradient: gradients[i % 3]
+    });
+  });
+  
+  // Radial wave patterns - extending to screen edges
+  const waves = [];
+  for (let i = 0; i < 16; i++) {
+    const baseAngle = (i / 16) * Math.PI * 2;
+    let path = '';
+    
+    for (let j = 0; j <= 60; j++) {
+      const r = 100 + j * 20; // Extended range
+      const waveOffset = Math.sin(j * 0.3 + t * 3 + i) * 40;
+      const angle = baseAngle + waveOffset * 0.01;
+      const x = Math.cos(angle) * r;
+      const y = Math.sin(angle) * r;
+      
+      if (j === 0) {
+        path += `M ${x} ${y}`;
+      } else {
+        path += ` L ${x} ${y}`;
+      }
+    }
+    
+    const length = 1300;
+    const gradients = ['url(#grad1)', 'url(#grad2)', 'url(#grad3)'];
+    waves.push({ 
+      path, 
+      length,
+      gradient: gradients[i % 3]
+    });
+  }
+  
+  return { mandala, curves, geometry, circles, waves };
+});
 
 const surroundingCells = computed(() => {
   const cells = [];
@@ -663,11 +816,12 @@ const centerGeometry = computed(() => {
   const innerShape = generateMorphShape(170 + audioData.treble * 70, spikeFactor * 1.3);
   const coreShape = generateMorphShape(100 + audioData.overall * 50, spikeFactor * 0.6);
   
+  // Extended radial lines reaching screen edges
   const outerLines = [];
   for (let i = 0; i < 32; i++) {
     const angle = (i / 32) * 360 + audioData.treble * 240;
-    const r1 = 380 + audioData.bass * 100;
-    const r2 = 500 + audioData.overall * 120;
+    const r1 = 600 + audioData.bass * 150;
+    const r2 = 900 + audioData.overall * 300; // Extends far beyond
     const x1 = Math.cos((angle * Math.PI) / 180) * r1;
     const y1 = Math.sin((angle * Math.PI) / 180) * r1;
     const x2 = Math.cos((angle * Math.PI) / 180) * r2;
@@ -678,8 +832,8 @@ const centerGeometry = computed(() => {
   const midLines = [];
   for (let i = 0; i < 24; i++) {
     const angle = (i / 24) * 360 + audioData.mid * 200;
-    const r1 = 200 + audioData.mid * 80;
-    const r2 = 320 + audioData.bass * 100;
+    const r1 = 400 + audioData.mid * 120;
+    const r2 = 700 + audioData.bass * 200;
     const x1 = Math.cos((angle * Math.PI) / 180) * r1;
     const y1 = Math.sin((angle * Math.PI) / 180) * r1;
     const x2 = Math.cos((angle * Math.PI) / 180) * r2;
@@ -690,8 +844,8 @@ const centerGeometry = computed(() => {
   const innerLines = [];
   for (let i = 0; i < 16; i++) {
     const angle = (i / 16) * 360 + audioData.treble * 300;
-    const r1 = 100 + audioData.treble * 50;
-    const r2 = 180 + audioData.mid * 70;
+    const r1 = 200 + audioData.treble * 80;
+    const r2 = 400 + audioData.mid * 120;
     const x1 = Math.cos((angle * Math.PI) / 180) * r1;
     const y1 = Math.sin((angle * Math.PI) / 180) * r1;
     const x2 = Math.cos((angle * Math.PI) / 180) * r2;
@@ -702,8 +856,8 @@ const centerGeometry = computed(() => {
   const energyBursts = [];
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * 360 + audioData.bass * 720;
-    const r1 = 80;
-    const r2 = 80 + Math.pow(audioData.bass, 2) * 350;
+    const r1 = 100;
+    const r2 = 100 + Math.pow(audioData.bass, 2) * 800; // Massive bursts
     const x1 = Math.cos((angle * Math.PI) / 180) * r1;
     const y1 = Math.sin((angle * Math.PI) / 180) * r1;
     const x2 = Math.cos((angle * Math.PI) / 180) * r2;
@@ -714,10 +868,10 @@ const centerGeometry = computed(() => {
   const orbitRings = [];
   for (let i = 0; i < 18; i++) {
     const angle = (i / 18) * 360 + t * 80 + audioData.mid * 150;
-    const radius = 280 + audioData.treble * 100 + Math.sin(t * 2 + i) * 40;
+    const radius = 500 + audioData.treble * 200 + Math.sin(t * 2 + i) * 80;
     const x = Math.cos((angle * Math.PI) / 180) * radius;
     const y = Math.sin((angle * Math.PI) / 180) * radius;
-    const size = 20 + audioData.bass * 30;
+    const size = 30 + audioData.bass * 50;
     orbitRings.push({
       x, y, size,
       stroke: i % 3 === 0 ? 'url(#grad1)' : i % 3 === 1 ? 'url(#grad2)' : 'url(#grad3)'
@@ -725,27 +879,27 @@ const centerGeometry = computed(() => {
   }
   
   const sparkles = [];
-  for (let i = 0; i < 40; i++) {
-    const angle = (i / 40) * 360 + t * 150;
-    const radius = 250 + Math.sin(t * 4 + i * 0.5) * 120 + audioData.treble * 80;
+  for (let i = 0; i < 60; i++) {
+    const angle = (i / 60) * 360 + t * 150;
+    const radius = 450 + Math.sin(t * 4 + i * 0.5) * 200 + audioData.treble * 150;
     const x = Math.cos((angle * Math.PI) / 180) * radius;
     const y = Math.sin((angle * Math.PI) / 180) * radius;
     sparkles.push({
       x, y,
-      r: 2 + audioData.treble * 6,
+      r: 3 + audioData.treble * 8,
       opacity: 0.3 + Math.sin(t * 5 + i) * 0.3 + audioData.treble * 0.4
     });
   }
   
   const particles = [];
-  for (let i = 0; i < 60; i++) {
-    const angle = (i / 60) * 360 + t * 100 + audioData.overall * 200;
-    const radius = 150 + (i % 3) * 60 + Math.sin(t * 3 + i) * 40;
+  for (let i = 0; i < 80; i++) {
+    const angle = (i / 80) * 360 + t * 100 + audioData.overall * 200;
+    const radius = 350 + (i % 4) * 100 + Math.sin(t * 3 + i) * 60;
     const x = Math.cos((angle * Math.PI) / 180) * radius;
     const y = Math.sin((angle * Math.PI) / 180) * radius;
     particles.push({
       x, y,
-      r: 1.5 + audioData.mid * 4,
+      r: 2 + audioData.mid * 5,
       opacity: 0.2 + audioData.mid * 0.5
     });
   }
@@ -766,62 +920,6 @@ const centerGeometry = computed(() => {
     particles
   };
 });
-
-const updateBubbles = () => {
-  const t = demoTime.value;
-  const currentTime = Date.now();
-  
-  // Spawn new bubbles based on audio intensity
-  const spawnRate = 100 + (1 - audioData.overall) * 400; // Higher audio = faster spawning
-  if (currentTime - lastBubbleTime.value > spawnRate) {
-    const gradients = ['url(#bubbleGrad1)', 'url(#bubbleGrad2)', 'url(#bubbleGrad3)'];
-    const angle = Math.random() * Math.PI * 2;
-    
-    const newBubble = {
-      id: bubbleIdCounter.value++,
-      x: 1200, // Center x
-      y: 800,  // Center y
-      vx: Math.cos(angle) * (0.5 + audioData.overall * 2),
-      vy: Math.sin(angle) * (0.5 + audioData.overall * 2) - 1, // Slight upward bias
-      size: 10 + Math.random() * 30 + audioData.bass * 20,
-      gradient: gradients[Math.floor(Math.random() * gradients.length)],
-      opacity: 0.6 + Math.random() * 0.4,
-      life: 0,
-      maxLife: 3 + Math.random() * 4 // 3-7 seconds lifespan
-    };
-    
-    bubbleList.value.push(newBubble);
-    lastBubbleTime.value = currentTime;
-  }
-  
-  // Update existing bubbles
-  bubbleList.value = bubbleList.value.map(bubble => {
-    bubble.life += 0.016;
-    bubble.x += bubble.vx;
-    bubble.y += bubble.vy;
-    
-    // Slow down over time
-    bubble.vx *= 0.99;
-    bubble.vy *= 0.99;
-    
-    // Add some wobble
-    bubble.x += Math.sin(t * 2 + bubble.id) * 0.3;
-    bubble.y += Math.cos(t * 1.5 + bubble.id) * 0.3;
-    
-    // Fade out near the end of life
-    const lifeFraction = bubble.life / bubble.maxLife;
-    if (lifeFraction > 0.8) {
-      bubble.opacity *= 0.95;
-    }
-    
-    return bubble;
-  }).filter(bubble => {
-    // Remove bubbles that are too old or off screen
-    return bubble.life < bubble.maxLife && 
-           bubble.x > -200 && bubble.x < 2600 &&
-           bubble.y > -200 && bubble.y < 1800;
-  });
-};
 
 const getCellGeometry = (cell) => {
   const t = demoTime.value;
@@ -1009,14 +1107,11 @@ const animateDemo = () => {
   audioData.treble = Math.pow((Math.sin(t * 3.7) + 1) / 2, 1.3);
   audioData.overall = (Math.sin(t * 1.1) + 1) / 2;
   
-  updateBubbles();
-  
   animationFrame.value = requestAnimationFrame(animateDemo);
 };
 
 const animate = () => {
   demoTime.value += 0.016;
-  updateBubbles();
   animationFrame.value = requestAnimationFrame(animate);
 };
 
