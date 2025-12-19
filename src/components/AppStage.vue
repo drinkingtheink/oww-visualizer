@@ -139,7 +139,7 @@ class Particle {
     ctx.rotate(this.rotation);
 
     // Draw trailing streak
-    const trailLength = 20;
+    const trailLength = 12;
     const gradient = ctx.createLinearGradient(-this.vx * trailLength, -this.vy * trailLength, 0, 0);
     gradient.addColorStop(0, 'rgba(0,0,0,0)');
     gradient.addColorStop(1, getColor(this.colorIndex, this.total, 0.3 * alpha));
@@ -366,8 +366,8 @@ function drawSoundwaves() {
 
 // Pattern Definitions
 const patterns = [
-  // { name: 'Cubic Grid', draw: drawCubicGrid },
   { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
+  // { name: 'Cubic Grid', draw: drawCubicGrid },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
@@ -557,8 +557,8 @@ function getColor(index, total, intensity) {
   const g = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5, 7), 16);
   
-  // Add color shifting based on audio intensity for psychedelic effect
-  const shift = audioLoaded.value ? Math.sin(rotationAngle + index * 0.1) * 20 : 0;
+  // Add subtle color shifting based on audio intensity for psychedelic effect
+  const shift = audioLoaded.value ? Math.sin(rotationAngle + index * 0.1) * 12 : 0;
   const rShifted = Math.max(0, Math.min(255, r + shift));
   const gShifted = Math.max(0, Math.min(255, g + shift * 0.5));
   const bShifted = Math.max(0, Math.min(255, b - shift * 0.5));
@@ -590,10 +590,10 @@ function getColor(index, total, intensity) {
 //       const depth = value * 30;
 
 //       // Spawn particles on high energy
-//       if (audioLoaded.value && value > 0.7 && Math.random() > 0.9) {
+//       if (audioLoaded.value && value > 0.73 && Math.random() > 0.93) {
 //         const worldX = x + size / 2;
 //         const worldY = y + size / 2;
-//         createParticles(worldX, worldY, value, index, cols * rows, 3);
+//         createParticles(worldX, worldY, value, index, cols * rows, 2);
 //       }
 
 //       ctx.save();
@@ -685,8 +685,8 @@ function drawDiamondLattice() {
       const diamondSize = size * 0.25 * (0.8 + value * 0.4);
 
       // Spawn particles
-      if (audioLoaded.value && value > 0.75 && Math.random() > 0.88) {
-        createParticles(x, y, value, index, cols * rows, 4);
+      if (audioLoaded.value && value > 0.77 && Math.random() > 0.9) {
+        createParticles(x, y, value, index, cols * rows, 3);
       }
 
       // Outer glow ring
@@ -801,8 +801,8 @@ function drawHexFlowers() {
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.12) * 0.3 + 0.5;
       
       // Spawn particles at center
-      if (audioLoaded.value && value > 0.72 && Math.random() > 0.85) {
-        createParticles(x, y, value, index, cols * rows, 3);
+      if (audioLoaded.value && value > 0.75 && Math.random() > 0.88) {
+        createParticles(x, y, value, index, cols * rows, 2);
       }
 
       // Draw flower pattern with hexagons
@@ -1104,19 +1104,19 @@ function animate() {
   if (audioLoaded.value && !isPaused.value) {
     const avgEnergy = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255;
     const bgPulse = Math.floor(10 + avgEnergy * 15);
-    ctx.fillStyle = `rgba(${bgPulse}, ${bgPulse * 0.5}, ${bgPulse * 1.5}, 0.15)`;
+    ctx.fillStyle = `rgba(${bgPulse}, ${bgPulse * 0.5}, ${bgPulse * 1.5}, 0.25)`;
   } else {
-    ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.25)';
   }
   ctx.fillRect(0, 0, width, height);
 
   if (audioLoaded.value && !isPaused.value) {
     analyser.getByteFrequencyData(dataArray);
-    rotationAngle += 0.01; // Faster rotation for psychedelic effect
+    rotationAngle += 0.007; // Medium rotation speed
   } else {
     // Breathing animation when no audio
     breathePhase += 0.02;
-    rotationAngle += 0.004; // Faster idle rotation
+    rotationAngle += 0.003; // Medium idle rotation
   }
 
   // Auto-rotate patterns and palettes
