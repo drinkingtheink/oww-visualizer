@@ -7,9 +7,6 @@
       </label>
       <button class="pattern-btn" @click="cyclePattern">Pattern: {{ currentPatternName }}</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
-      <button class="palette-btn" @click="cycleSoundwavePalette" v-if="audioLoaded">
-        Wave: {{ palettes[soundwavePaletteIndex].name }}
-      </button>
       <!-- <button class="pattern-btn" @click="toggleAutoRotate">
         Auto-Rotate: {{ autoRotate ? 'ON' : 'OFF' }}
       </button> -->
@@ -38,7 +35,7 @@ const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
 const autoRotate = ref(true);
 const isPaused = ref(false);
-const soundwavePaletteIndex = ref(1); // Separate palette for soundwaves
+const ripplePaletteIndex = ref(1); // Separate palette for ripples
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
 let animationId;
@@ -47,7 +44,6 @@ let breathePhase = 0;
 let lastRotateTime = Date.now();
 let audioElement = null;
 let particles = [];
-let soundwaveHistory = []; // Store historical data for smoothing
 
 // Mouse/Touch interaction state
 let mouseX = null;
@@ -268,7 +264,7 @@ function drawParticles() {
   particles.forEach(p => p.draw(ctx));
 }
 
-function getSoundwaveColor(index, total, intensity, paletteIdx) {
+function getRippleColor(index, total, intensity, paletteIdx) {
   const palette = palettes[paletteIdx].colors;
   const colorIndex = Math.floor((index / total) * palette.length);
   const color = palette[colorIndex % palette.length];
@@ -278,143 +274,6 @@ function getSoundwaveColor(index, total, intensity, paletteIdx) {
   const b = parseInt(color.slice(5, 7), 16);
   
   return `rgba(${r}, ${g}, ${b}, ${intensity})`;
-}
-
-function drawSoundwaves() {
-  if (!audioLoaded.value) return;
-  
-  const width = canvas.value.width;
-  const height = canvas.value.height;
-  const waveCount = 4;
-  
-  // Store current data in history
-  if (soundwaveHistory.length > 3) {
-    soundwaveHistory.shift();
-  }
-  soundwaveHistory.push([...dataArray]);
-  
-  for (let w = 0; w < waveCount; w++) {
-    const yOffset = height * (0.3 + w * 0.15);
-    const waveHeight = 80 + w * 20;
-    const alpha = 0.8 - w * 0.15;
-    const thickness = 4 - w * 0.5;
-    
-    // Create gradient for the wave
-    const gradient = ctx.createLinearGradient(0, yOffset - waveHeight, 0, yOffset + waveHeight);
-    gradient.addColorStop(0, getSoundwaveColor(w * 50, waveCount * 50, alpha * 0.3, soundwavePaletteIndex.value));
-    gradient.addColorStop(0.5, getSoundwaveColor(w * 50, waveCount * 50, alpha, soundwavePaletteIndex.value));
-    gradient.addColorStop(1, getSoundwaveColor(w * 50, waveCount * 50, alpha * 0.3, soundwavePaletteIndex.value));
-    
-    // Draw main wave
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = thickness;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    // Add glow
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = getSoundwaveColor(w * 50, waveCount * 50, alpha * 0.6, soundwavePaletteIndex.value);
-    
-    ctx.beginPath();
-    
-    const segments = 200;
-    const dataStep = Math.floor(bufferLength / segments);
-    
-    for (let i = 0; i < segments; i++) {
-      const x = (i / segments) * width;
-      const dataIndex = i * dataStep;
-      const value = dataArray[dataIndex] / 255;
-      
-      // Smooth with history
-      let smoothValue = value;
-      if (soundwaveHistory.length > 0) {
-        const historyAvg = soundwaveHistory.reduce((sum, hist) => sum + hist[dataIndex] / 255, 0) / soundwaveHistory.length;
-        smoothValue = value * 0.6 + historyAvg * 0.4;
-      }
-      
-      // Create wave motion
-      const wavePhase = (i / segments) * Math.PI * 4 + rotationAngle * (w + 1);
-      const baseWave = Math.sin(wavePhase) * 15;
-      const y = yOffset + baseWave + (smoothValue - 0.5) * waveHeight;
-      
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    }
-    
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    
-    // Draw reflection wave (mirrored)
-    const reflectionAlpha = alpha * 0.3;
-    ctx.strokeStyle = getSoundwaveColor(w * 50 + 25, waveCount * 50, reflectionAlpha, soundwavePaletteIndex.value);
-    ctx.lineWidth = thickness * 0.7;
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = getSoundwaveColor(w * 50 + 25, waveCount * 50, reflectionAlpha * 0.5, soundwavePaletteIndex.value);
-    
-    ctx.beginPath();
-    for (let i = 0; i < segments; i++) {
-      const x = (i / segments) * width;
-      const dataIndex = i * dataStep;
-      const value = dataArray[dataIndex] / 255;
-      
-      let smoothValue = value;
-      if (soundwaveHistory.length > 0) {
-        const historyAvg = soundwaveHistory.reduce((sum, hist) => sum + hist[dataIndex] / 255, 0) / soundwaveHistory.length;
-        smoothValue = value * 0.6 + historyAvg * 0.4;
-      }
-      
-      const wavePhase = (i / segments) * Math.PI * 4 + rotationAngle * (w + 1);
-      const baseWave = Math.sin(wavePhase) * 15;
-      const y = yOffset - baseWave - (smoothValue - 0.5) * waveHeight * 0.5;
-      
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    }
-    
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    
-    // Add peak indicators
-    for (let i = 0; i < segments; i += 10) {
-      const x = (i / segments) * width;
-      const dataIndex = i * dataStep;
-      const value = dataArray[dataIndex] / 255;
-      
-      if (value > 0.75) {
-        const wavePhase = (i / segments) * Math.PI * 4 + rotationAngle * (w + 1);
-        const baseWave = Math.sin(wavePhase) * 15;
-        const y = yOffset + baseWave + (value - 0.5) * waveHeight;
-        
-        // Draw glowing dot
-        const dotSize = 4 + value * 6;
-        ctx.fillStyle = getSoundwaveColor(w * 50 + i, waveCount * 50, alpha, soundwavePaletteIndex.value);
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = getSoundwaveColor(w * 50 + i, waveCount * 50, alpha, soundwavePaletteIndex.value);
-        ctx.beginPath();
-        ctx.arc(x, y, dotSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        // Draw energy burst lines
-        for (let a = 0; a < 6; a++) {
-          const angle = (a / 6) * Math.PI * 2 + rotationAngle;
-          const length = value * 20;
-          ctx.strokeStyle = getSoundwaveColor(w * 50 + i + a, waveCount * 50, alpha * 0.4, soundwavePaletteIndex.value);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
-          ctx.stroke();
-        }
-      }
-    }
-  }
 }
 
 // Pattern Definitions
@@ -1263,15 +1122,12 @@ function animate() {
   // Smooth warp intensity
   warpIntensity += (targetWarpIntensity - warpIntensity) * 0.1;
 
-  // Draw soundwaves on top
-  drawSoundwaves();
-
   // Draw ripple effects
   ripples.forEach(ripple => {
-    ctx.strokeStyle = getSoundwaveColor(Math.floor(ripple.radius), 1000, ripple.life * 0.5, soundwavePaletteIndex.value);
+    ctx.strokeStyle = getRippleColor(Math.floor(ripple.radius), 1000, ripple.life * 0.5, ripplePaletteIndex.value);
     ctx.lineWidth = 3;
     ctx.shadowBlur = 10;
-    ctx.shadowColor = getSoundwaveColor(Math.floor(ripple.radius), 1000, ripple.life * 0.8, soundwavePaletteIndex.value);
+    ctx.shadowColor = getRippleColor(Math.floor(ripple.radius), 1000, ripple.life * 0.8, ripplePaletteIndex.value);
     ctx.beginPath();
     ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -1301,10 +1157,6 @@ function cyclePattern() {
 function cyclePalette() {
   currentPaletteIndex.value = (currentPaletteIndex.value + 1) % palettes.length;
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
-}
-
-function cycleSoundwavePalette() {
-  soundwavePaletteIndex.value = (soundwavePaletteIndex.value + 1) % palettes.length;
 }
 
 // function toggleAutoRotate() {
