@@ -49,13 +49,13 @@ const isPaused = ref(false);
 const useMusicPlayer = ref(true); // Set to false to use file input instead
 const currentTrackIndex = ref(0);
 const tracks = ref([
-  { name: 'Crate Diggers Local 227', url: '/audio/track1.mp3' },
-  { name: 'Mantra Loupe', url: '/audio/track2.mp3' },
-  { name: 'As Sane As Any Of Us', url: '/audio/track3.mp3' },
-  { name: 'Virtuous Vitreous', url: '/audio/track4.mp3' },
-  { name: "I Stole A Glance At My Brother's Sketchbook", url: '/audio/track5.mp3' },
-  { name: "Dr. Remember's Miracle Elixir", url: '/audio/track6.mp3' },
-  { name: 'Down And Out In Sidereal Time', url: '/audio/track7.mp3' }
+  { name: 'Crate Diggers Local 227', url: 'https://drive.google.com/file/d/15EVZwlgYOdI3tkt0G3gfMwfvsQko0vKc/view?usp=sharing' },
+  { name: 'Mantra Loupe', url: 'https://drive.google.com/file/d/1-eH5NTzC-IBTiIzb_Ajvum2K9m9Cwtn1/view?usp=sharing' },
+  { name: 'As Sane As Any Of Us', url: 'https://drive.google.com/file/d/1Sn0bHwiGf8eE-4dbocNY_nQkCJsqwNmg/view?usp=sharing' },
+  { name: 'Virtuous Vitreous', url: 'https://drive.google.com/file/d/1RpnsDtIGntIVEu2Q-QqVEEEBTea2nE5l/view?usp=sharing' },
+  { name: "I Stole A Glance At My Brother's Sketchbook", url: 'https://drive.google.com/file/d/1Ktex7hWuhGXvPqLDlr3i7jFsjwmw4KI6/view?usp=sharing' },
+  { name: "Dr. Remember's Miracle Elixir", url: 'https://drive.google.com/file/d/1G7-4PvO1L9AWjB2RyyeFxp6LW6KjLc_m/view?usp=sharing' },
+  { name: 'Down And Out In Sidereal Time', url: 'https://drive.google.com/file/d/1Te2OWkwNje-pavkpIsyiu9vHlfl_qtVT/view?usp=sharing' }
 ]);
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
