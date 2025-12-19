@@ -10,9 +10,9 @@
       <button class="palette-btn" @click="cycleSoundwavePalette" v-if="audioLoaded">
         Wave: {{ palettes[soundwavePaletteIndex].name }}
       </button>
-      <button class="pattern-btn" @click="toggleAutoRotate">
+      <!-- <button class="pattern-btn" @click="toggleAutoRotate">
         Auto-Rotate: {{ autoRotate ? 'ON' : 'OFF' }}
-      </button>
+      </button> -->
       <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
         {{ isPaused ? '▶ Play' : '⏸ Pause' }}
       </button>
@@ -1168,12 +1168,12 @@ function cycleSoundwavePalette() {
   soundwavePaletteIndex.value = (soundwavePaletteIndex.value + 1) % palettes.length;
 }
 
-function toggleAutoRotate() {
-  autoRotate.value = !autoRotate.value;
-  if (autoRotate.value) {
-    lastRotateTime = Date.now();
-  }
-}
+// function toggleAutoRotate() {
+//   autoRotate.value = !autoRotate.value;
+//   if (autoRotate.value) {
+//     lastRotateTime = Date.now();
+//   }
+// }
 
 function resize() {
   canvas.value.width = window.innerWidth;
