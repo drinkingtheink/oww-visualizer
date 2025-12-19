@@ -12,6 +12,18 @@
       </button>
     </div>
 
+    <!-- Music Player Component -->
+    <MusicPlayer
+      v-if="useMusicPlayer"
+      :tracks="tracks"
+      :current-track-index="currentTrackIndex"
+      :is-playing="!isPaused && audioLoaded"
+      @track-change="handleTrackChange"
+      @play-pause="togglePause"
+      @next="nextTrack"
+      @previous="previousTrack"
+    />
+
     <div class="visualizer-container">
       <canvas ref="canvas"></canvas>
     </div>
@@ -24,6 +36,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import MusicPlayer from './MusicPlayer.vue';
 
 const canvas = ref(null);
 const audioLoaded = ref(false);
@@ -31,6 +44,19 @@ const fileName = ref('');
 const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
 const isPaused = ref(false);
+
+// Music player state
+const useMusicPlayer = ref(true); // Set to false to use file input instead
+const currentTrackIndex = ref(0);
+const tracks = ref([
+  { name: 'Crate Diggers Local 227', url: '/audio/track1.mp3' },
+  { name: 'Mantra Loupe', url: '/audio/track2.mp3' },
+  { name: 'As Sane As Any Of Us', url: '/audio/track3.mp3' },
+  { name: 'Virtuous Vitreous', url: '/audio/track4.mp3' },
+  { name: "I Stole A Glance At My Brother's Sketchbook", url: '/audio/track5.mp3' },
+  { name: "Dr. Remember's Miracle Elixir", url: '/audio/track6.mp3' },
+  { name: 'Down And Out In Sidereal Time', url: '/audio/track7.mp3' }
+]);
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
 let animationId;
@@ -261,7 +287,8 @@ function drawParticles() {
 
 
 // Pattern Definitions
-const patterns = [  { name: 'Diamond Lattice', draw: drawDiamondLattice },
+const patterns = [
+  { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
   { name: 'Spiral Galaxy', draw: drawSpiralGalaxy }
@@ -269,6 +296,57 @@ const patterns = [  { name: 'Diamond Lattice', draw: drawDiamondLattice },
 
 const currentPatternName = ref(patterns[0].name);
 const currentPaletteName = ref(palettes[0].name);
+
+// Music player handlers
+function handleTrackChange(index) {
+  currentTrackIndex.value = index;
+  loadTrack(index);
+}
+
+function nextTrack() {
+  const nextIndex = (currentTrackIndex.value + 1) % tracks.value.length;
+  handleTrackChange(nextIndex);
+}
+
+function previousTrack() {
+  const prevIndex = (currentTrackIndex.value - 1 + tracks.value.length) % tracks.value.length;
+  handleTrackChange(prevIndex);
+}
+
+function loadTrack(index) {
+  if (!useMusicPlayer.value) return;
+  
+  const track = tracks.value[index];
+  fileName.value = track.name;
+  
+  // Stop current audio if playing
+  if (audioElement) {
+    audioElement.pause();
+    audioElement = null;
+  }
+  
+  // Create new audio element
+  audioElement = new Audio(track.url);
+  audioElement.crossOrigin = "anonymous";
+  
+  // Auto-play the track
+  audioElement.play().then(() => {
+    setupAudioContext(audioElement);
+    audioLoaded.value = true;
+    isPaused.value = false;
+  }).catch(err => {
+    console.error('Error playing track:', err);
+    // If auto-play fails, just load it ready to play
+    setupAudioContext(audioElement);
+    audioLoaded.value = true;
+    isPaused.value = true;
+  });
+  
+  // Handle track end - auto-advance to next track
+  audioElement.addEventListener('ended', () => {
+    nextTrack();
+  });
+}
 
 function loadAudio(event) {
   const file = event.target.files[0];
@@ -843,6 +921,7 @@ function animate() {
     rotationAngle += 0.003; // Medium idle rotation
   }
 
+
   // Draw current pattern
   patterns[currentPatternIndex.value].draw();
 
@@ -991,6 +1070,11 @@ onMounted(() => {
   canvas.value.addEventListener('touchend', handleTouchEnd);
   
   animate();
+  
+  // Auto-load first track if using music player
+  if (useMusicPlayer.value) {
+    loadTrack(0);
+  }
 });
 
 onUnmounted(() => {
