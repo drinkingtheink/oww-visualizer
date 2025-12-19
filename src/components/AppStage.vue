@@ -49,6 +49,14 @@ let audioElement = null;
 let particles = [];
 let soundwaveHistory = []; // Store historical data for smoothing
 
+// Mouse/Touch interaction state
+let mouseX = null;
+let mouseY = null;
+let isMouseDown = false;
+let ripples = [];
+let warpIntensity = 0;
+let targetWarpIntensity = 0;
+
 // Color Palettes
 const palettes = [
   {
@@ -193,6 +201,51 @@ class Particle {
     }
 
     ctx.restore();
+  }
+
+  isDead() {
+    return this.life <= 0;
+  }
+}
+
+// Ripple effect class
+class Ripple {
+  constructor(x, y, intensity = 1) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.maxRadius = 200 + intensity * 100;
+    this.speed = 3 + intensity * 2;
+    this.life = 1.0;
+    this.intensity = intensity;
+  }
+
+  update() {
+    this.radius += this.speed;
+    this.life = 1 - (this.radius / this.maxRadius);
+  }
+
+  getDistortion(x, y) {
+    const dx = x - this.x;
+    const dy = y - this.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > this.radius + 50 || distance < this.radius - 50) {
+      return { dx: 0, dy: 0, scale: 1 };
+    }
+    
+    // Create wave distortion at ripple edge
+    const distFromEdge = Math.abs(distance - this.radius);
+    const strength = (1 - distFromEdge / 50) * this.life * 30;
+    
+    const angle = Math.atan2(dy, dx);
+    const perpAngle = angle + Math.PI / 2;
+    
+    return {
+      dx: Math.cos(perpAngle) * strength,
+      dy: Math.sin(perpAngle) * strength,
+      scale: 1 + (this.life * 0.1 * Math.cos(distFromEdge * 0.5))
+    };
   }
 
   isDead() {
@@ -366,91 +419,91 @@ function drawSoundwaves() {
 
 // Pattern Definitions
 const patterns = [
-  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
   // { name: 'Cubic Grid', draw: drawCubicGrid },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
-  { name: 'Kaleidoscope', draw: drawKaleidoscope },
+  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
+  // { name: 'Kaleidoscope', draw: drawKaleidoscope },
   // { name: 'Fractal Burst', draw: drawFractalBurst }
 ];
 
 const currentPatternName = ref(patterns[0].name);
 const currentPaletteName = ref(palettes[0].name);
 
-function drawKaleidoscope() {
-  const width = canvas.value.width;
-  const height = canvas.value.height;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const segments = 8;
+// function drawKaleidoscope() {
+//   const width = canvas.value.width;
+//   const height = canvas.value.height;
+//   const centerX = width / 2;
+//   const centerY = height / 2;
+//   const segments = 8;
   
-  ctx.save();
-  ctx.translate(centerX, centerY);
+//   ctx.save();
+//   ctx.translate(centerX, centerY);
   
-  for (let seg = 0; seg < segments; seg++) {
-    ctx.save();
-    ctx.rotate((seg / segments) * Math.PI * 2);
+//   for (let seg = 0; seg < segments; seg++) {
+//     ctx.save();
+//     ctx.rotate((seg / segments) * Math.PI * 2);
     
-    // Mirror every other segment for kaleidoscope effect
-    if (seg % 2 === 1) {
-      ctx.scale(-1, 1);
-    }
+//     // Mirror every other segment for kaleidoscope effect
+//     if (seg % 2 === 1) {
+//       ctx.scale(-1, 1);
+//     }
     
-    const rings = 12;
-    for (let r = 0; r < rings; r++) {
-      const radius = (r / rings) * Math.min(width, height) * 0.7;
-      const dataIndex = Math.floor((r / rings) * bufferLength);
-      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + r * 0.2) * 0.3 + 0.5;
+//     const rings = 12;
+//     for (let r = 0; r < rings; r++) {
+//       const radius = (r / rings) * Math.min(width, height) * 0.7;
+//       const dataIndex = Math.floor((r / rings) * bufferLength);
+//       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + r * 0.2) * 0.3 + 0.5;
       
-      const points = 6 + Math.floor(r / 2);
+//       const points = 6 + Math.floor(r / 2);
       
-      for (let p = 0; p < points; p++) {
-        const angle = (p / points) * Math.PI / segments + rotationAngle * (r % 2 === 0 ? 1 : -1);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        const size = 8 + value * 30;
+//       for (let p = 0; p < points; p++) {
+//         const angle = (p / points) * Math.PI / segments + rotationAngle * (r % 2 === 0 ? 1 : -1);
+//         const x = Math.cos(angle) * radius;
+//         const y = Math.sin(angle) * radius;
+//         const size = 8 + value * 30;
         
-        // Spawn particles
-        if (audioLoaded.value && value > 0.8 && Math.random() > 0.96) {
-          createParticles(centerX + x, centerY + y, value, r * points + p, rings * points, 1);
-        }
+//         // Spawn particles
+//         if (audioLoaded.value && value > 0.8 && Math.random() > 0.96) {
+//           createParticles(centerX + x, centerY + y, value, r * points + p, rings * points, 1);
+//         }
         
-        // Draw hexagon
-        ctx.fillStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.8);
-        ctx.shadowBlur = value * 20;
-        ctx.shadowColor = getColor(r * points + p + seg * 50, rings * points * segments, value);
+//         // Draw hexagon
+//         ctx.fillStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.8);
+//         ctx.shadowBlur = value * 20;
+//         ctx.shadowColor = getColor(r * points + p + seg * 50, rings * points * segments, value);
         
-        ctx.beginPath();
-        for (let k = 0; k < 6; k++) {
-          const hexAngle = (k / 6) * Math.PI * 2 + rotationAngle;
-          const px = x + Math.cos(hexAngle) * size;
-          const py = y + Math.sin(hexAngle) * size;
-          if (k === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
+//         ctx.beginPath();
+//         for (let k = 0; k < 6; k++) {
+//           const hexAngle = (k / 6) * Math.PI * 2 + rotationAngle;
+//           const px = x + Math.cos(hexAngle) * size;
+//           const py = y + Math.sin(hexAngle) * size;
+//           if (k === 0) ctx.moveTo(px, py);
+//           else ctx.lineTo(px, py);
+//         }
+//         ctx.closePath();
+//         ctx.fill();
         
-        // Connecting lines
-        if (value > 0.6) {
-          ctx.strokeStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.3);
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(x, y);
-          ctx.stroke();
-        }
+//         // Connecting lines
+//         if (value > 0.6) {
+//           ctx.strokeStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.3);
+//           ctx.lineWidth = 2;
+//           ctx.beginPath();
+//           ctx.moveTo(0, 0);
+//           ctx.lineTo(x, y);
+//           ctx.stroke();
+//         }
         
-        ctx.shadowBlur = 0;
-      }
-    }
+//         ctx.shadowBlur = 0;
+//       }
+//     }
     
-    ctx.restore();
-  }
+//     ctx.restore();
+//   }
   
-  ctx.restore();
-}
+//   ctx.restore();
+// }
 
 // function drawFractalBurst() {
 //   const width = canvas.value.width;
@@ -566,6 +619,53 @@ function getColor(index, total, intensity) {
   return `rgba(${rShifted}, ${gShifted}, ${bShifted}, ${intensity})`;
 }
 
+function applyWarpDistortion(x, y) {
+  if (!mouseX || !mouseY) return { x, y, scale: 1 };
+  
+  let totalDx = 0;
+  let totalDy = 0;
+  let totalScale = 1;
+  
+  // Apply ripple distortions
+  ripples.forEach(ripple => {
+    const distortion = ripple.getDistortion(x, y);
+    totalDx += distortion.dx;
+    totalDy += distortion.dy;
+    totalScale *= distortion.scale;
+  });
+  
+  // Apply mouse warp (gravitational lens effect)
+  if (warpIntensity > 0.01) {
+    const dx = x - mouseX;
+    const dy = y - mouseY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = 300;
+    
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity;
+      const angle = Math.atan2(dy, dx);
+      
+      if (isMouseDown) {
+        // Pull towards mouse when dragging
+        totalDx -= Math.cos(angle) * strength * 40;
+        totalDy -= Math.sin(angle) * strength * 40;
+        totalScale *= 1 + strength * 0.3;
+      } else {
+        // Gentle warp around mouse
+        const perpAngle = angle + Math.PI / 2;
+        totalDx += Math.cos(perpAngle) * strength * 15;
+        totalDy += Math.sin(perpAngle) * strength * 15;
+      }
+    }
+  }
+  
+  return {
+    x: x + totalDx,
+    y: y + totalDy,
+    scale: totalScale
+  };
+}
+
 // function drawCubicGrid() {
 //   const width = canvas.value.width;
 //   const height = canvas.value.height;
@@ -580,13 +680,18 @@ function getColor(index, total, intensity) {
 
 //   for (let i = 0; i < cols; i++) {
 //     for (let j = 0; j < rows; j++) {
-//       const x = (i - 1) * size;
-//       const y = (j - 1) * size;
+//       const baseX = (i - 1) * size;
+//       const baseY = (j - 1) * size;
 //       const index = i + j * cols;
 //       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
 //       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.1) * 0.3 + 0.5;
       
-//       const scale = audioLoaded.value ? 0.8 + value * 0.4 : 0.9 + value * 0.1;
+//       // Apply warp distortion
+//       const warped = applyWarpDistortion(baseX + size / 2, baseY + size / 2);
+//       const x = warped.x - size / 2;
+//       const y = warped.y - size / 2;
+      
+//       const scale = (audioLoaded.value ? 0.8 + value * 0.4 : 0.9 + value * 0.1) * warped.scale;
 //       const depth = value * 30;
 
 //       // Spawn particles on high energy
@@ -675,14 +780,19 @@ function drawDiamondLattice() {
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      const x = (i - 1) * size + size / 2;
-      const y = (j - 1) * size + size / 2;
+      const baseX = (i - 1) * size + size / 2;
+      const baseY = (j - 1) * size + size / 2;
       const index = i + j * cols;
       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.15) * 0.3 + 0.5;
       
-      const octagonSize = size * 0.35 * (0.7 + value * 0.5);
-      const diamondSize = size * 0.25 * (0.8 + value * 0.4);
+      // Apply warp distortion
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
+      
+      const octagonSize = size * 0.35 * (0.7 + value * 0.5) * warped.scale;
+      const diamondSize = size * 0.25 * (0.8 + value * 0.4) * warped.scale;
 
       // Spawn particles
       if (audioLoaded.value && value > 0.77 && Math.random() > 0.9) {
@@ -794,11 +904,16 @@ function drawHexFlowers() {
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      const x = (i - 1) * hexRadius * 1.5;
-      const y = (j - 1) * hexHeight + (i % 2) * hexHeight / 2;
+      const baseX = (i - 1) * hexRadius * 1.5;
+      const baseY = (j - 1) * hexHeight + (i % 2) * hexHeight / 2;
       const index = i + j * cols;
       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.12) * 0.3 + 0.5;
+      
+      // Apply warp distortion
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
       
       // Spawn particles at center
       if (audioLoaded.value && value > 0.75 && Math.random() > 0.88) {
@@ -835,7 +950,7 @@ function drawHexFlowers() {
         const angle = (p.angle * Math.PI / 180) + rotationAngle;
         const hx = x + Math.cos(angle) * p.dist;
         const hy = y + Math.sin(angle) * p.dist;
-        const size = hexRadius * p.scale * (0.7 + value * 0.5);
+        const size = hexRadius * p.scale * (0.7 + value * 0.5) * warped.scale;
         const intensity = pi === 0 ? value : value * 0.6;
 
         // Glow for high energy
@@ -899,14 +1014,19 @@ function drawConcentricWaves() {
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      const x = (i - 1) * size + size / 2;
-      const y = (j - 1) * size + size / 2;
+      const baseX = (i - 1) * size + size / 2;
+      const baseY = (j - 1) * size + size / 2;
       const index = i + j * cols;
       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.1) * 0.3 + 0.5;
       
+      // Apply warp distortion
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
+      
       const rings = 8;
-      const maxRadius = size * 0.45;
+      const maxRadius = size * 0.45 * warped.scale;
 
       // Spawn particles from rings
       if (audioLoaded.value && value > 0.82 && Math.random() > 0.88) {
@@ -1136,8 +1256,27 @@ function animate() {
   updateParticles();
   drawParticles();
 
+  // Update and clean up ripples
+  ripples = ripples.filter(r => !r.isDead());
+  ripples.forEach(r => r.update());
+
+  // Smooth warp intensity
+  warpIntensity += (targetWarpIntensity - warpIntensity) * 0.1;
+
   // Draw soundwaves on top
   drawSoundwaves();
+
+  // Draw ripple effects
+  ripples.forEach(ripple => {
+    ctx.strokeStyle = getSoundwaveColor(Math.floor(ripple.radius), 1000, ripple.life * 0.5, soundwavePaletteIndex.value);
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = getSoundwaveColor(Math.floor(ripple.radius), 1000, ripple.life * 0.8, soundwavePaletteIndex.value);
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  });
 
   animationId = requestAnimationFrame(animate);
 }
@@ -1180,15 +1319,113 @@ function resize() {
   canvas.value.height = window.innerHeight;
 }
 
+// Mouse/Touch interaction handlers
+function handleMouseMove(e) {
+  const rect = canvas.value.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+  targetWarpIntensity = 1;
+}
+
+function handleMouseDown(e) {
+  isMouseDown = true;
+  const rect = canvas.value.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+}
+
+function handleMouseUp() {
+  isMouseDown = false;
+}
+
+function handleMouseLeave() {
+  targetWarpIntensity = 0;
+  isMouseDown = false;
+}
+
+function handleClick(e) {
+  const rect = canvas.value.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  // Create ripple at click location
+  ripples.push(new Ripple(x, y, 1.5));
+  
+  // Spawn some particles
+  if (audioLoaded.value) {
+    createParticles(x, y, 0.8, Math.floor(Math.random() * 100), 100, 5);
+  }
+}
+
+function handleTouchStart(e) {
+  e.preventDefault();
+  const rect = canvas.value.getBoundingClientRect();
+  const touch = e.touches[0];
+  mouseX = touch.clientX - rect.left;
+  mouseY = touch.clientY - rect.top;
+  isMouseDown = true;
+  targetWarpIntensity = 1;
+}
+
+function handleTouchMove(e) {
+  e.preventDefault();
+  const rect = canvas.value.getBoundingClientRect();
+  const touch = e.touches[0];
+  mouseX = touch.clientX - rect.left;
+  mouseY = touch.clientY - rect.top;
+  
+  // Create ripples along drag path
+  if (Math.random() > 0.8) {
+    ripples.push(new Ripple(mouseX, mouseY, 0.8));
+  }
+}
+
+function handleTouchEnd(e) {
+  e.preventDefault();
+  isMouseDown = false;
+  targetWarpIntensity = 0;
+  
+  // Create final ripple on release
+  if (mouseX && mouseY) {
+    ripples.push(new Ripple(mouseX, mouseY, 1.5));
+  }
+}
+
 onMounted(() => {
   ctx = canvas.value.getContext('2d');
   resize();
   window.addEventListener('resize', resize);
+  
+  // Mouse events
+  canvas.value.addEventListener('mousemove', handleMouseMove);
+  canvas.value.addEventListener('mousedown', handleMouseDown);
+  canvas.value.addEventListener('mouseup', handleMouseUp);
+  canvas.value.addEventListener('mouseleave', handleMouseLeave);
+  canvas.value.addEventListener('click', handleClick);
+  
+  // Touch events
+  canvas.value.addEventListener('touchstart', handleTouchStart);
+  canvas.value.addEventListener('touchmove', handleTouchMove);
+  canvas.value.addEventListener('touchend', handleTouchEnd);
+  
   animate();
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', resize);
+  
+  // Remove mouse events
+  canvas.value.removeEventListener('mousemove', handleMouseMove);
+  canvas.value.removeEventListener('mousedown', handleMouseDown);
+  canvas.value.removeEventListener('mouseup', handleMouseUp);
+  canvas.value.removeEventListener('mouseleave', handleMouseLeave);
+  canvas.value.removeEventListener('click', handleClick);
+  
+  // Remove touch events
+  canvas.value.removeEventListener('touchstart', handleTouchStart);
+  canvas.value.removeEventListener('touchmove', handleTouchMove);
+  canvas.value.removeEventListener('touchend', handleTouchEnd);
+  
   if (animationId) cancelAnimationFrame(animationId);
   if (audioContext) audioContext.close();
 });
@@ -1273,6 +1510,8 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .info {
