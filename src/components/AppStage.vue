@@ -7,9 +7,6 @@
       </label>
       <button class="pattern-btn" @click="cyclePattern">Pattern: {{ currentPatternName }}</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
-      <!-- <button class="pattern-btn" @click="toggleAutoRotate">
-        Auto-Rotate: {{ autoRotate ? 'ON' : 'OFF' }}
-      </button> -->
       <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
         {{ isPaused ? '▶ Play' : '⏸ Pause' }}
       </button>
@@ -33,15 +30,12 @@ const audioLoaded = ref(false);
 const fileName = ref('');
 const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
-const autoRotate = ref(true);
 const isPaused = ref(false);
-const ripplePaletteIndex = ref(1); // Separate palette for ripples
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
 let animationId;
 let rotationAngle = 0;
 let breathePhase = 0;
-let lastRotateTime = Date.now();
 let audioElement = null;
 let particles = [];
 
@@ -264,166 +258,17 @@ function drawParticles() {
   particles.forEach(p => p.draw(ctx));
 }
 
-function getRippleColor(index, total, intensity, paletteIdx) {
-  const palette = palettes[paletteIdx].colors;
-  const colorIndex = Math.floor((index / total) * palette.length);
-  const color = palette[colorIndex % palette.length];
-  
-  const r = parseInt(color.slice(1, 3), 16);
-  const g = parseInt(color.slice(3, 5), 16);
-  const b = parseInt(color.slice(5, 7), 16);
-  
-  return `rgba(${r}, ${g}, ${b}, ${intensity})`;
-}
+
 
 // Pattern Definitions
-const patterns = [
-  // { name: 'Cubic Grid', draw: drawCubicGrid },
-  { name: 'Diamond Lattice', draw: drawDiamondLattice },
+const patterns = [  { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
-  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
-  // { name: 'Kaleidoscope', draw: drawKaleidoscope },
-  // { name: 'Fractal Burst', draw: drawFractalBurst }
+  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy }
 ];
 
 const currentPatternName = ref(patterns[0].name);
 const currentPaletteName = ref(palettes[0].name);
-
-// function drawKaleidoscope() {
-//   const width = canvas.value.width;
-//   const height = canvas.value.height;
-//   const centerX = width / 2;
-//   const centerY = height / 2;
-//   const segments = 8;
-  
-//   ctx.save();
-//   ctx.translate(centerX, centerY);
-  
-//   for (let seg = 0; seg < segments; seg++) {
-//     ctx.save();
-//     ctx.rotate((seg / segments) * Math.PI * 2);
-    
-//     // Mirror every other segment for kaleidoscope effect
-//     if (seg % 2 === 1) {
-//       ctx.scale(-1, 1);
-//     }
-    
-//     const rings = 12;
-//     for (let r = 0; r < rings; r++) {
-//       const radius = (r / rings) * Math.min(width, height) * 0.7;
-//       const dataIndex = Math.floor((r / rings) * bufferLength);
-//       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + r * 0.2) * 0.3 + 0.5;
-      
-//       const points = 6 + Math.floor(r / 2);
-      
-//       for (let p = 0; p < points; p++) {
-//         const angle = (p / points) * Math.PI / segments + rotationAngle * (r % 2 === 0 ? 1 : -1);
-//         const x = Math.cos(angle) * radius;
-//         const y = Math.sin(angle) * radius;
-//         const size = 8 + value * 30;
-        
-//         // Spawn particles
-//         if (audioLoaded.value && value > 0.8 && Math.random() > 0.96) {
-//           createParticles(centerX + x, centerY + y, value, r * points + p, rings * points, 1);
-//         }
-        
-//         // Draw hexagon
-//         ctx.fillStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.8);
-//         ctx.shadowBlur = value * 20;
-//         ctx.shadowColor = getColor(r * points + p + seg * 50, rings * points * segments, value);
-        
-//         ctx.beginPath();
-//         for (let k = 0; k < 6; k++) {
-//           const hexAngle = (k / 6) * Math.PI * 2 + rotationAngle;
-//           const px = x + Math.cos(hexAngle) * size;
-//           const py = y + Math.sin(hexAngle) * size;
-//           if (k === 0) ctx.moveTo(px, py);
-//           else ctx.lineTo(px, py);
-//         }
-//         ctx.closePath();
-//         ctx.fill();
-        
-//         // Connecting lines
-//         if (value > 0.6) {
-//           ctx.strokeStyle = getColor(r * points + p + seg * 50, rings * points * segments, value * 0.3);
-//           ctx.lineWidth = 2;
-//           ctx.beginPath();
-//           ctx.moveTo(0, 0);
-//           ctx.lineTo(x, y);
-//           ctx.stroke();
-//         }
-        
-//         ctx.shadowBlur = 0;
-//       }
-//     }
-    
-//     ctx.restore();
-//   }
-  
-//   ctx.restore();
-// }
-
-// function drawFractalBurst() {
-//   const width = canvas.value.width;
-//   const height = canvas.value.height;
-//   const centerX = width / 2;
-//   const centerY = height / 2;
-  
-//   function drawFractalLevel(x, y, size, depth, angle, colorOffset) {
-//     if (depth === 0 || size < 2) return;
-    
-//     const dataIndex = Math.floor((depth / 6) * bufferLength);
-//     const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + depth * 0.3) * 0.3 + 0.5;
-    
-//     // Draw center shape
-//     ctx.fillStyle = getColor(colorOffset + depth * 30, 300, value * 0.7);
-//     ctx.shadowBlur = value * 15;
-//     ctx.shadowColor = getColor(colorOffset + depth * 30, 300, value);
-    
-//     ctx.beginPath();
-//     for (let k = 0; k < 6; k++) {
-//       const hexAngle = (k / 6) * Math.PI * 2 + angle;
-//       const px = x + Math.cos(hexAngle) * size;
-//       const py = y + Math.sin(hexAngle) * size;
-//       if (k === 0) ctx.moveTo(px, py);
-//       else ctx.lineTo(px, py);
-//     }
-//     ctx.closePath();
-//     ctx.fill();
-//     ctx.shadowBlur = 0;
-    
-//     // Spawn particles at high energy
-//     if (audioLoaded.value && value > 0.75 && depth === 3 && Math.random() > 0.95) {
-//       createParticles(x, y, value, colorOffset, 100, 2);
-//     }
-    
-//     // Recurse to create fractal branches
-//     const branches = 6;
-//     const newSize = size * 0.5;
-//     const dist = size * 2.5 * (0.8 + value * 0.4);
-    
-//     for (let b = 0; b < branches; b++) {
-//       const branchAngle = (b / branches) * Math.PI * 2 + angle + rotationAngle * (depth % 2 === 0 ? 1 : -1);
-//       const nx = x + Math.cos(branchAngle) * dist;
-//       const ny = y + Math.sin(branchAngle) * dist;
-      
-//       // Draw connecting line
-//       if (value > 0.5) {
-//         ctx.strokeStyle = getColor(colorOffset + depth * 30 + b * 10, 300, value * 0.3);
-//         ctx.lineWidth = depth;
-//         ctx.beginPath();
-//         ctx.moveTo(x, y);
-//         ctx.lineTo(nx, ny);
-//         ctx.stroke();
-//       }
-      
-//       drawFractalLevel(nx, ny, newSize, depth - 1, branchAngle, colorOffset + b * 20);
-//     }
-//   }
-  
-//   drawFractalLevel(centerX, centerY, 40, 5, rotationAngle, 0);
-// }
 
 function loadAudio(event) {
   const file = event.target.files[0];
@@ -524,106 +369,6 @@ function applyWarpDistortion(x, y) {
     scale: totalScale
   };
 }
-
-// function drawCubicGrid() {
-//   const width = canvas.value.width;
-//   const height = canvas.value.height;
-//   const size = 60;
-//   const cols = Math.ceil(width / size) + 2;
-//   const rows = Math.ceil(height / size) + 2;
-
-//   ctx.save();
-//   ctx.translate(width / 2, height / 2);
-//   ctx.rotate(rotationAngle * 0.2);
-//   ctx.translate(-width / 2, -height / 2);
-
-//   for (let i = 0; i < cols; i++) {
-//     for (let j = 0; j < rows; j++) {
-//       const baseX = (i - 1) * size;
-//       const baseY = (j - 1) * size;
-//       const index = i + j * cols;
-//       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
-//       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.1) * 0.3 + 0.5;
-      
-//       // Apply warp distortion
-//       const warped = applyWarpDistortion(baseX + size / 2, baseY + size / 2);
-//       const x = warped.x - size / 2;
-//       const y = warped.y - size / 2;
-      
-//       const scale = (audioLoaded.value ? 0.8 + value * 0.4 : 0.9 + value * 0.1) * warped.scale;
-//       const depth = value * 30;
-
-//       // Spawn particles on high energy
-//       if (audioLoaded.value && value > 0.73 && Math.random() > 0.93) {
-//         const worldX = x + size / 2;
-//         const worldY = y + size / 2;
-//         createParticles(worldX, worldY, value, index, cols * rows, 2);
-//       }
-
-//       ctx.save();
-//       ctx.translate(x + size / 2, y + size / 2);
-//       ctx.scale(scale, scale);
-
-//       // Draw 3D cube effect
-//       const cubeSize = size * 0.7;
-      
-//       // Glow effect for high energy
-//       if (value > 0.6) {
-//         ctx.shadowBlur = 20 * value;
-//         ctx.shadowColor = getColor(index, cols * rows, value);
-//       }
-      
-//       // Top face
-//       ctx.fillStyle = getColor(index, cols * rows, value * 0.8);
-//       ctx.beginPath();
-//       ctx.moveTo(-cubeSize / 2, -cubeSize / 2 - depth);
-//       ctx.lineTo(cubeSize / 2, -cubeSize / 2 - depth);
-//       ctx.lineTo(cubeSize / 2 + depth / 2, -cubeSize / 2 - depth / 2);
-//       ctx.lineTo(-cubeSize / 2 + depth / 2, -cubeSize / 2 - depth / 2);
-//       ctx.closePath();
-//       ctx.fill();
-
-//       // Front face
-//       ctx.fillStyle = getColor(index, cols * rows, value * 0.6);
-//       ctx.fillRect(-cubeSize / 2, -cubeSize / 2, cubeSize, cubeSize);
-
-//       // Side face
-//       ctx.fillStyle = getColor(index, cols * rows, value * 0.4);
-//       ctx.beginPath();
-//       ctx.moveTo(cubeSize / 2, -cubeSize / 2);
-//       ctx.lineTo(cubeSize / 2 + depth / 2, -cubeSize / 2 - depth / 2);
-//       ctx.lineTo(cubeSize / 2 + depth / 2, cubeSize / 2 - depth / 2);
-//       ctx.lineTo(cubeSize / 2, cubeSize / 2);
-//       ctx.closePath();
-//       ctx.fill();
-
-//       // Border with glow
-//       ctx.strokeStyle = getColor(index, cols * rows, 1);
-//       ctx.lineWidth = value > 0.7 ? 3 : 2;
-//       ctx.strokeRect(-cubeSize / 2, -cubeSize / 2, cubeSize, cubeSize);
-      
-//       ctx.shadowBlur = 0;
-
-//       // Energy pulse lines
-//       if (value > 0.5) {
-//         ctx.strokeStyle = getColor(index + 100, cols * rows, value * 0.5);
-//         ctx.lineWidth = 1;
-//         ctx.setLineDash([5, 5]);
-//         ctx.beginPath();
-//         ctx.moveTo(-cubeSize / 2, 0);
-//         ctx.lineTo(cubeSize / 2, 0);
-//         ctx.moveTo(0, -cubeSize / 2);
-//         ctx.lineTo(0, cubeSize / 2);
-//         ctx.stroke();
-//         ctx.setLineDash([]);
-//       }
-
-//       ctx.restore();
-//     }
-//   }
-
-//   ctx.restore();
-// }
 
 function drawDiamondLattice() {
   const width = canvas.value.width;
@@ -1098,16 +843,6 @@ function animate() {
     rotationAngle += 0.003; // Medium idle rotation
   }
 
-  // Auto-rotate patterns and palettes
-  if (autoRotate.value && audioLoaded.value && !isPaused.value) {
-    const now = Date.now();
-    if (now - lastRotateTime > 15000) { // 15 seconds
-      cyclePattern();
-      if (Math.random() > 0.5) cyclePalette();
-      lastRotateTime = now;
-    }
-  }
-
   // Draw current pattern
   patterns[currentPatternIndex.value].draw();
 
@@ -1122,12 +857,12 @@ function animate() {
   // Smooth warp intensity
   warpIntensity += (targetWarpIntensity - warpIntensity) * 0.1;
 
-  // Draw ripple effects
+  // Draw soundwaves on top  // Draw ripple effects
   ripples.forEach(ripple => {
-    ctx.strokeStyle = getRippleColor(Math.floor(ripple.radius), 1000, ripple.life * 0.5, ripplePaletteIndex.value);
+    ctx.strokeStyle = 'solid';
     ctx.lineWidth = 3;
     ctx.shadowBlur = 10;
-    ctx.shadowColor = getRippleColor(Math.floor(ripple.radius), 1000, ripple.life * 0.8, ripplePaletteIndex.value);
+    ctx.shadowColor = 'red';
     ctx.beginPath();
     ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -1159,12 +894,7 @@ function cyclePalette() {
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
 }
 
-// function toggleAutoRotate() {
-//   autoRotate.value = !autoRotate.value;
-//   if (autoRotate.value) {
-//     lastRotateTime = Date.now();
-//   }
-// }
+
 
 function resize() {
   canvas.value.width = window.innerWidth;
