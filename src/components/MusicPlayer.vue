@@ -132,7 +132,7 @@ function previousTrack() {
 <style scoped>
 .music-player {
   position: fixed;
-  top: 80px;
+  top: 30px;
   right: 20px;
   background: rgba(20, 20, 20, 0.95);
   backdrop-filter: blur(10px);

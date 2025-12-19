@@ -7,9 +7,9 @@
       </label>
       <button class="pattern-btn" @click="cyclePattern">Pattern: {{ currentPatternName }}</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
-      <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
+      <!-- <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
         {{ isPaused ? '▶ Play' : '⏸ Pause' }}
-      </button>
+      </button> -->
     </div>
 
     <!-- Music Player Component -->
