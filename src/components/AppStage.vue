@@ -994,8 +994,6 @@ function cyclePalette() {
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
 }
 
-
-
 function resize() {
   canvas.value.width = window.innerWidth;
   canvas.value.height = window.innerHeight;
