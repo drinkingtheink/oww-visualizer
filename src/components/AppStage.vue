@@ -1071,10 +1071,31 @@ function handleTouchEnd(e) {
   }
 }
 
+// Keyboard controls
+function handleKeyDown(e) {
+  switch(e.key) {
+    case 'ArrowRight':
+      cyclePattern();
+      break;
+    case 'ArrowLeft':
+      currentPatternIndex.value = (currentPatternIndex.value - 1 + patterns.length) % patterns.length;
+      currentPatternName.value = patterns[currentPatternIndex.value].name;
+      break;
+    case 'ArrowUp':
+      cyclePalette();
+      break;
+    case 'ArrowDown':
+      currentPaletteIndex.value = (currentPaletteIndex.value - 1 + palettes.length) % palettes.length;
+      currentPaletteName.value = palettes[currentPaletteIndex.value].name;
+      break;
+  }
+}
+
 onMounted(() => {
   ctx = canvas.value.getContext('2d');
   resize();
   window.addEventListener('resize', resize);
+  window.addEventListener('keydown', handleKeyDown);  // Add this line
   
   // Mouse events
   canvas.value.addEventListener('mousemove', handleMouseMove);
@@ -1098,6 +1119,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', resize);
+  window.removeEventListener('keydown', handleKeyDown);
   
   // Remove mouse events
   canvas.value.removeEventListener('mousemove', handleMouseMove);
