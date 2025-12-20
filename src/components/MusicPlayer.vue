@@ -36,7 +36,7 @@
     <!-- Expanded State -->
     <div v-else class="expanded-view">
       <div class="player-header">
-        <h3>Track List</h3>
+        <h3>Let Slip by One Wax Wing</h3>
         <button @click="toggleCollapse" class="collapse-btn" title="Collapse">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <path d="M14 17l-5-5 5-5v10z"/>
@@ -215,6 +215,7 @@ function previousTrack() {
 .expanded-view {
   width: 280px;
   padding: 16px;
+  position: relative;
 }
 
 .player-header {
@@ -352,6 +353,8 @@ function previousTrack() {
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  height: 60px;
+  margin-top: 130%;
 }
 
 .control-btn {

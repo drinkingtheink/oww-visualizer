@@ -1,10 +1,10 @@
 <template>
   <div class="visualizer-app">
     <div class="controls">
-      <label class="file-input-label">
+      <!-- <label class="file-input-label">
         Choose Audio
         <input type="file" @change="loadAudio" accept="audio/*">
-      </label>
+      </label> -->
       <button class="pattern-btn" @click="cyclePattern">Pattern: {{ currentPatternName }}</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
       <!-- <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
@@ -369,24 +369,24 @@ function loadTrack(index) {
   });
 }
 
-function loadAudio(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+// function loadAudio(event) {
+//   const file = event.target.files[0];
+//   if (!file) return;
 
-  fileName.value = file.name;
-  audioElement = new Audio();
-  const reader = new FileReader();
+//   fileName.value = file.name;
+//   audioElement = new Audio();
+//   const reader = new FileReader();
 
-  reader.onload = (e) => {
-    audioElement.src = e.target.result;
-    audioElement.play();
-    setupAudioContext(audioElement);
-    audioLoaded.value = true;
-    isPaused.value = false;
-  };
+//   reader.onload = (e) => {
+//     audioElement.src = e.target.result;
+//     audioElement.play();
+//     setupAudioContext(audioElement);
+//     audioLoaded.value = true;
+//     isPaused.value = false;
+//   };
 
-  reader.readAsDataURL(file);
-}
+//   reader.readAsDataURL(file);
+// }
 
 function setupAudioContext(audio) {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1118,8 +1118,11 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 .visualizer-app {
+  font-family: 'Inter', sans-serif;
   width: 100vw;
   height: 100vh;
   display: flex;
