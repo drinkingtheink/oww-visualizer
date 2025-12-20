@@ -49,13 +49,34 @@ const isPaused = ref(false);
 const useMusicPlayer = ref(true); // Set to false to use file input instead
 const currentTrackIndex = ref(0);
 const tracks = ref([
-  { name: 'Crate Diggers Local 227', url: 'https://drive.google.com/uc?export=download&id=15EVZwlgYOdI3tkt0G3gfMwfvsQko0vKc' },
-  { name: 'Mantra Loupe', url: 'https://drive.google.com/uc?export=download&id=1-eH5NTzC-IBTiIzb_Ajvum2K9m9Cwtn1' },
-  { name: 'As Sane As Any Of Us', url: 'https://drive.google.com/uc?export=download&id=1Sn0bHwiGf8eE-4dbocNY_nQkCJsqwNmg' },
-  { name: 'Virtuous Vitreous', url: 'https://drive.google.com/uc?export=download&id=1RpnsDtIGntIVEu2Q-QqVEEEBTea2nE5l' },
-  { name: "I Stole A Glance At My Brother's Sketchbook", url: 'https://drive.google.com/uc?export=download&id=1Ktex7hWuhGXvPqLDlr3i7jFsjwmw4KI6' },
-  { name: "Dr. Remember's Miracle Elixir", url: 'https://drive.google.com/uc?export=download&id=1G7-4PvO1L9AWjB2RyyeFxp6LW6KjLc_m' },
-  { name: 'Down And Out In Sidereal Time', url: 'https://drive.google.com/uc?export=download&id=1Te2OWkwNje-pavkpIsyiu9vHlfl_qtVT' }
+  { 
+    name: 'Crate Diggers Local 227', 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-crate-diggers-local-227-MASTER-Open-Low.wav' 
+  },
+  { 
+    name: 'Mantra Loupe', 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-mantra-loupe-MASTER-Balanced-Medium.wav' 
+  },
+  { 
+    name: 'As Sane As Any Of Us', 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-as-sane-as-any-of-us-MASTER-Open-Medium.wav' 
+  },
+  { 
+    name: 'Virtuous Vitreous', 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-virtuous-vitreous-MASTER-Balanced-High.wav' 
+  },
+  { 
+    name: "I Stole A Glance At My Brother's Sketchbook", 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-i-stole-a-glance-at-my-brothers-sketchbook-MASTER-Warm-Medium.wav' 
+  },
+  { 
+    name: "Dr. Remember's Miracle Elixir", 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-dr-remembers-miracle-elixir-MASTER-Balanced-Medium.wav' 
+  },
+  { 
+    name: 'Down And Out In Sidereal Time', 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-down-and-out-in-sidereal-time-MASTER-Balanced-Medium.wav' 
+  }
 ]);
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
