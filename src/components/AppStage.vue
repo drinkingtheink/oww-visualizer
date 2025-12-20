@@ -1118,7 +1118,7 @@ onUnmounted(() => {
 });
 </script>
 
-<style>
+<style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 .visualizer-app {
@@ -1141,11 +1141,11 @@ onUnmounted(() => {
   display: flex;
   gap: 15px;
   align-items: center;  
-  padding: 15px 25px;
+  padding: 8px 10px;
   border-radius: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(20, 20, 20, 0.3);
-  backdrop-filter: blur(10px) saturate(150%) hue-rotate(120deg);
+  border: 5px solid black;
+  background: rgba(20, 20, 20, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
 }
 
 .file-input-label {
@@ -1170,7 +1170,7 @@ input[type="file"] {
 
 .pattern-btn, .palette-btn {
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.8);
   color: white;
   padding: 8px 16px;
   border-radius: 20px;

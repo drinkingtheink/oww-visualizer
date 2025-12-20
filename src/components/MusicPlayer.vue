@@ -134,10 +134,10 @@ function previousTrack() {
   position: fixed;
   top: 30px;
   right: 20px;
-  background: rgba(20, 20, 20, 0.3);
-  backdrop-filter: blur(10px) saturate(150%) hue-rotate(120deg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: rgba(20, 20, 20, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 5px solid black;
+  border-radius: 50px;
   z-index: 200;
   transition: all 0.3s ease;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -355,7 +355,6 @@ function previousTrack() {
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   height: 60px;
-  margin-top: 130%;
 }
 
 .control-btn {
