@@ -134,8 +134,8 @@ function previousTrack() {
   position: fixed;
   top: 30px;
   right: 20px;
-  background: rgba(20, 20, 20, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(20, 20, 20, 0.3);
+  backdrop-filter: blur(10px) saturate(150%) hue-rotate(120deg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   z-index: 200;
@@ -202,6 +202,7 @@ function previousTrack() {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  font-family: inherit;
 }
 
 .expand-btn:hover,

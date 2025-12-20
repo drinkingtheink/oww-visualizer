@@ -1140,12 +1140,12 @@ onUnmounted(() => {
   z-index: 100;
   display: flex;
   gap: 15px;
-  align-items: center;
-  background: rgba(20, 20, 20, 0.8);
+  align-items: center;  
   padding: 15px 25px;
   border-radius: 50px;
-  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 20, 20, 0.3);
+  backdrop-filter: blur(10px) saturate(150%) hue-rotate(120deg);
 }
 
 .file-input-label {
