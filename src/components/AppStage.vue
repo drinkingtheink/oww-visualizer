@@ -28,8 +28,8 @@
       <canvas ref="canvas"></canvas>
     </div>
 
-    <div class="info" v-if="audioLoaded">
-      {{ fileName }}
+    <div class="info">
+      <span class="hint"> Use ← → to change Pattern | ↑ ↓ to change Colors</span>
     </div>
   </div>
 </template>
@@ -143,6 +143,55 @@ const palettes = [
   {
     name: 'Electric Dreams',
     colors: ['#ff00de', '#00ff9f', '#00b8ff', '#ff3c00', '#d4ff00', '#ff0080']
+  },
+  // NEW PALETTES BELOW
+  {
+    name: 'Midnight Purple',
+    colors: ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#e94560']
+  },
+  {
+    name: 'Tropical Paradise',
+    colors: ['#06d6a0', '#118ab2', '#073b4c', '#ef476f', '#ffd166']
+  },
+  {
+    name: 'Candy Shop',
+    colors: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff']
+  },
+  {
+    name: 'Deep Space',
+    colors: ['#0d1b2a', '#1b263b', '#415a77', '#778da9', '#e0e1dd']
+  },
+  {
+    name: 'Retro Wave',
+    colors: ['#f72585', '#7209b7', '#560bad', '#3a0ca3', '#4361ee', '#4cc9f0']
+  },
+  {
+    name: 'Forest Glow',
+    colors: ['#114b5f', '#1a936f', '#88d498', '#c6dabf', '#f3e9d2']
+  },
+  {
+    name: 'Lava Flow',
+    colors: ['#d62828', '#f77f00', '#fcbf49', '#eae2b7', '#003049']
+  },
+  {
+    name: 'Cyberpunk',
+    colors: ['#00f5ff', '#ff00ff', '#ffff00', '#00ff00', '#ff0099', '#9d00ff']
+  },
+  {
+    name: 'Pastel Dream',
+    colors: ['#f4acb7', '#ffcad4', '#b392ac', '#9d84b7', '#d4a5a5']
+  },
+  {
+    name: 'Aurora Borealis',
+    colors: ['#00ffc8', '#00d9ff', '#7000ff', '#ff00ff', '#00ff88']
+  },
+  {
+    name: 'Desert Night',
+    colors: ['#f4a261', '#e76f51', '#264653', '#2a9d8f', '#e9c46a']
+  },
+  {
+    name: 'Neon Tokyo',
+    colors: ['#ff0080', '#ff8c00', '#00ffff', '#7fff00', '#ff1493', '#00ff7f']
   }
 ];
 
@@ -1229,13 +1278,17 @@ canvas {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 20, 20, 0.8);
+  background: rgba(20, 20, 20, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
   padding: 10px 20px;
   border-radius: 20px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
+  width: 400px;
+  display: flex;
+  justify-content: center;
 }
 
 @keyframes breathe {
