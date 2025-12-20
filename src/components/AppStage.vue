@@ -361,7 +361,9 @@ const patterns = [
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
-  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy }
+  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
+  { name: 'Triangular Mesh', draw: drawTriangularMesh },  // NEW
+  { name: 'Orbital Rings', draw: drawOrbitalRings }       // NEW
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -964,6 +966,236 @@ function drawSpiralGalaxy() {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreSize + r * 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawTriangularMesh() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const size = 80;
+  const cols = Math.ceil(width / size) + 2;
+  const rows = Math.ceil(height / (size * Math.sqrt(3) / 2)) + 2;
+
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(rotationAngle * 0.12);
+  ctx.translate(-width / 2, -height / 2);
+
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const baseX = (i - 1) * size;
+      const baseY = (j - 1) * size * Math.sqrt(3) / 2;
+      const index = i + j * cols;
+      const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
+      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.13) * 0.3 + 0.5;
+
+      // Apply warp distortion
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
+
+      // Spawn particles
+      if (audioLoaded.value && value > 0.78 && Math.random() > 0.91) {
+        createParticles(x, y, value, index, cols * rows, 2);
+      }
+
+      // Draw two triangles (up and down)
+      // const triangleSize = size * 0.45 * (0.7 + value * 0.5) * warped.scale;
+      
+      // Triangle pointing up
+      const upValue = audioLoaded.value ? dataArray[(dataIndex) % bufferLength] / 255 : value;
+      if (upValue > 0.6) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = getColor(index, cols * rows, upValue);
+      }
+      
+      ctx.fillStyle = getColor(index, cols * rows, upValue * 0.75);
+      ctx.strokeStyle = getColor(index, cols * rows, 1);
+      ctx.lineWidth = upValue > 0.7 ? 2.5 : 1.5;
+      
+      ctx.beginPath();
+      ctx.moveTo(x + size / 2, y);
+      ctx.lineTo(x + size, y + size * Math.sqrt(3) / 2);
+      ctx.lineTo(x, y + size * Math.sqrt(3) / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Triangle pointing down (offset)
+      const downValue = audioLoaded.value ? dataArray[(dataIndex + 5) % bufferLength] / 255 : value * 0.8;
+      if (downValue > 0.6) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = getColor(index + 50, cols * rows, downValue);
+      }
+
+      ctx.fillStyle = getColor(index + 50, cols * rows, downValue * 0.75);
+      ctx.strokeStyle = getColor(index + 50, cols * rows, 1);
+      ctx.lineWidth = downValue > 0.7 ? 2.5 : 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(x + size, y);
+      ctx.lineTo(x + size / 2, y + size * Math.sqrt(3) / 2);
+      ctx.lineTo(x + size * 1.5, y + size * Math.sqrt(3) / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Center nodes at vertices
+      if (value > 0.65) {
+        const vertices = [
+          [x + size / 2, y],
+          [x + size, y + size * Math.sqrt(3) / 2],
+          [x, y + size * Math.sqrt(3) / 2]
+        ];
+
+        vertices.forEach(([vx, vy], vi) => {
+          const nodeSize = 4 + value * 5;
+          ctx.fillStyle = getColor(index + vi * 30, cols * rows, value);
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getColor(index + vi * 30, cols * rows, value);
+          ctx.beginPath();
+          ctx.arc(vx, vy, nodeSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+      }
+
+      // Energy lines connecting vertices
+      if (value > 0.7) {
+        ctx.strokeStyle = getColor(index + 100, cols * rows, value * 0.3);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + size / 2, y);
+        ctx.lineTo(x + size, y + size * Math.sqrt(3) / 2);
+        ctx.moveTo(x + size / 2, y);
+        ctx.lineTo(x, y + size * Math.sqrt(3) / 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawOrbitalRings() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const orbits = 12;
+  const maxRadius = Math.min(width, height) * 0.48;
+
+  for (let o = 0; o < orbits; o++) {
+    const orbitRadius = (maxRadius / orbits) * (o + 1);
+    const dataIndex = Math.floor((o / orbits) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + o * 0.3) * 0.3 + 0.5;
+    const particles = 20 + Math.floor(o * 2);
+
+    // Orbit path glow
+    if (value > 0.5) {
+      ctx.strokeStyle = getColor(o * 30, orbits * 30, (value - 0.5) * 0.2);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 10]);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Draw particles along orbit
+    for (let p = 0; p < particles; p++) {
+      const angle = (p / particles) * Math.PI * 2 + rotationAngle * (o % 2 === 0 ? 1 : -1) * (0.5 + o * 0.1);
+      const particleValue = audioLoaded.value ? dataArray[(dataIndex + p * 3) % bufferLength] / 255 : value;
+      
+      const x = centerX + Math.cos(angle) * orbitRadius;
+      const y = centerY + Math.sin(angle) * orbitRadius;
+      const size = 4 + particleValue * 12;
+
+      // Spawn floating particles
+      if (audioLoaded.value && particleValue > 0.8 && Math.random() > 0.95) {
+        createParticles(x, y, particleValue, o * particles + p, orbits * particles, 1);
+      }
+
+      // Particle glow
+      if (particleValue > 0.6) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(o * 30 + p * 10, orbits * particles, particleValue);
+      }
+
+      // Draw orbital particle as diamond
+      ctx.fillStyle = getColor(o * 30 + p * 10, orbits * particles, particleValue * 0.85);
+      ctx.strokeStyle = getColor(o * 30 + p * 10, orbits * particles, 1);
+      ctx.lineWidth = 1.5;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.6, 0);
+      ctx.lineTo(0, size);
+      ctx.lineTo(-size * 0.6, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.restore();
+      ctx.shadowBlur = 0;
+
+      // Connection lines between nearby particles in same orbit
+      if (particleValue > 0.7 && p < particles - 1) {
+        const nextAngle = ((p + 1) / particles) * Math.PI * 2 + rotationAngle * (o % 2 === 0 ? 1 : -1) * (0.5 + o * 0.1);
+        const nextX = centerX + Math.cos(nextAngle) * orbitRadius;
+        const nextY = centerY + Math.sin(nextAngle) * orbitRadius;
+
+        ctx.strokeStyle = getColor(o * 30 + p * 10, orbits * particles, particleValue * 0.25);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(nextX, nextY);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Central star/core
+  const coreSize = 35 + Math.sin(breathePhase) * 12;
+  const coreValue = audioLoaded.value ? dataArray[0] / 255 : 0.6;
+
+  // Core glow layers
+  for (let layer = 3; layer >= 0; layer--) {
+    const layerSize = coreSize + layer * 15;
+    const layerAlpha = (1 - layer * 0.25) * coreValue;
+    
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, layerSize);
+    gradient.addColorStop(0, getColor(0, 1, layerAlpha));
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, layerSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Core solid circle
+  ctx.shadowBlur = 35;
+  ctx.shadowColor = getColor(0, 1, coreValue);
+  ctx.fillStyle = getColor(0, 1, coreValue * 0.9);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Core rings
+  for (let r = 1; r <= 3; r++) {
+    ctx.strokeStyle = getColor(r * 40, 120, 0.4 + coreValue * 0.3);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, coreSize + r * 8, 0, Math.PI * 2);
     ctx.stroke();
   }
 }
