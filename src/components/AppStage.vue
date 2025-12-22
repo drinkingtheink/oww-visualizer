@@ -1,5 +1,8 @@
 <template>
   <div class="visualizer-app">
+    <div class="triangle">
+      <p>One Wax Wing</p>
+    </div>
     <div class="controls">
        <button 
           class="pattern-btn" 
@@ -2384,6 +2387,24 @@ onUnmounted(() => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.triangle {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 200px 400px; /* height, then width */
+  border-color: transparent transparent #000000 transparent;
+  left: 0; top: 0;
+  z-index: 1;
+  transform: rotate(180deg);
+  position: absolute;
+}
+
+.triangle p {
+  color: lime;
+  z-index: 2;
+  position: relative;
+}
 
 .visualizer-app {
   font-family: 'Inter', sans-serif;
