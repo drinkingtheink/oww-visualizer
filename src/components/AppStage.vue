@@ -2,11 +2,12 @@
   <div class="visualizer-app">
     <div class="controls">
        <button 
-        class="pattern-btn" 
-        :class="{ locked: patternLocked }"
-        @click="togglePatternLock"
-      >
-        {{ patternLocked ? '🔒' : '' }} Pattern: {{ currentPatternName }}
+          class="pattern-btn" 
+          :class="{ locked: patternLocked }"
+          @click="togglePatternLock"
+        >
+          <span v-if="patternLocked" class="lock-icon">🔒</span>
+          Pattern: {{ currentPatternName }}
       </button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
     </div>
@@ -209,6 +210,8 @@ const palettes = [
 
 function togglePatternLock() {
   patternLocked.value = !patternLocked.value;
+
+  cyclePattern();
 }
 
 // Particle system for ephemeral effects
@@ -2493,11 +2496,16 @@ canvas {
 }
 
 .pattern-btn.locked {
-  background: rgba(255, 215, 0, 0.2); /* Subtle golden highlight */
-  border-color: rgba(255, 215, 0, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .pattern-btn.locked:hover {
-  background: rgba(255, 215, 0, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.lock-icon {
+  filter: brightness(0) invert(1); /* Makes emoji pure white */
+  margin-right: 4px;
 }
 </style>
