@@ -1391,6 +1391,7 @@ onUnmounted(() => {
   background: #0a0a0a;
   color: #fff;
   overflow: hidden;
+  position: relative;
 }
 
 .controls {
@@ -1453,7 +1454,7 @@ input[type="file"] {
 
 .visualizer-container {
   flex: 1;
-  position: relative;
+  position: absolute;
   overflow: hidden;
 }
 
