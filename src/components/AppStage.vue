@@ -375,7 +375,7 @@ const patterns = [
   { name: 'Flowing Rivers', draw: drawFlowingRivers },
   { name: 'Dot Matrix', draw: drawDotMatrix },
   { name: 'Liquid Crystals', draw: drawLiquidCrystals },
-  { name: 'Energy Shards', draw: drawEnergyShards },
+  { name: 'Petri', draw: drawEnergyShards },
   { name: 'Boombox', draw: drawBoombox },
 ];
 
@@ -1283,55 +1283,6 @@ function drawLiquidCrystals() {
       ctx.stroke();
       ctx.shadowBlur = 0;
       
-      // Draw connecting tendrils between nearby high-energy cells
-      if (value > 0.7 && i < cols - 1) {
-        const nextIndex = (i + 1) + j * cols;
-        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
-        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
-        
-        if (nextValue > 0.7) {
-          const nextWarped = applyWarpDistortion((i + 1) * cellSize, baseY);
-          const midX = (x + nextWarped.x) / 2;
-          const midY = (y + nextWarped.y) / 2;
-          
-          // Draw organic connecting tendril
-          ctx.strokeStyle = getColor(index, cols * rows, Math.min(value, nextValue) * 0.4);
-          ctx.lineWidth = 2 + value * 3;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.quadraticCurveTo(
-            midX + Math.sin(breathePhase + index * 0.2) * 20,
-            midY + Math.cos(breathePhase + index * 0.2) * 20,
-            nextWarped.x, nextWarped.y
-          );
-          ctx.stroke();
-        }
-      }
-      
-      // Vertical connections
-      if (value > 0.7 && j < rows - 1) {
-        const nextIndex = i + (j + 1) * cols;
-        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
-        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
-        
-        if (nextValue > 0.7) {
-          const nextWarped = applyWarpDistortion(baseX, (j + 1) * cellSize);
-          const midX = (x + nextWarped.x) / 2;
-          const midY = (y + nextWarped.y) / 2;
-          
-          ctx.strokeStyle = getColor(index, cols * rows, Math.min(value, nextValue) * 0.4);
-          ctx.lineWidth = 2 + value * 3;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.quadraticCurveTo(
-            midX + Math.sin(breathePhase + index * 0.2 + Math.PI / 2) * 20,
-            midY + Math.cos(breathePhase + index * 0.2 + Math.PI / 2) * 20,
-            nextWarped.x, nextWarped.y
-          );
-          ctx.stroke();
-        }
-      }
-      
       // Draw energy pulses (small dots) around high-energy cells
       if (value > 0.75) {
         const pulseCount = 4 + Math.floor(value * 4);
@@ -1346,6 +1297,123 @@ function drawLiquidCrystals() {
           ctx.beginPath();
           ctx.arc(pulseX, pulseY, pulseSize, 0, Math.PI * 2);
           ctx.fill();
+        }
+      }
+    }
+  }
+  
+  // SECOND PASS: Draw all connecting lines on top
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const baseX = i * cellSize;
+      const baseY = j * cellSize;
+      const index = i + j * cols;
+      const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
+      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.11) * 0.3 + 0.5;
+      
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
+      
+      // HORIZONTAL connections - lower threshold, more connections
+      if (i < cols - 1 && value > 0.5) { // Lowered from 0.7
+        const nextIndex = (i + 1) + j * cols;
+        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
+        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
+        
+        if (nextValue > 0.5) { // Lowered from 0.7
+          const nextWarped = applyWarpDistortion((i + 1) * cellSize, baseY);
+          const midX = (x + nextWarped.x) / 2;
+          const midY = (y + nextWarped.y) / 2;
+          
+          // Draw organic connecting tendril
+          const lineIntensity = Math.min(value, nextValue);
+          ctx.strokeStyle = getColor(index, cols * rows, lineIntensity * 0.6); // Increased from 0.4
+          ctx.lineWidth = 2 + lineIntensity * 4; // Increased from 3
+          ctx.shadowBlur = 8; // Added glow
+          ctx.shadowColor = getColor(index, cols * rows, lineIntensity * 0.4);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(
+            midX + Math.sin(breathePhase + index * 0.2) * 20,
+            midY + Math.cos(breathePhase + index * 0.2) * 20,
+            nextWarped.x, nextWarped.y
+          );
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+      
+      // VERTICAL connections - lower threshold, more connections
+      if (j < rows - 1 && value > 0.5) { // Lowered from 0.7
+        const nextIndex = i + (j + 1) * cols;
+        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
+        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
+        
+        if (nextValue > 0.5) { // Lowered from 0.7
+          const nextWarped = applyWarpDistortion(baseX, (j + 1) * cellSize);
+          const midX = (x + nextWarped.x) / 2;
+          const midY = (y + nextWarped.y) / 2;
+          
+          const lineIntensity = Math.min(value, nextValue);
+          ctx.strokeStyle = getColor(index, cols * rows, lineIntensity * 0.6); // Increased from 0.4
+          ctx.lineWidth = 2 + lineIntensity * 4; // Increased from 3
+          ctx.shadowBlur = 8; // Added glow
+          ctx.shadowColor = getColor(index, cols * rows, lineIntensity * 0.4);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(
+            midX + Math.sin(breathePhase + index * 0.2 + Math.PI / 2) * 20,
+            midY + Math.cos(breathePhase + index * 0.2 + Math.PI / 2) * 20,
+            nextWarped.x, nextWarped.y
+          );
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+      
+      // DIAGONAL connections (NEW!) - top-right and bottom-right
+      if (i < cols - 1 && j < rows - 1 && value > 0.55) {
+        // Bottom-right diagonal
+        const diagIndex = (i + 1) + (j + 1) * cols;
+        const diagDataIndex = Math.floor((diagIndex / (cols * rows)) * bufferLength);
+        const diagValue = audioLoaded.value ? dataArray[diagDataIndex] / 255 : value;
+        
+        if (diagValue > 0.55) {
+          const diagWarped = applyWarpDistortion((i + 1) * cellSize, (j + 1) * cellSize);
+          const lineIntensity = Math.min(value, diagValue);
+          
+          ctx.strokeStyle = getColor(index + 25, cols * rows, lineIntensity * 0.5);
+          ctx.lineWidth = 1.5 + lineIntensity * 3;
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = getColor(index + 25, cols * rows, lineIntensity * 0.3);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(diagWarped.x, diagWarped.y);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+      
+      if (i < cols - 1 && j > 0 && value > 0.55) {
+        // Top-right diagonal
+        const diagIndex = (i + 1) + (j - 1) * cols;
+        const diagDataIndex = Math.floor((diagIndex / (cols * rows)) * bufferLength);
+        const diagValue = audioLoaded.value ? dataArray[diagDataIndex] / 255 : value;
+        
+        if (diagValue > 0.55) {
+          const diagWarped = applyWarpDistortion((i + 1) * cellSize, (j - 1) * cellSize);
+          const lineIntensity = Math.min(value, diagValue);
+          
+          ctx.strokeStyle = getColor(index + 50, cols * rows, lineIntensity * 0.5);
+          ctx.lineWidth = 1.5 + lineIntensity * 3;
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = getColor(index + 50, cols * rows, lineIntensity * 0.3);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(diagWarped.x, diagWarped.y);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
         }
       }
     }
@@ -1632,42 +1700,44 @@ function drawBoombox() {
     return elevation;
   }
   
-  // Draw filled elevation zones with transparency layers
-  const zoneCount = 6;
-  let zoneIdx = 0;
-  while (zoneIdx < zoneCount) {
-    const minElevation = zoneIdx * 15;
-    const maxElevation = (zoneIdx + 1) * 15;
-    const elevationRatio = (minElevation + maxElevation) / 2 / 100;
-    const colorIndex = Math.floor(elevationRatio * 1000);
-    
-    // Create semi-transparent filled regions
-    ctx.fillStyle = getColor(colorIndex, 1000, 0.15); // Subtle transparency
-    
-    // Sample and fill the elevation zone
-    ctx.beginPath();
-    let firstPoint = true;
-    let x = 0;
-    while (x < width) {
-      let y = 0;
-      while (y < height) {
-        const elev = getElevation(x, y);
-        
-        if (elev >= minElevation && elev < maxElevation) {
-          if (firstPoint) {
-            ctx.moveTo(x, y);
-            firstPoint = false;
+  // Only draw elevation zones if audio is playing
+  if (audioLoaded.value && !isPaused.value) {
+    const zoneCount = 6;
+    let zoneIdx = 0;
+    while (zoneIdx < zoneCount) {
+      const minElevation = zoneIdx * 15;
+      const maxElevation = (zoneIdx + 1) * 15;
+      const elevationRatio = (minElevation + maxElevation) / 2 / 100;
+      const colorIndex = Math.floor(elevationRatio * 1000);
+      
+      // Create semi-transparent filled regions
+      ctx.fillStyle = getColor(colorIndex, 1000, 0.15); // Subtle transparency
+      
+      // Sample and fill the elevation zone
+      ctx.beginPath();
+      let firstPoint = true;
+      let x = 0;
+      while (x < width) {
+        let y = 0;
+        while (y < height) {
+          const elev = getElevation(x, y);
+          
+          if (elev >= minElevation && elev < maxElevation) {
+            if (firstPoint) {
+              ctx.moveTo(x, y);
+              firstPoint = false;
+            }
+            // Draw small filled circles to create the zone
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
           }
-          // Draw small filled circles to create the zone
-          ctx.arc(x, y, 8, 0, Math.PI * 2);
+          y += 16;
         }
-        y += 16;
+        x += 16;
       }
-      x += 16;
+      ctx.fill();
+      
+      zoneIdx++;
     }
-    ctx.fill();
-    
-    zoneIdx++;
   }
   
   // Draw contour lines with varying styles
@@ -1694,30 +1764,43 @@ function drawBoombox() {
       const elevationRatio = targetElevation / 110;
       const colorIndex = Math.floor(elevationRatio * 1000);
       
-      // Varying line styles
+      // Varying line styles - but simpler when no audio
       const isMajorLine = contourLevel % 3 === 0;
       const isAccentLine = contourLevel % 5 === 0;
       
-      if (isAccentLine) {
-        // Accent lines - thicker with dashed pattern
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 5]);
-        ctx.strokeStyle = getColor(colorIndex, 1000, 0.8);
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = getColor(colorIndex, 1000, 0.4);
-      } else if (isMajorLine) {
-        // Major lines - solid and visible
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-        ctx.strokeStyle = getColor(colorIndex, 1000, 0.6);
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = getColor(colorIndex, 1000, 0.3);
+      if (audioLoaded.value && !isPaused.value) {
+        // Full styling when audio is playing
+        if (isAccentLine) {
+          ctx.lineWidth = 3;
+          ctx.setLineDash([10, 5]);
+          ctx.strokeStyle = getColor(colorIndex, 1000, 0.8);
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = getColor(colorIndex, 1000, 0.4);
+        } else if (isMajorLine) {
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+          ctx.strokeStyle = getColor(colorIndex, 1000, 0.6);
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = getColor(colorIndex, 1000, 0.3);
+        } else {
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = getColor(colorIndex, 1000, 0.4);
+          ctx.shadowBlur = 0;
+        }
       } else {
-        // Minor lines - thin and subtle
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = getColor(colorIndex, 1000, 0.4);
-        ctx.shadowBlur = 0;
+        // Simple styling when no audio
+        if (isMajorLine) {
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+          ctx.strokeStyle = getColor(colorIndex, 1000, 0.5);
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.lineWidth = 1;
+          ctx.setLineDash([]);
+          ctx.strokeStyle = getColor(colorIndex, 1000, 0.3);
+          ctx.shadowBlur = 0;
+        }
       }
       
       // Draw the contour
@@ -1743,8 +1826,8 @@ function drawBoombox() {
       ctx.shadowBlur = 0;
       ctx.setLineDash([]);
       
-      // Add decorative elevation tick marks on major lines
-      if (isMajorLine) {
+      // Only add decorative tick marks when audio is playing
+      if (audioLoaded.value && !isPaused.value && isMajorLine) {
         const tickCount = 8;
         let tickIdx = 0;
         while (tickIdx < tickCount) {
@@ -1771,27 +1854,35 @@ function drawBoombox() {
       contourLevel++;
     }
     
-    // Enhanced peak marker with glow
+    // Peak marker - simpler when no audio
     const markerSize = 8 + peak.value * 6;
     const colorIndex = Math.floor((peak.height / 110) * 1000);
     
-    // Outer glow circle
-    ctx.fillStyle = getColor(colorIndex, 1000, 0.2);
-    ctx.beginPath();
-    ctx.arc(peakX, peakY, markerSize * 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Middle glow
-    ctx.fillStyle = getColor(colorIndex, 1000, 0.4);
-    ctx.beginPath();
-    ctx.arc(peakX, peakY, markerSize * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Peak marker with shadow
-    ctx.fillStyle = getColor(colorIndex, 1000, 0.9);
-    ctx.strokeStyle = getColor(colorIndex + 150, 1000, 1);
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = getColor(colorIndex, 1000, 0.6);
+    if (audioLoaded.value && !isPaused.value) {
+      // Full glow effects when audio is playing
+      // Outer glow circle
+      ctx.fillStyle = getColor(colorIndex, 1000, 0.2);
+      ctx.beginPath();
+      ctx.arc(peakX, peakY, markerSize * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Middle glow
+      ctx.fillStyle = getColor(colorIndex, 1000, 0.4);
+      ctx.beginPath();
+      ctx.arc(peakX, peakY, markerSize * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Peak marker with shadow
+      ctx.fillStyle = getColor(colorIndex, 1000, 0.9);
+      ctx.strokeStyle = getColor(colorIndex + 150, 1000, 1);
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = getColor(colorIndex, 1000, 0.6);
+    } else {
+      // Simple marker when no audio
+      ctx.fillStyle = getColor(colorIndex, 1000, 0.7);
+      ctx.strokeStyle = getColor(colorIndex + 150, 1000, 0.8);
+      ctx.shadowBlur = 0;
+    }
     
     // Triangle peak symbol
     ctx.lineWidth = 2.5;
@@ -1820,16 +1911,16 @@ function drawBoombox() {
     );
     
     // Label text
-    ctx.fillStyle = getColor(colorIndex, 1000, 1);
+    ctx.fillStyle = getColor(colorIndex, 1000, audioLoaded.value && !isPaused.value ? 1 : 0.8);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = audioLoaded.value && !isPaused.value ? 8 : 0;
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.fillText(labelText, peakX, peakY - markerSize - 17);
     ctx.shadowBlur = 0;
     
-    // Spawn occasional particles at peaks
-    if (audioLoaded.value && peak.value > 0.75 && Math.random() > 0.97) {
+    // Only spawn particles when audio is playing
+    if (audioLoaded.value && !isPaused.value && peak.value > 0.75 && Math.random() > 0.97) {
       createParticles(peakX, peakY, peak.value, peakIdx, peakCount, 1);
     }
   });
