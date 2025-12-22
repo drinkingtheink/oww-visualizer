@@ -158,6 +158,10 @@
                 <span class="symbol">{{ symbol }}</span>
             </div>
         </div>
+
+        <div class="speech-bubble">
+            <p>Welcome to <strong>One Wax Wing</strong></p>
+        </div>
     </div>
 </template>
 
@@ -211,6 +215,24 @@ data() {
     --seraphDim: 328px;
 }
 
+.speech-bubble {
+    width: 200px;
+    background: black;
+    font-family: "Orbitron", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    color: lime;
+    padding: 1rem 2rem;
+    border-radius: 50%;
+    position: absolute;
+    top: -2rem;
+    right: 0;
+    border: 1px solid lime;
+    z-index: 1;
+    text-align: center;
+}
+
 * {
     transition: all 0.2s;
 }
@@ -220,11 +242,13 @@ data() {
   position: absolute;
   padding: 0 20px;
   width: 300px;
-  top: 10rem;
+  top: 5rem;
 }
 
 .animate svg {
     animation: float 3s infinite alternate;
+    z-index: 2;
+    position: relative;
 }
 
 .seraphim-wrapper:hover #CLOSED-EYE {
