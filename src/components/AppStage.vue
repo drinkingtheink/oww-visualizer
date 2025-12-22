@@ -371,7 +371,6 @@ const patterns = [
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
-  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
   { name: 'Flowing Rivers', draw: drawFlowingRivers },
   { name: 'Dot Matrix', draw: drawDotMatrix },
   { name: 'Liquid Crystals', draw: drawLiquidCrystals },
@@ -877,110 +876,6 @@ function drawConcentricWaves() {
   }
 
   ctx.restore();
-}
-
-function drawSpiralGalaxy() {
-  const width = canvas.value.width;
-  const height = canvas.value.height;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const spirals = 5;
-  const points = 120;
-
-  for (let s = 0; s < spirals; s++) {
-    const spiralAngle = (s / spirals) * Math.PI * 2;
-    
-    for (let i = 0; i < points; i++) {
-      const t = i / points;
-      const angle = t * Math.PI * 6 + spiralAngle + rotationAngle;
-      const radius = t * Math.min(width, height) * 0.7;
-      
-      const dataIndex = Math.floor(t * bufferLength);
-      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + i * 0.1 + s) * 0.3 + 0.5;
-      
-      const x = centerX + Math.cos(angle) * radius;
-      const y = centerY + Math.sin(angle) * radius;
-      const size = 8 + value * 25;
-
-      // Spawn particles along spiral
-      if (audioLoaded.value && value > 0.75 && Math.random() > 0.97) {
-        createParticles(x, y, value, i + s * 100, points * spirals, 1);
-      }
-
-      // Trail effect
-      if (i > 0 && value > 0.4) {
-        const prevT = (i - 1) / points;
-        const prevAngle = prevT * Math.PI * 6 + spiralAngle + rotationAngle;
-        const prevRadius = prevT * Math.min(width, height) * 0.7;
-        const prevX = centerX + Math.cos(prevAngle) * prevRadius;
-        const prevY = centerY + Math.sin(prevAngle) * prevRadius;
-
-        ctx.strokeStyle = getColor(i + s * 100, points * spirals, value * 0.3);
-        ctx.lineWidth = 2 + value * 3;
-        ctx.beginPath();
-        ctx.moveTo(prevX, prevY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-
-      // Draw hexagon at each point
-      if (value > 0.6) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = getColor(i + s * 100, points * spirals, value);
-      }
-      
-      ctx.fillStyle = getColor(i + s * 100, points * spirals, value * 0.8);
-      ctx.beginPath();
-      for (let k = 0; k < 6; k++) {
-        const hexAngle = (k / 6) * Math.PI * 2 + angle;
-        const px = x + Math.cos(hexAngle) * size;
-        const py = y + Math.sin(hexAngle) * size;
-        if (k === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
-
-      // Add border
-      ctx.strokeStyle = getColor(i + s * 100, points * spirals, 1);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.shadowBlur = 0;
-
-      // Add refraction circles for high energy
-      if (value > 0.7) {
-        for (let r = 1; r <= 2; r++) {
-          ctx.strokeStyle = getColor(i + s * 100 + r * 30, points * spirals, (value - 0.7) * 0.4);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(x, y, size + r * 6, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-    }
-  }
-
-  // Draw central core
-  const coreSize = 40 + Math.sin(breathePhase) * 10;
-  const coreValue = audioLoaded.value ? dataArray[0] / 255 : 0.5;
-  
-  ctx.shadowBlur = 30;
-  ctx.shadowColor = getColor(0, 1, coreValue);
-  ctx.fillStyle = getColor(0, 1, coreValue * 0.8);
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-
-  // Core rings
-  for (let r = 1; r <= 4; r++) {
-    ctx.strokeStyle = getColor(r * 50, 200, 0.3 + coreValue * 0.3);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, coreSize + r * 10, 0, Math.PI * 2);
-    ctx.stroke();
-  }
 }
 
 function drawFlowingRivers() {
