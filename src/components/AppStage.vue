@@ -31,12 +31,15 @@
     <div class="info">
       <span class="hint"> Use ← → to change Pattern | ↑ ↓ to change Colors</span>
     </div>
+
+    <Seraphim />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import MusicPlayer from './MusicPlayer.vue';
+import Seraphim from './Seraphim.vue';
 
 const canvas = ref(null);
 const audioLoaded = ref(false);
