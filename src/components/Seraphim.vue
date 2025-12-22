@@ -242,6 +242,9 @@ data() {
             if (!this.audioData) return 0;
             const sum = Array.from(this.audioData).reduce((a, b) => a + b, 0);
             return sum / this.audioData.length / 255; // 0 to 1
+        },
+        flapSpeed() {
+            return this.audioIntensity > 0.5 ? '0.8s' : '1.5s';
         }
     }
 }
@@ -456,12 +459,14 @@ data() {
 
 .animate #RIGHT-WING {
     transform-origin: center center;
-    animation: flap-right 1.5s ease-in-out infinite;
+    animation: flap-right ease-in-out infinite;
+    animation-duration: v-bind('flapSpeed');
 }
 
 .animate #LEFT-WING {
     transform-origin: center center;
-    animation: flap-left 1.5s ease-in-out infinite;
+    animation: flap-left ease-in-out infinite;
+    animation-duration: v-bind('flapSpeed');
 }
 
 .animate #seraphim {
