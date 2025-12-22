@@ -32,7 +32,9 @@
       <span class="hint"> Use ← → to change Pattern | ↑ ↓ to change Colors</span>
     </div>
 
-    <Seraphim />
+    <Seraphim
+      v-if="audioLoaded"
+      :audioData="dataArray" />
   </div>
 </template>
 
