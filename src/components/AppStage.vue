@@ -86,6 +86,10 @@ const tracks = ref([
     url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-down-and-out-in-sidereal-time-MASTER-Balanced-Medium.wav' 
   }
 ]);
+const patternRotateInterval = ref(15000); // 15 seconds per pattern
+const paletteRotateInterval = ref(8000); // 8 seconds per palette
+let patternTimer = null;
+let paletteTimer = null;
 
 let ctx, audioContext, analyser, dataArray, bufferLength;
 let animationId;
@@ -368,8 +372,11 @@ const patterns = [
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
   { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
-  { name: 'Flowing Rivers', draw: drawFlowingRivers },  // NEW
-  { name: 'Dot Matrix', draw: drawDotMatrix }           // NEW
+  { name: 'Flowing Rivers', draw: drawFlowingRivers },
+  { name: 'Dot Matrix', draw: drawDotMatrix },
+  { name: 'Liquid Crystals', draw: drawLiquidCrystals },
+  { name: 'Energy Shards', draw: drawEnergyShards },
+  { name: 'Boombox', draw: drawBoombox },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -1163,6 +1170,673 @@ function drawDotMatrix() {
   ctx.restore();
 }
 
+function drawLiquidCrystals() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const cellSize = 120;
+  const cols = Math.ceil(width / cellSize) + 1;
+  const rows = Math.ceil(height / cellSize) + 1;
+
+  ctx.save();
+  
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const baseX = i * cellSize;
+      const baseY = j * cellSize;
+      const index = i + j * cols;
+      const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
+      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.11) * 0.3 + 0.5;
+      
+      // Apply warp distortion
+      const warped = applyWarpDistortion(baseX, baseY);
+      const x = warped.x;
+      const y = warped.y;
+      
+      // Create organic, fluid cell shapes
+      const sides = 5 + Math.floor(value * 3); // 5-7 sides based on audio
+      const baseRadius = cellSize * 0.4 * warped.scale;
+      
+      // Spawn particles at high energy cells
+      if (audioLoaded.value && value > 0.8 && Math.random() > 0.9) {
+        createParticles(x, y, value, index, cols * rows, 2);
+      }
+      
+      // Draw fluid membrane (outer glow)
+      if (value > 0.5) {
+        const glowRadius = baseRadius * 1.5;
+        const gradient = ctx.createRadialGradient(x, y, baseRadius * 0.5, x, y, glowRadius);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.7, getColor(index, cols * rows, (value - 0.5) * 0.4));
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Draw main cell with morphing shape
+      ctx.beginPath();
+      for (let k = 0; k <= sides; k++) {
+        const angle = (k / sides) * Math.PI * 2 + rotationAngle * 0.5;
+        
+        // Create organic variation in radius
+        const radiusVariation = Math.sin(angle * 3 + breathePhase + index * 0.3) * 0.2 + 0.9;
+        const audioMorph = Math.sin(angle * 2 + value * Math.PI * 2) * value * 0.3;
+        const radius = baseRadius * (radiusVariation + audioMorph);
+        
+        const px = x + Math.cos(angle) * radius;
+        const py = y + Math.sin(angle) * radius;
+        
+        if (k === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          // Use bezier curves for smooth, organic edges
+          const prevAngle = ((k - 1) / sides) * Math.PI * 2 + rotationAngle * 0.5;
+          const prevRadius = baseRadius * (Math.sin(prevAngle * 3 + breathePhase + index * 0.3) * 0.2 + 0.9);
+          const cpx = x + Math.cos(prevAngle + Math.PI / sides) * prevRadius * 1.1;
+          const cpy = y + Math.sin(prevAngle + Math.PI / sides) * prevRadius * 1.1;
+          ctx.quadraticCurveTo(cpx, cpy, px, py);
+        }
+      }
+      ctx.closePath();
+      
+      // Fill with gradient
+      const cellGradient = ctx.createRadialGradient(x, y, 0, x, y, baseRadius);
+      cellGradient.addColorStop(0, getColor(index, cols * rows, value * 0.9));
+      cellGradient.addColorStop(0.6, getColor(index + 30, cols * rows, value * 0.7));
+      cellGradient.addColorStop(1, getColor(index + 60, cols * rows, value * 0.3));
+      ctx.fillStyle = cellGradient;
+      ctx.fill();
+      
+      // Outer membrane stroke
+      ctx.strokeStyle = getColor(index + 100, cols * rows, 1);
+      ctx.lineWidth = value > 0.7 ? 3 : 2;
+      if (value > 0.6) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(index + 100, cols * rows, value);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      
+      // Draw inner nucleus
+      const nucleusSize = baseRadius * 0.3 * (0.8 + value * 0.4);
+      const nucleusSides = 4;
+      
+      ctx.beginPath();
+      for (let k = 0; k < nucleusSides; k++) {
+        const angle = (k / nucleusSides) * Math.PI * 2 + rotationAngle;
+        const px = x + Math.cos(angle) * nucleusSize;
+        const py = y + Math.sin(angle) * nucleusSize;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      
+      if (value > 0.65) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = getColor(index + 150, cols * rows, value);
+      }
+      ctx.fillStyle = getColor(index + 150, cols * rows, value);
+      ctx.fill();
+      ctx.strokeStyle = getColor(index + 150, cols * rows, 1);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      
+      // Draw connecting tendrils between nearby high-energy cells
+      if (value > 0.7 && i < cols - 1) {
+        const nextIndex = (i + 1) + j * cols;
+        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
+        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
+        
+        if (nextValue > 0.7) {
+          const nextWarped = applyWarpDistortion((i + 1) * cellSize, baseY);
+          const midX = (x + nextWarped.x) / 2;
+          const midY = (y + nextWarped.y) / 2;
+          
+          // Draw organic connecting tendril
+          ctx.strokeStyle = getColor(index, cols * rows, Math.min(value, nextValue) * 0.4);
+          ctx.lineWidth = 2 + value * 3;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(
+            midX + Math.sin(breathePhase + index * 0.2) * 20,
+            midY + Math.cos(breathePhase + index * 0.2) * 20,
+            nextWarped.x, nextWarped.y
+          );
+          ctx.stroke();
+        }
+      }
+      
+      // Vertical connections
+      if (value > 0.7 && j < rows - 1) {
+        const nextIndex = i + (j + 1) * cols;
+        const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
+        const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
+        
+        if (nextValue > 0.7) {
+          const nextWarped = applyWarpDistortion(baseX, (j + 1) * cellSize);
+          const midX = (x + nextWarped.x) / 2;
+          const midY = (y + nextWarped.y) / 2;
+          
+          ctx.strokeStyle = getColor(index, cols * rows, Math.min(value, nextValue) * 0.4);
+          ctx.lineWidth = 2 + value * 3;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(
+            midX + Math.sin(breathePhase + index * 0.2 + Math.PI / 2) * 20,
+            midY + Math.cos(breathePhase + index * 0.2 + Math.PI / 2) * 20,
+            nextWarped.x, nextWarped.y
+          );
+          ctx.stroke();
+        }
+      }
+      
+      // Draw energy pulses (small dots) around high-energy cells
+      if (value > 0.75) {
+        const pulseCount = 4 + Math.floor(value * 4);
+        for (let p = 0; p < pulseCount; p++) {
+          const pulseAngle = (p / pulseCount) * Math.PI * 2 + breathePhase;
+          const pulseDistance = baseRadius * 1.2 + Math.sin(breathePhase * 2 + p) * 10;
+          const pulseX = x + Math.cos(pulseAngle) * pulseDistance;
+          const pulseY = y + Math.sin(pulseAngle) * pulseDistance;
+          const pulseSize = 2 + value * 3;
+          
+          ctx.fillStyle = getColor(index + p * 20, cols * rows, value);
+          ctx.beginPath();
+          ctx.arc(pulseX, pulseY, pulseSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+  
+  ctx.restore();
+}
+
+function drawEnergyShards() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const shardCount = 40;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotationAngle * 0.3);
+  ctx.translate(-centerX, -centerY);
+  
+  for (let i = 0; i < shardCount; i++) {
+    const dataIndex = Math.floor((i / shardCount) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + i * 0.2) * 0.3 + 0.5;
+    
+    // Position shards in expanding rings
+    const ringIndex = Math.floor(i / 8);
+    const ringPosition = i % 8;
+    const ringCount = 8;
+    const baseRadius = 100 + ringIndex * 120;
+    
+    // Audio makes rings explode outward
+    const explosionForce = value * 80;
+    const radius = baseRadius + explosionForce;
+    
+    const angle = (ringPosition / ringCount) * Math.PI * 2 + rotationAngle * (ringIndex % 2 === 0 ? 1 : -1);
+    const baseX = centerX + Math.cos(angle) * radius;
+    const baseY = centerY + Math.sin(angle) * radius;
+    
+    // Apply warp
+    const warped = applyWarpDistortion(baseX, baseY);
+    const x = warped.x;
+    const y = warped.y;
+    
+    // Shard dimensions - elongated crystals
+    const shardLength = 40 + value * 80;
+    const shardWidth = 15 + value * 25;
+    
+    // Spawn particles at high energy
+    if (audioLoaded.value && value > 0.82 && Math.random() > 0.85) {
+      createParticles(x, y, value, i, shardCount, 5);
+    }
+    
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Rotate shard to point outward from center + audio spin
+    const pointAngle = Math.atan2(y - centerY, x - centerX) + value * Math.PI * 0.5;
+    ctx.rotate(pointAngle);
+    
+    // Draw explosive energy trails behind shard
+    if (value > 0.6) {
+      const trailLength = shardLength * 1.5;
+      const gradient = ctx.createLinearGradient(-trailLength, 0, 0, 0);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.5, getColor(i, shardCount, (value - 0.6) * 0.5));
+      gradient.addColorStop(1, getColor(i, shardCount, (value - 0.6) * 0.3));
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(-trailLength, -shardWidth * 0.3);
+      ctx.lineTo(0, -shardWidth * 0.5);
+      ctx.lineTo(0, shardWidth * 0.5);
+      ctx.lineTo(-trailLength, shardWidth * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // Main shard body - crystalline shape
+    const shardPath = [
+      [shardLength * 0.5, 0],  // Sharp tip
+      [shardLength * 0.1, shardWidth * 0.3],
+      [-shardLength * 0.5, shardWidth * 0.4],  // Back corner
+      [-shardLength * 0.3, 0],  // Back center indent
+      [-shardLength * 0.5, -shardWidth * 0.4],  // Back corner
+      [shardLength * 0.1, -shardWidth * 0.3]
+    ];
+    
+    // Outer glow
+    if (value > 0.55) {
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = getColor(i, shardCount, value);
+    }
+    
+    // Draw crystal facets with gradient
+    const shardGradient = ctx.createLinearGradient(-shardLength * 0.5, 0, shardLength * 0.5, 0);
+    shardGradient.addColorStop(0, getColor(i, shardCount, value * 0.4));
+    shardGradient.addColorStop(0.5, getColor(i, shardCount, value * 0.9));
+    shardGradient.addColorStop(1, getColor(i + 30, shardCount, value));
+    
+    ctx.fillStyle = shardGradient;
+    ctx.beginPath();
+    shardPath.forEach(([px, py], idx) => {
+      if (idx === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+    ctx.fill();
+    
+    // Crystal edges
+    ctx.strokeStyle = getColor(i + 50, shardCount, 1);
+    ctx.lineWidth = value > 0.7 ? 3 : 2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    // Inner facet lines for crystal effect
+    ctx.strokeStyle = getColor(i + 100, shardCount, value * 0.6);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(shardLength * 0.5, 0);
+    ctx.lineTo(-shardLength * 0.3, 0);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(shardLength * 0.1, shardWidth * 0.3);
+    ctx.lineTo(-shardLength * 0.3, 0);
+    ctx.lineTo(shardLength * 0.1, -shardWidth * 0.3);
+    ctx.stroke();
+    
+    // Bright core/tip highlight
+    if (value > 0.65) {
+      const tipGradient = ctx.createRadialGradient(shardLength * 0.4, 0, 0, shardLength * 0.4, 0, shardWidth * 0.5);
+      tipGradient.addColorStop(0, getColor(i + 150, shardCount, 1));
+      tipGradient.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.fillStyle = tipGradient;
+      ctx.beginPath();
+      ctx.arc(shardLength * 0.4, 0, shardWidth * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Energy sparks at tip
+    if (value > 0.75) {
+      const sparkCount = 3 + Math.floor(value * 4);
+      for (let s = 0; s < sparkCount; s++) {
+        const sparkAngle = (s / sparkCount) * Math.PI * 2 + breathePhase * 3;
+        const sparkDist = shardWidth * 0.6 + Math.sin(breathePhase * 4 + s) * 5;
+        const sparkX = shardLength * 0.5 + Math.cos(sparkAngle) * sparkDist;
+        const sparkY = Math.sin(sparkAngle) * sparkDist;
+        const sparkSize = 2 + value * 4;
+        
+        ctx.fillStyle = getColor(i + s * 25, shardCount, 1);
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = getColor(i + s * 25, shardCount, 1);
+        ctx.beginPath();
+        ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+    
+    ctx.restore();
+    
+    // Draw connection beams between nearby high-energy shards
+    if (value > 0.75 && i < shardCount - 1) {
+      const nextDataIndex = Math.floor(((i + 1) / shardCount) * bufferLength);
+      const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
+      
+      if (nextValue > 0.75 && Math.random() > 0.7) {
+        const nextRingIndex = Math.floor((i + 1) / 8);
+        const nextRingPosition = (i + 1) % 8;
+        const nextRadius = 100 + nextRingIndex * 120 + nextValue * 80;
+        const nextAngle = (nextRingPosition / ringCount) * Math.PI * 2 + rotationAngle * (nextRingIndex % 2 === 0 ? 1 : -1);
+        const nextX = centerX + Math.cos(nextAngle) * nextRadius;
+        const nextY = centerY + Math.sin(nextAngle) * nextRadius;
+        const nextWarped = applyWarpDistortion(nextX, nextY);
+        
+        // Lightning-style connection
+        const beamGradient = ctx.createLinearGradient(x, y, nextWarped.x, nextWarped.y);
+        beamGradient.addColorStop(0, getColor(i, shardCount, value * 0.6));
+        beamGradient.addColorStop(0.5, getColor(i + 75, shardCount, Math.min(value, nextValue)));
+        beamGradient.addColorStop(1, getColor(i + 1, shardCount, nextValue * 0.6));
+        
+        ctx.strokeStyle = beamGradient;
+        ctx.lineWidth = 2 + Math.min(value, nextValue) * 4;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(i, shardCount, value);
+        
+        // Jagged lightning effect
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        const segments = 3;
+        for (let seg = 1; seg <= segments; seg++) {
+          const t = seg / segments;
+          const midX = x + (nextWarped.x - x) * t;
+          const midY = y + (nextWarped.y - y) * t;
+          const jitter = (Math.random() - 0.5) * 30 * value;
+          ctx.lineTo(midX + jitter, midY + jitter);
+        }
+        ctx.lineTo(nextWarped.x, nextWarped.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+  
+  // Draw central energy core
+  const coreSize = 30 + Math.sin(breathePhase) * 10;
+  const coreValue = audioLoaded.value ? dataArray[0] / 255 : 0.6;
+  const explosiveCore = coreSize + coreValue * 40;
+  
+  // Pulsing gradient core
+  const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, explosiveCore);
+  coreGradient.addColorStop(0, getColor(0, 1, 1));
+  coreGradient.addColorStop(0.4, getColor(50, 100, coreValue * 0.8));
+  coreGradient.addColorStop(0.7, getColor(100, 100, coreValue * 0.4));
+  coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
+  
+  ctx.fillStyle = coreGradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, explosiveCore, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Core solid circle with shadow
+  ctx.shadowBlur = 40;
+  ctx.shadowColor = getColor(0, 1, coreValue);
+  ctx.fillStyle = getColor(0, 1, coreValue);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  
+  // Core energy rings
+  for (let r = 1; r <= 4; r++) {
+    ctx.strokeStyle = getColor(r * 40, 160, 0.5 + coreValue * 0.3);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, coreSize + r * 12, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+}
+
+function drawBoombox() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const peakCount = 3;
+  
+  ctx.save();
+  
+  // Generate elevation peaks - stable positions
+  const peaks = [];
+  let i = 0;
+  while (i < peakCount) {
+    const dataIndex = Math.floor((i / peakCount) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.6;
+    
+    // Moderately damped audio response
+    const smoothedValue = value * 0.2 + 0.6; // Range: 0.6 to 0.8
+    
+    peaks.push({
+      x: width * (0.25 + i * 0.25),
+      y: height * 0.5 + Math.sin(breathePhase * 0.1 + i * 2) * 50,
+      height: 60 + smoothedValue * 50, // Range: 60-110
+      radius: 250,
+      value: smoothedValue
+    });
+    i++;
+  }
+  
+  // Calculate elevation
+  function getElevation(x, y) {
+    let elevation = 0;
+    
+    peaks.forEach((peak) => {
+      const dx = x - peak.x;
+      const dy = y - peak.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      const influence = peak.height * Math.exp(-(distance * distance) / (2 * peak.radius * peak.radius));
+      elevation += influence;
+    });
+    
+    return elevation;
+  }
+  
+  // Draw filled elevation zones with transparency layers
+  const zoneCount = 6;
+  let zoneIdx = 0;
+  while (zoneIdx < zoneCount) {
+    const minElevation = zoneIdx * 15;
+    const maxElevation = (zoneIdx + 1) * 15;
+    const elevationRatio = (minElevation + maxElevation) / 2 / 100;
+    const colorIndex = Math.floor(elevationRatio * 1000);
+    
+    // Create semi-transparent filled regions
+    ctx.fillStyle = getColor(colorIndex, 1000, 0.15); // Subtle transparency
+    
+    // Sample and fill the elevation zone
+    ctx.beginPath();
+    let firstPoint = true;
+    let x = 0;
+    while (x < width) {
+      let y = 0;
+      while (y < height) {
+        const elev = getElevation(x, y);
+        
+        if (elev >= minElevation && elev < maxElevation) {
+          if (firstPoint) {
+            ctx.moveTo(x, y);
+            firstPoint = false;
+          }
+          // Draw small filled circles to create the zone
+          ctx.arc(x, y, 8, 0, Math.PI * 2);
+        }
+        y += 16;
+      }
+      x += 16;
+    }
+    ctx.fill();
+    
+    zoneIdx++;
+  }
+  
+  // Draw contour lines with varying styles
+  const contourInterval = 10;
+  const maxContours = 12;
+  
+  peaks.forEach((peak, peakIdx) => {
+    const peakX = peak.x;
+    const peakY = peak.y;
+    
+    let contourLevel = 1;
+    while (contourLevel < maxContours) {
+      const targetElevation = contourLevel * contourInterval;
+      if (targetElevation > peak.height) break;
+      
+      const ratio = targetElevation / peak.height;
+      if (ratio <= 0 || ratio > 1) {
+        contourLevel++;
+        continue;
+      }
+      
+      const contourRadius = peak.radius * Math.sqrt(-2 * Math.log(ratio));
+      const segments = 50;
+      const elevationRatio = targetElevation / 110;
+      const colorIndex = Math.floor(elevationRatio * 1000);
+      
+      // Varying line styles
+      const isMajorLine = contourLevel % 3 === 0;
+      const isAccentLine = contourLevel % 5 === 0;
+      
+      if (isAccentLine) {
+        // Accent lines - thicker with dashed pattern
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeStyle = getColor(colorIndex, 1000, 0.8);
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = getColor(colorIndex, 1000, 0.4);
+      } else if (isMajorLine) {
+        // Major lines - solid and visible
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.strokeStyle = getColor(colorIndex, 1000, 0.6);
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = getColor(colorIndex, 1000, 0.3);
+      } else {
+        // Minor lines - thin and subtle
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = getColor(colorIndex, 1000, 0.4);
+        ctx.shadowBlur = 0;
+      }
+      
+      // Draw the contour
+      ctx.beginPath();
+      let segIdx = 0;
+      while (segIdx <= segments) {
+        const angle = (segIdx / segments) * Math.PI * 2;
+        const variation = Math.sin(angle * 2 + breathePhase * 0.05) * 4;
+        const actualRadius = contourRadius + variation;
+        
+        const x = peakX + Math.cos(angle) * actualRadius;
+        const y = peakY + Math.sin(angle) * actualRadius;
+        
+        if (segIdx === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        segIdx++;
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.setLineDash([]);
+      
+      // Add decorative elevation tick marks on major lines
+      if (isMajorLine) {
+        const tickCount = 8;
+        let tickIdx = 0;
+        while (tickIdx < tickCount) {
+          const angle = (tickIdx / tickCount) * Math.PI * 2 + breathePhase * 0.05;
+          const x = peakX + Math.cos(angle) * contourRadius;
+          const y = peakY + Math.sin(angle) * contourRadius;
+          
+          // Draw outward tick
+          const tickLength = 8;
+          const endX = x + Math.cos(angle) * tickLength;
+          const endY = y + Math.sin(angle) * tickLength;
+          
+          ctx.strokeStyle = getColor(colorIndex + 100, 1000, 0.7);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          
+          tickIdx++;
+        }
+      }
+      
+      contourLevel++;
+    }
+    
+    // Enhanced peak marker with glow
+    const markerSize = 8 + peak.value * 6;
+    const colorIndex = Math.floor((peak.height / 110) * 1000);
+    
+    // Outer glow circle
+    ctx.fillStyle = getColor(colorIndex, 1000, 0.2);
+    ctx.beginPath();
+    ctx.arc(peakX, peakY, markerSize * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Middle glow
+    ctx.fillStyle = getColor(colorIndex, 1000, 0.4);
+    ctx.beginPath();
+    ctx.arc(peakX, peakY, markerSize * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Peak marker with shadow
+    ctx.fillStyle = getColor(colorIndex, 1000, 0.9);
+    ctx.strokeStyle = getColor(colorIndex + 150, 1000, 1);
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = getColor(colorIndex, 1000, 0.6);
+    
+    // Triangle peak symbol
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(peakX, peakY - markerSize);
+    ctx.lineTo(peakX + markerSize * 0.8, peakY + markerSize * 0.6);
+    ctx.lineTo(peakX - markerSize * 0.8, peakY + markerSize * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    // Elevation label with background
+    const labelText = Math.floor(peak.height) + 'm';
+    ctx.font = 'bold 13px Inter, sans-serif';
+    const textMetrics = ctx.measureText(labelText);
+    const textWidth = textMetrics.width;
+    
+    // Label background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(
+      peakX - textWidth / 2 - 4,
+      peakY - markerSize - 25,
+      textWidth + 8,
+      16
+    );
+    
+    // Label text
+    ctx.fillStyle = getColor(colorIndex, 1000, 1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillText(labelText, peakX, peakY - markerSize - 17);
+    ctx.shadowBlur = 0;
+    
+    // Spawn occasional particles at peaks
+    if (audioLoaded.value && peak.value > 0.75 && Math.random() > 0.97) {
+      createParticles(peakX, peakY, peak.value, peakIdx, peakCount, 1);
+    }
+  });
+  
+  ctx.restore();
+}
+
 function animate() {
   const width = canvas.value.width;
   const height = canvas.value.height;
@@ -1231,11 +1905,27 @@ function togglePause() {
 function cyclePattern() {
   currentPatternIndex.value = (currentPatternIndex.value + 1) % patterns.length;
   currentPatternName.value = patterns[currentPatternIndex.value].name;
+
+  // Reset pattern timer on manual cycle
+  if (patternTimer) {
+    clearInterval(patternTimer);
+    patternTimer = setInterval(() => {
+      cyclePattern();
+    }, patternRotateInterval.value);
+  }
 }
 
 function cyclePalette() {
   currentPaletteIndex.value = (currentPaletteIndex.value + 1) % palettes.length;
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
+
+  // Reset palette timer on manual cycle
+  if (paletteTimer) {
+    clearInterval(paletteTimer);
+    paletteTimer = setInterval(() => {
+      cyclePalette();
+    }, paletteRotateInterval.value);
+  }
 }
 
 function resize() {
@@ -1335,6 +2025,29 @@ function handleKeyDown(e) {
   }
 }
 
+function startAutoRotation() {
+  // Pattern rotation
+  patternTimer = setInterval(() => {
+    cyclePattern();
+  }, patternRotateInterval.value);
+  
+  // Palette rotation (different interval for variety)
+  paletteTimer = setInterval(() => {
+    cyclePalette();
+  }, paletteRotateInterval.value);
+}
+
+function stopAutoRotation() {
+  if (patternTimer) {
+    clearInterval(patternTimer);
+    patternTimer = null;
+  }
+  if (paletteTimer) {
+    clearInterval(paletteTimer);
+    paletteTimer = null;
+  }
+}
+
 onMounted(() => {
   ctx = canvas.value.getContext('2d');
   resize();
@@ -1359,6 +2072,8 @@ onMounted(() => {
   if (useMusicPlayer.value) {
     loadTrack(0);
   }
+
+  startAutoRotation();
 });
 
 onUnmounted(() => {
@@ -1376,6 +2091,8 @@ onUnmounted(() => {
   canvas.value.removeEventListener('touchstart', handleTouchStart);
   canvas.value.removeEventListener('touchmove', handleTouchMove);
   canvas.value.removeEventListener('touchend', handleTouchEnd);
+
+  stopAutoRotation();
   
   if (animationId) cancelAnimationFrame(animationId);
   if (audioContext) audioContext.close();
@@ -1474,12 +2191,11 @@ canvas {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 20, 20, 0.6);
+  background: rgba(20, 20, 20, 0.3);
   backdrop-filter: blur(20px) saturate(150%);
   padding: 10px 20px;
   border-radius: 20px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 5px solid black;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
   width: 400px;

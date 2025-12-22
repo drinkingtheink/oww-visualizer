@@ -292,7 +292,7 @@ data() {
   padding: 0 20px;
   width: 300px;
   top: 5rem;
-  pointer-events: none;
+  /* pointer-events: none; */
 }
 
 .animate svg {
