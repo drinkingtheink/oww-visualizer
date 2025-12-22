@@ -1,7 +1,7 @@
 <template>
   <div 
-        class="seraphim-wrapper animate"
-        :class="{ 'animatex': doAnimate }"    
+        class="seraphim-wrapper"
+        :class="{ 'animate': audioLoaded && !isPaused }"    
     >
         <svg 
             id="seraphim" 
@@ -180,6 +180,14 @@ props: {
     audioData: {
         type: Uint8Array,
         default: null
+    },
+    audioLoaded: {
+        type: Boolean,
+        default: false
+    },
+    isPaused: {
+        type: Boolean,
+        default: true
     }
 },
 data() {

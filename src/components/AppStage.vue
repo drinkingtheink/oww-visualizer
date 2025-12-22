@@ -34,7 +34,10 @@
 
     <Seraphim
       v-if="audioLoaded"
-      :audioData="dataArray" />
+      :audioData="dataArray" 
+      :audioLoaded="audioLoaded"
+      :isPaused="isPaused"
+      />
   </div>
 </template>
 
@@ -358,8 +361,6 @@ function updateParticles() {
 function drawParticles() {
   particles.forEach(p => p.draw(ctx));
 }
-
-
 
 // Pattern Definitions
 const patterns = [
