@@ -1,15 +1,14 @@
 <template>
   <div class="visualizer-app">
     <div class="controls">
-      <!-- <label class="file-input-label">
-        Choose Audio
-        <input type="file" @change="loadAudio" accept="audio/*">
-      </label> -->
-      <button class="pattern-btn" @click="cyclePattern">Pattern: {{ currentPatternName }}</button>
+       <button 
+        class="pattern-btn" 
+        :class="{ locked: patternLocked }"
+        @click="togglePatternLock"
+      >
+        {{ patternLocked ? '🔒' : '' }} Pattern: {{ currentPatternName }}
+      </button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
-      <!-- <button class="pattern-btn" @click="togglePause" v-if="audioLoaded">
-        {{ isPaused ? '▶ Play' : '⏸ Pause' }}
-      </button> -->
     </div>
 
     <!-- Music Player Component -->
@@ -29,7 +28,7 @@
     </div>
 
     <div class="info">
-      <span class="hint"> Use ← → to change Pattern | ↑ ↓ to change Colors</span>
+      <span class="hint"> Use ← → to change Pattern | ↑ ↓ to change Colors | SPACE to lock Pattern</span>
     </div>
 
     <Seraphim
@@ -52,6 +51,7 @@ const fileName = ref('');
 const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
 const isPaused = ref(false);
+const patternLocked = ref(false);
 
 // Music player state
 const useMusicPlayer = ref(true); // Set to false to use file input instead
@@ -206,6 +206,10 @@ const palettes = [
     colors: ['#ff0080', '#ff8c00', '#00ffff', '#7fff00', '#ff1493', '#00ff7f']
   }
 ];
+
+function togglePatternLock() {
+  patternLocked.value = !patternLocked.value;
+}
 
 // Particle system for ephemeral effects
 class Particle {
@@ -368,6 +372,7 @@ function drawParticles() {
 
 // Pattern Definitions
 const patterns = [
+  { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
   { name: 'Concentric Waves', draw: drawConcentricWaves },
@@ -530,6 +535,283 @@ function applyWarpDistortion(x, y) {
     y: y + totalDy,
     scale: totalScale
   };
+}
+
+function drawAuroraWaves() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const waveCount = audioLoaded.value && !isPaused.value ? 15 : 8; // Fewer waves when no audio
+  const segments = 80;
+
+  ctx.save();
+  
+  for (let w = 0; w < waveCount; w++) {
+    const waveOffset = (w / waveCount) * height;
+    const dataOffset = Math.floor((w / waveCount) * bufferLength);
+    
+    // Create wave path points
+    const points = [];
+    for (let s = 0; s <= segments; s++) {
+      const t = s / segments;
+      const x = t * width;
+      const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
+      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
+      
+      // Create multiple sine waves layered together for aurora effect
+      const wave1 = Math.sin(t * Math.PI * 3 + rotationAngle * 1.5 + w * 0.4) * 60;
+      const wave2 = Math.sin(t * Math.PI * 5 + rotationAngle * 0.8 + w * 0.6) * 30;
+      const wave3 = Math.sin(t * Math.PI * 7 + rotationAngle * 0.5 + w * 0.2) * 15;
+      const audioWave = (value - 0.5) * 140;
+      
+      const y = waveOffset + wave1 + wave2 + wave3 + audioWave;
+      
+      points.push({ x, y, value });
+    }
+    
+    // Only draw filled layers when audio is playing
+    if (audioLoaded.value && !isPaused.value) {
+      const layers = 7;
+      for (let layer = layers - 1; layer >= 0; layer--) {
+        const layerOffset = (layer - layers / 2) * 6;
+        const layerAlpha = (layers - layer) / layers * 0.5;
+        
+        // Create gradient for aurora colors
+        const gradient = ctx.createLinearGradient(0, 0, width, 0);
+        const colorShift = w * 50 + layer * 30;
+        
+        for (let g = 0; g <= 5; g++) {
+          const stop = g / 5;
+          const colorIdx = Math.floor((stop * 1000 + colorShift + rotationAngle * 100) % 1000);
+          gradient.addColorStop(stop, getColor(colorIdx, 1000, 0.05 * layerAlpha));
+        }
+        
+        ctx.fillStyle = gradient;
+        
+        // Draw filled wave shape
+        ctx.beginPath();
+        points.forEach((point, idx) => {
+          const x = point.x;
+          const y = point.y + layerOffset;
+          
+          if (idx === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            const prevPoint = points[idx - 1];
+            const cpx = (prevPoint.x + x) / 2;
+            const cpy = (prevPoint.y + y) / 2 + layerOffset;
+            ctx.quadraticCurveTo(prevPoint.x, prevPoint.y + layerOffset, cpx, cpy);
+          }
+        });
+        
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw subtle glowing edge on some layers
+        if (layer === 0 || layer === 3) {
+          ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.3);
+          ctx.lineWidth = 1;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = getColor(w * 50, waveCount * 50, 0.4);
+          
+          ctx.beginPath();
+          points.forEach((point, idx) => {
+            if (idx === 0) {
+              ctx.moveTo(point.x, point.y);
+            } else {
+              const prevPoint = points[idx - 1];
+              const cpx = (prevPoint.x + point.x) / 2;
+              const cpy = (prevPoint.y + point.y) / 2;
+              ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, cpx, cpy);
+            }
+          });
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+    } else {
+      // Minimal mode - just draw a single subtle wave line
+      ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.2); // Very subtle
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 0;
+      
+      ctx.beginPath();
+      points.forEach((point, idx) => {
+        if (idx === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          const prevPoint = points[idx - 1];
+          const cpx = (prevPoint.x + point.x) / 2;
+          const cpy = (prevPoint.y + point.y) / 2;
+          ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, cpx, cpy);
+        }
+      });
+      ctx.stroke();
+    }
+    
+    if (audioLoaded.value && !isPaused.value) {
+      // Full effects when audio is playing
+      
+      // Shimmering light particles along wave peaks
+      points.forEach((point, idx) => {
+        if (point.value > 0.65 && idx % 3 === 0 && Math.random() > 0.75) {
+          createParticles(point.x, point.y, point.value, w * segments + idx, waveCount * segments, 2);
+        }
+        
+        // Bright stars/dots at medium-high energy points
+        if (point.value > 0.6 && idx % 2 === 0) {
+          const starSize = 1.5 + point.value * 3;
+          
+          // Star glow
+          const starGradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, starSize * 4);
+          starGradient.addColorStop(0, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.9));
+          starGradient.addColorStop(0.3, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.5));
+          starGradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = starGradient;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, starSize * 4, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Bright center dot
+          ctx.fillStyle = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 1);
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.8);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, starSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          
+          // Four-pointed star rays
+          if (point.value > 0.75) {
+            for (let ray = 0; ray < 4; ray++) {
+              const angle = (ray / 4) * Math.PI * 2 + rotationAngle * 2;
+              const rayLength = starSize * 3;
+              
+              ctx.strokeStyle = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.9);
+              ctx.lineWidth = 2;
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.7);
+              ctx.beginPath();
+              ctx.moveTo(point.x, point.y);
+              ctx.lineTo(
+                point.x + Math.cos(angle) * rayLength,
+                point.y + Math.sin(angle) * rayLength
+              );
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+            }
+          }
+        }
+        
+        // Small ambient dots everywhere for atmosphere
+        if (idx % 5 === 0 && Math.random() > 0.6) {
+          const dotSize = 0.5 + Math.random() * 1.5;
+          ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.6);
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      });
+      
+      // Flowing light streaks/connections between points
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        
+        // Horizontal connections along wave
+        if (p1.value > 0.55 && p2.value > 0.55 && Math.random() > 0.5) {
+          const avgValue = (p1.value + p2.value) / 2;
+          
+          // Glowing connecting line
+          ctx.strokeStyle = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.5);
+          ctx.lineWidth = 1 + avgValue * 2;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.4);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+        
+        // Vertical light beams
+        if (p1.value > 0.65 && Math.random() > 0.6) {
+          const beamHeight = 80 + p1.value * 120;
+          
+          // Vertical light beam
+          const beamGradient = ctx.createLinearGradient(p1.x, p1.y, p1.x, p1.y + beamHeight);
+          beamGradient.addColorStop(0, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.7));
+          beamGradient.addColorStop(0.5, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.3));
+          beamGradient.addColorStop(1, 'rgba(0,0,0,0)');
+          
+          ctx.strokeStyle = beamGradient;
+          ctx.lineWidth = 2 + p1.value * 3;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p1.x, p1.y + beamHeight);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+      
+      // Cross-wave connections
+      if (w > 0 && Math.random() > 0.7) {
+        const connectionPoints = 5;
+        for (let c = 0; c < connectionPoints; c++) {
+          const pointIdx = Math.floor(Math.random() * points.length);
+          const point = points[pointIdx];
+          
+          if (point.value > 0.7) {
+            const targetY = point.y - (height / waveCount);
+            
+            ctx.strokeStyle = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.4);
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.3);
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath();
+            ctx.moveTo(point.x, point.y);
+            ctx.lineTo(point.x + (Math.random() - 0.5) * 40, targetY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+    } else {
+      // Minimal mode - just occasional subtle dots on wave lines
+      points.forEach((point, idx) => {
+        if (idx % 8 === 0 && Math.random() > 0.85) {
+          const dotSize = 1;
+          ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.2);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      });
+    }
+  }
+  
+  // Atmospheric fog/mist effect at bottom - only when audio playing
+  if (audioLoaded.value && !isPaused.value) {
+    const mistGradient = ctx.createLinearGradient(0, height - 200, 0, height);
+    mistGradient.addColorStop(0, 'rgba(0,0,0,0)');
+    mistGradient.addColorStop(0.5, getColor(500, 1000, 0.05));
+    mistGradient.addColorStop(1, getColor(700, 1000, 0.08));
+    ctx.fillStyle = mistGradient;
+    ctx.fillRect(0, height - 200, width, 200);
+  }
+  
+  ctx.restore();
 }
 
 function drawDiamondLattice() {
@@ -1889,10 +2171,11 @@ function togglePause() {
 }
 
 function cyclePattern() {
+  if (patternLocked.value) return;
+  
   currentPatternIndex.value = (currentPatternIndex.value + 1) % patterns.length;
   currentPatternName.value = patterns[currentPatternIndex.value].name;
-
-  // Reset pattern timer on manual cycle
+  
   if (patternTimer) {
     clearInterval(patternTimer);
     patternTimer = setInterval(() => {
@@ -1904,8 +2187,7 @@ function cyclePattern() {
 function cyclePalette() {
   currentPaletteIndex.value = (currentPaletteIndex.value + 1) % palettes.length;
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
-
-  // Reset palette timer on manual cycle
+  
   if (paletteTimer) {
     clearInterval(paletteTimer);
     paletteTimer = setInterval(() => {
@@ -1913,6 +2195,7 @@ function cyclePalette() {
     }, paletteRotateInterval.value);
   }
 }
+
 
 function resize() {
   canvas.value.width = window.innerWidth;
@@ -1994,20 +2277,31 @@ function handleTouchEnd(e) {
 // Keyboard controls
 function handleKeyDown(e) {
   switch(e.key) {
-    case 'ArrowRight':
+    case 'ArrowRight': {
       cyclePattern();
       break;
-    case 'ArrowLeft':
+    }
+    case 'ArrowLeft': {
+      if(patternLocked.value) return;
+
       currentPatternIndex.value = (currentPatternIndex.value - 1 + patterns.length) % patterns.length;
       currentPatternName.value = patterns[currentPatternIndex.value].name;
       break;
-    case 'ArrowUp':
+    }
+    case 'ArrowUp': {
       cyclePalette();
       break;
-    case 'ArrowDown':
+    }
+    case 'ArrowDown': {
       currentPaletteIndex.value = (currentPaletteIndex.value - 1 + palettes.length) % palettes.length;
       currentPaletteName.value = palettes[currentPaletteIndex.value].name;
       break;
+    }
+    case ' ': {
+      e.preventDefault();
+      togglePatternLock();
+      break;
+    }
   }
 }
 
@@ -2184,7 +2478,7 @@ canvas {
   border: 5px solid black;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
-  width: 400px;
+  width: 550px;
   display: flex;
   justify-content: center;
 }
@@ -2196,5 +2490,14 @@ canvas {
 
 .breathing {
   animation: breathe 3s ease-in-out infinite;
+}
+
+.pattern-btn.locked {
+  background: rgba(255, 215, 0, 0.2); /* Subtle golden highlight */
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.pattern-btn.locked:hover {
+  background: rgba(255, 215, 0, 0.3);
 }
 </style>
