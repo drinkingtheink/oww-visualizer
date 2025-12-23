@@ -821,6 +821,7 @@ function drawAuroraWaves() {
   ctx.restore();
 }
 
+    
 function drawPlasmaStorm() {
   const width = canvas.value.width;
   const height = canvas.value.height;
@@ -828,7 +829,7 @@ function drawPlasmaStorm() {
   
   ctx.save();
   
-  // Generate energy orbs - FIXED positions based on index for consistency
+  // Generate energy orbs - FIXED grid positions
   const orbs = [];
   let i = 0;
   while (i < orbCount) {
@@ -838,17 +839,70 @@ function drawPlasmaStorm() {
     // Smooth the value to reduce rapid changes
     const smoothValue = value * 0.3 + 0.5; // Range: 0.5 to 0.8
     
+    // Determine if this speaker should be "vibrating" (active)
+    // Use a slow changing pattern so speakers turn on/off gradually
+    const vibratePhase = Math.sin(breathePhase * 0.2 + i * 0.8);
+    const isVibrating = audioLoaded.value && !isPaused.value && vibratePhase > -0.3; // 60% active
+    
     orbs.push({
-      x: (0.2 + (i % 5) * 0.15) * width, // Grid layout
-      y: (0.2 + Math.floor(i / 5) * 0.2) * height,
+      x: (0.15 + (i % 5) * 0.175) * width, // Grid layout - 5 columns
+      y: (0.2 + Math.floor(i / 5) * 0.2) * height, // 4 rows
       radius: 50 + smoothValue * 80,
       value: smoothValue,
-      colorIndex: i
+      colorIndex: i,
+      isVibrating: isVibrating,
+      vibratePhase: vibratePhase
     });
     i++;
   }
   
-  // Draw smooth connections between nearby orbs
+  // MINIMAL MODE when no music
+  if (!audioLoaded.value || isPaused.value) {
+    orbs.forEach((orb) => {
+      const x = orb.x;
+      const y = orb.y;
+      const radius = orb.radius;
+      
+      // Very subtle outer glow
+      const haloGradient = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius * 1.2);
+      haloGradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, 0.15));
+      haloGradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = haloGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Simple orb body
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, 0.25));
+      gradient.addColorStop(0.7, getColor(orb.colorIndex * 50 + 30, orbCount * 50, 0.15));
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Just one subtle ring
+      ctx.strokeStyle = getColor(orb.colorIndex * 50, orbCount * 50, 0.2);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Small dim core
+      ctx.fillStyle = getColor(orb.colorIndex * 50 + 100, orbCount * 50, 0.2);
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    
+    ctx.restore();
+    return;
+  }
+  
+  // ACTIVE MODE with music playing
+  
+  // Draw connections between nearby orbs
   orbs.forEach((orb1, idx1) => {
     orbs.forEach((orb2, idx2) => {
       if (idx1 >= idx2) return;
@@ -857,7 +911,6 @@ function drawPlasmaStorm() {
       const dy = orb2.y - orb1.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      // Connect if close enough - simple smooth line
       if (distance < 350) {
         const avgValue = (orb1.value + orb2.value) / 2;
         const strength = 1 - (distance / 350);
@@ -872,7 +925,6 @@ function drawPlasmaStorm() {
         ctx.shadowBlur = 10;
         ctx.shadowColor = getColor(orb1.colorIndex * 50, orbCount * 50, avgValue * strength * 0.3);
         
-        // Simple straight line
         ctx.beginPath();
         ctx.moveTo(orb1.x, orb1.y);
         ctx.lineTo(orb2.x, orb2.y);
@@ -882,46 +934,144 @@ function drawPlasmaStorm() {
     });
   });
   
-  // Draw simple glowing orbs
+  // Draw expanding ripple rings from vibrating speakers
   orbs.forEach((orb) => {
-    const x = orb.x;
-    const y = orb.y;
+    if (orb.isVibrating && orb.value > 0.7) {
+      // Create ripple effect - multiple expanding rings
+      const rippleCount = 3;
+      for (let r = 0; r < rippleCount; r++) {
+        const ripplePhase = (breathePhase * 2 + r * 0.7) % (Math.PI * 2);
+        const rippleProgress = ripplePhase / (Math.PI * 2); // 0 to 1
+        const rippleRadius = orb.radius * 1.5 + rippleProgress * orb.radius * 1.5;
+        const rippleAlpha = (1 - rippleProgress) * orb.value * 0.6;
+        
+        if (rippleAlpha > 0.05) {
+          ctx.strokeStyle = getColor(orb.colorIndex * 50 + r * 80, orbCount * 50, rippleAlpha);
+          ctx.lineWidth = 2 + (1 - rippleProgress) * 4;
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = getColor(orb.colorIndex * 50 + r * 80, orbCount * 50, rippleAlpha * 0.5);
+          ctx.beginPath();
+          ctx.arc(orb.x, orb.y, rippleRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+  });
+  
+  // Draw orbs with colorful reactive grid lines
+  orbs.forEach((orb) => {
+    let x = orb.x;
+    let y = orb.y;
     const radius = orb.radius;
     
-    // Outer glow
-    const outerGradient = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius * 1.5);
-    outerGradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.6));
-    outerGradient.addColorStop(0.6, getColor(orb.colorIndex * 50 + 30, orbCount * 50, orb.value * 0.3));
-    outerGradient.addColorStop(1, 'rgba(0,0,0,0)');
+    // VIBRATION EFFECT - speakers shake when active
+    if (orb.isVibrating && orb.value > 0.65) {
+      const vibrateAmount = (orb.value - 0.65) * 8; // Stronger vibration at high values
+      x += Math.sin(breathePhase * 8 + orb.colorIndex) * vibrateAmount;
+      y += Math.cos(breathePhase * 8 + orb.colorIndex * 1.3) * vibrateAmount;
+    }
     
-    ctx.fillStyle = outerGradient;
+    // Dimmed appearance when not vibrating
+    const activeMultiplier = orb.isVibrating ? 1.0 : 0.4;
+    
+    // Outer glow halo
+    const haloGradient = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius * 1.5);
+    haloGradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.4 * activeMultiplier));
+    haloGradient.addColorStop(0.6, getColor(orb.colorIndex * 50 + 30, orbCount * 50, orb.value * 0.2 * activeMultiplier));
+    haloGradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = haloGradient;
     ctx.beginPath();
     ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // Main orb body with slow rotation
-    const spinAngle = rotationAngle * 0.2;
-    const x1 = x + Math.cos(spinAngle) * radius;
-    const y1 = y + Math.sin(spinAngle) * radius;
-    const x2 = x - Math.cos(spinAngle) * radius;
-    const y2 = y - Math.sin(spinAngle) * radius;
+    // Multi-layer main orb - slow rotation
+    const layers = 3;
+    for (let layer = layers - 1; layer >= 0; layer--) {
+      const layerRadius = radius * (1 - layer * 0.2);
+      const layerAlpha = (layers - layer) / layers * 0.6;
+      
+      const spinAngle = rotationAngle * 0.3 * (layer + 1);
+      const x1 = x + Math.cos(spinAngle) * layerRadius;
+      const y1 = y + Math.sin(spinAngle) * layerRadius;
+      const x2 = x - Math.cos(spinAngle) * layerRadius;
+      const y2 = y - Math.sin(spinAngle) * layerRadius;
+      
+      const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+      const colorShift = layer * 50;
+      gradient.addColorStop(0, getColor(orb.colorIndex * 50 + colorShift, orbCount * 50, orb.value * layerAlpha * 0.5 * activeMultiplier));
+      gradient.addColorStop(0.5, getColor(orb.colorIndex * 50 + colorShift + 100, orbCount * 50, orb.value * layerAlpha * 0.7 * activeMultiplier));
+      gradient.addColorStop(1, getColor(orb.colorIndex * 50 + colorShift, orbCount * 50, orb.value * layerAlpha * 0.5 * activeMultiplier));
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, layerRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
-    const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-    gradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.7));
-    gradient.addColorStop(0.5, getColor(orb.colorIndex * 50 + 50, orbCount * 50, orb.value * 0.8));
-    gradient.addColorStop(1, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.7));
+    // COLORFUL REACTIVE GRID RINGS - each ring gets different color based on audio
+    const ringCount = 5;
+    for (let r = 0; r < ringCount; r++) {
+      const ringRadius = radius * (0.25 + r * 0.15);
+      
+      // Each ring reacts to different frequency band
+      const freqIndex = Math.floor((r / ringCount) * bufferLength);
+      const ringValue = dataArray[freqIndex] / 255;
+      
+      // Ring gets its own color that shifts with audio
+      const ringColorShift = r * 150 + ringValue * 200;
+      const ringBrightness = (0.4 + ringValue * 0.5) * activeMultiplier;
+      const ringThickness = (1 + ringValue * 2) * (orb.isVibrating ? 1.0 : 0.7);
+      
+      ctx.strokeStyle = getColor(orb.colorIndex * 50 + ringColorShift, orbCount * 50, ringBrightness);
+      ctx.lineWidth = ringThickness;
+      ctx.shadowBlur = (6 + ringValue * 10) * activeMultiplier;
+      ctx.shadowColor = getColor(orb.colorIndex * 50 + ringColorShift, orbCount * 50, ringValue * 0.5 * activeMultiplier);
+      ctx.beginPath();
+      ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
     
-    ctx.fillStyle = gradient;
+    // ENERGY SPIKES - only show on vibrating speakers
+    if (orb.isVibrating) {
+      const spikeCount = 6;
+      for (let s = 0; s < spikeCount; s++) {
+        const angle = (s / spikeCount) * Math.PI * 2 + rotationAngle * 0.4;
+        const baseRadius = radius * 0.75;
+        const tipRadius = radius * 1.15;
+        
+        const baseX = x + Math.cos(angle) * baseRadius;
+        const baseY = y + Math.sin(angle) * baseRadius;
+        const tipX = x + Math.cos(angle) * tipRadius;
+        const tipY = y + Math.sin(angle) * tipRadius;
+        
+        // Each spike gets different color
+        const spikeColorShift = s * 100 + orb.value * 150;
+        const spikeGradient = ctx.createLinearGradient(baseX, baseY, tipX, tipY);
+        spikeGradient.addColorStop(0, getColor(orb.colorIndex * 50 + spikeColorShift, orbCount * 50, orb.value * 0.7));
+        spikeGradient.addColorStop(1, 'rgba(0,0,0,0)');
+        
+        ctx.strokeStyle = spikeGradient;
+        ctx.lineWidth = 1.5 + orb.value * 1.5;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = getColor(orb.colorIndex * 50 + spikeColorShift, orbCount * 50, orb.value * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(baseX, baseY);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+    
+    // Bright reactive core
+    const coreSize = radius * 0.18;
+    const coreColorShift = orb.value * 200;
+    ctx.fillStyle = getColor(orb.colorIndex * 50 + 100 + coreColorShift, orbCount * 50, orb.value * 0.9 * activeMultiplier);
+    ctx.shadowBlur = (12 + orb.value * 8) * activeMultiplier;
+    ctx.shadowColor = getColor(orb.colorIndex * 50 + 100 + coreColorShift, orbCount * 50, orb.value * 0.6 * activeMultiplier);
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Simple bright core
-    ctx.fillStyle = getColor(orb.colorIndex * 50 + 100, orbCount * 50, orb.value);
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = getColor(orb.colorIndex * 50 + 100, orbCount * 50, orb.value * 0.7);
-    ctx.beginPath();
-    ctx.arc(x, y, radius * 0.2, 0, Math.PI * 2);
+    ctx.arc(x, y, coreSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   });
