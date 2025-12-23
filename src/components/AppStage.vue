@@ -1998,7 +1998,7 @@ function drawLiquidCrystals() {
 function drawEnergyShards() {
   const width = canvas.value.width;
   const height = canvas.value.height;
-  const shardCount = 40;
+  const shardCount = audioLoaded.value && !isPaused.value ? 60 : 40; // More shards when active
   const centerX = width / 2;
   const centerY = height / 2;
   
@@ -2012,16 +2012,16 @@ function drawEnergyShards() {
     const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + i * 0.2) * 0.3 + 0.5;
     
     // Position shards in expanding rings
-    const ringIndex = Math.floor(i / 8);
-    const ringPosition = i % 8;
-    const ringCount = 8;
-    const baseRadius = 100 + ringIndex * 120;
+    const ringIndex = Math.floor(i / 10); // 10 shards per ring instead of 8
+    const ringPosition = i % 10;
+    const ringCount = 10;
+    const baseRadius = 80 + ringIndex * 100; // Closer rings
     
-    // Audio makes rings explode outward
-    const explosionForce = value * 80;
+    // Much more explosive audio response
+    const explosionForce = audioLoaded.value && !isPaused.value ? value * 150 : value * 40; // 150 instead of 80
     const radius = baseRadius + explosionForce;
     
-    const angle = (ringPosition / ringCount) * Math.PI * 2 + rotationAngle * (ringIndex % 2 === 0 ? 1 : -1);
+    const angle = (ringPosition / ringCount) * Math.PI * 2 + rotationAngle * (ringIndex % 2 === 0 ? 1.5 : -1.5); // Faster rotation
     const baseX = centerX + Math.cos(angle) * radius;
     const baseY = centerY + Math.sin(angle) * radius;
     
@@ -2030,36 +2030,36 @@ function drawEnergyShards() {
     const x = warped.x;
     const y = warped.y;
     
-    // Shard dimensions - elongated crystals
-    const shardLength = 40 + value * 80;
-    const shardWidth = 15 + value * 25;
+    // Larger shards with more variation
+    const shardLength = audioLoaded.value && !isPaused.value ? 50 + value * 120 : 40 + value * 60;
+    const shardWidth = audioLoaded.value && !isPaused.value ? 18 + value * 35 : 15 + value * 20;
     
-    // Spawn particles at high energy
-    if (audioLoaded.value && value > 0.82 && Math.random() > 0.85) {
-      createParticles(x, y, value, i, shardCount, 5);
+    // More particles
+    if (audioLoaded.value && value > 0.75 && Math.random() > 0.8) { // More frequent
+      createParticles(x, y, value, i, shardCount, 8); // More particles per spawn
     }
     
     ctx.save();
     ctx.translate(x, y);
     
-    // Rotate shard to point outward from center + audio spin
-    const pointAngle = Math.atan2(y - centerY, x - centerX) + value * Math.PI * 0.5;
+    // Rotate shard to point outward from center + more audio spin
+    const pointAngle = Math.atan2(y - centerY, x - centerX) + value * Math.PI * 0.8; // More spin
     ctx.rotate(pointAngle);
     
-    // Draw explosive energy trails behind shard
-    if (value > 0.6) {
-      const trailLength = shardLength * 1.5;
+    // Longer, more intense energy trails
+    if (value > 0.5) { // Lower threshold
+      const trailLength = shardLength * 2; // Longer trails
       const gradient = ctx.createLinearGradient(-trailLength, 0, 0, 0);
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(0.5, getColor(i, shardCount, (value - 0.6) * 0.5));
-      gradient.addColorStop(1, getColor(i, shardCount, (value - 0.6) * 0.3));
+      gradient.addColorStop(0.3, getColor(i, shardCount, (value - 0.5) * 0.8)); // More opacity
+      gradient.addColorStop(1, getColor(i, shardCount, (value - 0.5) * 0.6));
       
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.moveTo(-trailLength, -shardWidth * 0.3);
-      ctx.lineTo(0, -shardWidth * 0.5);
-      ctx.lineTo(0, shardWidth * 0.5);
-      ctx.lineTo(-trailLength, shardWidth * 0.3);
+      ctx.moveTo(-trailLength, -shardWidth * 0.4);
+      ctx.lineTo(0, -shardWidth * 0.6);
+      ctx.lineTo(0, shardWidth * 0.6);
+      ctx.lineTo(-trailLength, shardWidth * 0.4);
       ctx.closePath();
       ctx.fill();
     }
@@ -2068,23 +2068,23 @@ function drawEnergyShards() {
     const shardPath = [
       [shardLength * 0.5, 0],  // Sharp tip
       [shardLength * 0.1, shardWidth * 0.3],
-      [-shardLength * 0.5, shardWidth * 0.4],  // Back corner
-      [-shardLength * 0.3, 0],  // Back center indent
-      [-shardLength * 0.5, -shardWidth * 0.4],  // Back corner
+      [-shardLength * 0.5, shardWidth * 0.4],
+      [-shardLength * 0.3, 0],
+      [-shardLength * 0.5, -shardWidth * 0.4],
       [shardLength * 0.1, -shardWidth * 0.3]
     ];
     
-    // Outer glow
-    if (value > 0.55) {
-      ctx.shadowBlur = 25;
+    // Stronger outer glow
+    if (value > 0.45) { // Lower threshold
+      ctx.shadowBlur = 35; // Stronger
       ctx.shadowColor = getColor(i, shardCount, value);
     }
     
-    // Draw crystal facets with gradient
+    // Brighter crystal gradient
     const shardGradient = ctx.createLinearGradient(-shardLength * 0.5, 0, shardLength * 0.5, 0);
-    shardGradient.addColorStop(0, getColor(i, shardCount, value * 0.4));
-    shardGradient.addColorStop(0.5, getColor(i, shardCount, value * 0.9));
-    shardGradient.addColorStop(1, getColor(i + 30, shardCount, value));
+    shardGradient.addColorStop(0, getColor(i, shardCount, value * 0.6)); // Brighter
+    shardGradient.addColorStop(0.5, getColor(i, shardCount, value));
+    shardGradient.addColorStop(1, getColor(i + 30, shardCount, value * 1.2)); // Much brighter tip
     
     ctx.fillStyle = shardGradient;
     ctx.beginPath();
@@ -2095,15 +2095,15 @@ function drawEnergyShards() {
     ctx.closePath();
     ctx.fill();
     
-    // Crystal edges
+    // Brighter crystal edges
     ctx.strokeStyle = getColor(i + 50, shardCount, 1);
-    ctx.lineWidth = value > 0.7 ? 3 : 2;
+    ctx.lineWidth = value > 0.6 ? 4 : 3; // Thicker
     ctx.stroke();
     ctx.shadowBlur = 0;
     
-    // Inner facet lines for crystal effect
-    ctx.strokeStyle = getColor(i + 100, shardCount, value * 0.6);
-    ctx.lineWidth = 1;
+    // Inner facet lines
+    ctx.strokeStyle = getColor(i + 100, shardCount, value * 0.8);
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(shardLength * 0.5, 0);
     ctx.lineTo(-shardLength * 0.3, 0);
@@ -2115,30 +2115,31 @@ function drawEnergyShards() {
     ctx.lineTo(shardLength * 0.1, -shardWidth * 0.3);
     ctx.stroke();
     
-    // Bright core/tip highlight
-    if (value > 0.65) {
-      const tipGradient = ctx.createRadialGradient(shardLength * 0.4, 0, 0, shardLength * 0.4, 0, shardWidth * 0.5);
+    // Brighter core/tip highlight
+    if (value > 0.55) { // Lower threshold
+      const tipGradient = ctx.createRadialGradient(shardLength * 0.4, 0, 0, shardLength * 0.4, 0, shardWidth * 0.6);
       tipGradient.addColorStop(0, getColor(i + 150, shardCount, 1));
+      tipGradient.addColorStop(0.5, getColor(i + 150, shardCount, 0.6));
       tipGradient.addColorStop(1, 'rgba(0,0,0,0)');
       
       ctx.fillStyle = tipGradient;
       ctx.beginPath();
-      ctx.arc(shardLength * 0.4, 0, shardWidth * 0.5, 0, Math.PI * 2);
+      ctx.arc(shardLength * 0.4, 0, shardWidth * 0.6, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // Energy sparks at tip
-    if (value > 0.75) {
-      const sparkCount = 3 + Math.floor(value * 4);
+    // More energy sparks at tip
+    if (value > 0.6) { // Lower threshold
+      const sparkCount = 4 + Math.floor(value * 6); // More sparks
       for (let s = 0; s < sparkCount; s++) {
-        const sparkAngle = (s / sparkCount) * Math.PI * 2 + breathePhase * 3;
-        const sparkDist = shardWidth * 0.6 + Math.sin(breathePhase * 4 + s) * 5;
+        const sparkAngle = (s / sparkCount) * Math.PI * 2 + breathePhase * 4;
+        const sparkDist = shardWidth * 0.7 + Math.sin(breathePhase * 5 + s) * 8;
         const sparkX = shardLength * 0.5 + Math.cos(sparkAngle) * sparkDist;
         const sparkY = Math.sin(sparkAngle) * sparkDist;
-        const sparkSize = 2 + value * 4;
+        const sparkSize = 3 + value * 6; // Bigger sparks
         
         ctx.fillStyle = getColor(i + s * 25, shardCount, 1);
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 15; // More glow
         ctx.shadowColor = getColor(i + s * 25, shardCount, 1);
         ctx.beginPath();
         ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
@@ -2149,40 +2150,40 @@ function drawEnergyShards() {
     
     ctx.restore();
     
-    // Draw connection beams between nearby high-energy shards
-    if (value > 0.75 && i < shardCount - 1) {
+    // More connection beams between nearby high-energy shards
+    if (value > 0.65 && i < shardCount - 1 && Math.random() > 0.5) { // More frequent
       const nextDataIndex = Math.floor(((i + 1) / shardCount) * bufferLength);
       const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
       
-      if (nextValue > 0.75 && Math.random() > 0.7) {
-        const nextRingIndex = Math.floor((i + 1) / 8);
-        const nextRingPosition = (i + 1) % 8;
-        const nextRadius = 100 + nextRingIndex * 120 + nextValue * 80;
-        const nextAngle = (nextRingPosition / ringCount) * Math.PI * 2 + rotationAngle * (nextRingIndex % 2 === 0 ? 1 : -1);
+      if (nextValue > 0.65) {
+        const nextRingIndex = Math.floor((i + 1) / 10);
+        const nextRingPosition = (i + 1) % 10;
+        const nextRadius = 80 + nextRingIndex * 100 + (audioLoaded.value && !isPaused.value ? nextValue * 150 : nextValue * 40);
+        const nextAngle = (nextRingPosition / ringCount) * Math.PI * 2 + rotationAngle * (nextRingIndex % 2 === 0 ? 1.5 : -1.5);
         const nextX = centerX + Math.cos(nextAngle) * nextRadius;
         const nextY = centerY + Math.sin(nextAngle) * nextRadius;
         const nextWarped = applyWarpDistortion(nextX, nextY);
         
-        // Lightning-style connection
+        // Brighter lightning connection
         const beamGradient = ctx.createLinearGradient(x, y, nextWarped.x, nextWarped.y);
-        beamGradient.addColorStop(0, getColor(i, shardCount, value * 0.6));
-        beamGradient.addColorStop(0.5, getColor(i + 75, shardCount, Math.min(value, nextValue)));
-        beamGradient.addColorStop(1, getColor(i + 1, shardCount, nextValue * 0.6));
+        beamGradient.addColorStop(0, getColor(i, shardCount, value * 0.8));
+        beamGradient.addColorStop(0.5, getColor(i + 75, shardCount, Math.min(value, nextValue) * 1.2));
+        beamGradient.addColorStop(1, getColor(i + 1, shardCount, nextValue * 0.8));
         
         ctx.strokeStyle = beamGradient;
-        ctx.lineWidth = 2 + Math.min(value, nextValue) * 4;
-        ctx.shadowBlur = 15;
+        ctx.lineWidth = 2 + Math.min(value, nextValue) * 6; // Thicker
+        ctx.shadowBlur = 20; // More glow
         ctx.shadowColor = getColor(i, shardCount, value);
         
-        // Jagged lightning effect
+        // More jagged lightning
         ctx.beginPath();
         ctx.moveTo(x, y);
-        const segments = 3;
+        const segments = 5; // More segments
         for (let seg = 1; seg <= segments; seg++) {
           const t = seg / segments;
           const midX = x + (nextWarped.x - x) * t;
           const midY = y + (nextWarped.y - y) * t;
-          const jitter = (Math.random() - 0.5) * 30 * value;
+          const jitter = (Math.random() - 0.5) * 50 * value; // More jitter
           ctx.lineTo(midX + jitter, midY + jitter);
         }
         ctx.lineTo(nextWarped.x, nextWarped.y);
@@ -2192,16 +2193,16 @@ function drawEnergyShards() {
     }
   }
   
-  // Draw central energy core
-  const coreSize = 30 + Math.sin(breathePhase) * 10;
+  // Much larger, more explosive central core
+  const coreSize = 40 + Math.sin(breathePhase) * 15; // Bigger base
   const coreValue = audioLoaded.value ? dataArray[0] / 255 : 0.6;
-  const explosiveCore = coreSize + coreValue * 40;
+  const explosiveCore = coreSize + (audioLoaded.value && !isPaused.value ? coreValue * 80 : coreValue * 20); // Much bigger with audio
   
-  // Pulsing gradient core
+  // Brighter pulsing gradient core
   const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, explosiveCore);
   coreGradient.addColorStop(0, getColor(0, 1, 1));
-  coreGradient.addColorStop(0.4, getColor(50, 100, coreValue * 0.8));
-  coreGradient.addColorStop(0.7, getColor(100, 100, coreValue * 0.4));
+  coreGradient.addColorStop(0.3, getColor(50, 100, coreValue));
+  coreGradient.addColorStop(0.6, getColor(100, 100, coreValue * 0.6));
   coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
   
   ctx.fillStyle = coreGradient;
@@ -2209,8 +2210,8 @@ function drawEnergyShards() {
   ctx.arc(centerX, centerY, explosiveCore, 0, Math.PI * 2);
   ctx.fill();
   
-  // Core solid circle with shadow
-  ctx.shadowBlur = 40;
+  // Brighter core solid circle with stronger shadow
+  ctx.shadowBlur = 60; // Much stronger
   ctx.shadowColor = getColor(0, 1, coreValue);
   ctx.fillStyle = getColor(0, 1, coreValue);
   ctx.beginPath();
@@ -2218,13 +2219,16 @@ function drawEnergyShards() {
   ctx.fill();
   ctx.shadowBlur = 0;
   
-  // Core energy rings
-  for (let r = 1; r <= 4; r++) {
-    ctx.strokeStyle = getColor(r * 40, 160, 0.5 + coreValue * 0.3);
-    ctx.lineWidth = 2;
+  // More core energy rings
+  for (let r = 1; r <= 6; r++) { // 6 rings instead of 4
+    ctx.strokeStyle = getColor(r * 40, 240, 0.6 + coreValue * 0.4); // Brighter
+    ctx.lineWidth = 3; // Thicker
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = getColor(r * 40, 240, coreValue * 0.4);
     ctx.beginPath();
-    ctx.arc(centerX, centerY, coreSize + r * 12, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, coreSize + r * 15, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.shadowBlur = 0;
   }
   
   ctx.restore();
