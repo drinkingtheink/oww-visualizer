@@ -1,5 +1,49 @@
 <template>
   <div class="visualizer-app">
+    
+    <!-- Play Modal -->
+    <div v-if="showPlayModal" class="modal-overlay">
+      <div class="modal-content">
+        <!-- <div class="modal-logo">ONE WAX WING</div>
+         -->
+          <svg id="oww-typog-modal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
+          <g id="back-text">
+            <path class="oww-1" d="M12.45,142.6V39.8h15.63v-16.67h94.3v16.67h16.5v102.81h-16.5v16.67H28.08v-16.67h-15.63ZM55.34,123.85h39.59V59.59h-39.59v64.25Z" />
+            <path class="oww-1" d="M196.17,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V23.13h44.46Z" />
+            <path class="oww-1" d="M395.18,23.13v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V23.13h102.98Z" />
+            <path class="oww-1" d="M538.28,23.13v57.83h6.43v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
+            <path class="oww-1" d="M739.37,23.13v136.15h-44.46v-36.47h-15.11v36.47h-44.46V23.13h104.02ZM680.33,89.64h14.07v-34.38h-14.07v34.38Z" />
+            <path
+              class="oww-1"
+              d="M769.93,111.52v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V23.13h44.46v16.67h12.85v12.33h13.89v-12.33h13.02v-16.67h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
+            />
+            <path class="oww-1" d="M1025.03,23.13v57.83h6.42v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
+            <path class="oww-1" d="M1165,23.13v136.15h-42.89V23.13h42.89Z" />
+            <path class="oww-1" d="M1223.35,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V23.13h44.46Z" />
+            <path class="oww-1" d="M1319.38,143.64V40.84h16.67v-16.67h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
+          </g>
+          <g id="fore-text">
+            <path d="M0,119.48V16.67h15.63V0h94.3v16.67h16.5v102.81h-16.5v16.67H15.63v-16.67H0ZM42.89,100.72h39.59V36.47h-39.59v64.25Z" />
+            <path d="M183.73,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V0h44.46Z" />
+            <path d="M382.74,0v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V0h102.98Z" />
+            <path d="M525.83,0v57.83h6.43v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V0h43.41Z" />
+            <path d="M726.92,0v136.15h-44.46v-36.47h-15.11v36.47h-44.46V0h104.02ZM667.88,66.51h14.07v-34.38h-14.07v34.38Z" />
+            <path
+              d="M757.49,88.39v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V0h44.46v16.67h12.85v12.33h13.89v-12.33h13.02V0h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
+            />
+            <path d="M1012.59,0v57.83h6.42v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V0h43.41Z" />
+            <path d="M1152.55,0v136.15h-42.89V0h42.89Z" />
+            <path d="M1210.9,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V0h44.46Z" />
+            <path d="M1306.93,120.52V17.71h16.67V1.04h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
+          </g>
+        </svg>
+        <div class="modal-subtitle">Debut Album - "Let Slip" - Available Everywhere</div>
+        <button class="play-modal-btn" @click="startPlayback">
+          ▶ Play "Let Slip"
+        </button>
+      </div>
+    </div>
+
     <h1>
       <svg id="oww-typog" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
         <g id="back-text">
@@ -93,6 +137,7 @@ const currentPaletteIndex = ref(0);
 const isPaused = ref(false);
 const patternLocked = ref(false);
 const typographyColorIndex = ref(0);
+const showPlayModal = ref(true);
 
 // Music player state
 const useMusicPlayer = ref(true); // Set to false to use file input instead
@@ -357,6 +402,13 @@ class Particle {
 
   isDead() {
     return this.life <= 0;
+  }
+}
+
+function startPlayback() {
+  showPlayModal.value = false;
+  if (useMusicPlayer.value) {
+    loadTrack(0);
   }
 }
 
@@ -2704,11 +2756,6 @@ onMounted(() => {
   canvas.value.addEventListener('touchend', handleTouchEnd);
   
   animate();
-  
-  // Auto-load first track if using music player
-  if (useMusicPlayer.value) {
-    loadTrack(0);
-  }
 
   startAutoRotation();
 });
@@ -2929,5 +2976,114 @@ canvas {
 #fore-text {
   fill: v-bind(currentTypographyColor);
   transition: fill 2s;
+}
+
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(6px) brightness(1.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  text-align: center;
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-logo {
+  font-family: 'Inter', sans-serif;
+  font-size: 72px;
+  font-weight: 900;
+  letter-spacing: -2px;
+  color: white;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.modal-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 40px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.play-modal-btn {
+  background: linear-gradient(135deg, #00ff88 0%, #00ffff 50%, #ff00ff 100%);
+  background-size: 200% 200%;
+  border: none;
+  color: black;
+  padding: 18px 56px;
+  border-radius: 50px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+  animation: gradientShift 3s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.play-modal-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.play-modal-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 48px rgba(0, 255, 136, 0.6);
+}
+
+.play-modal-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.play-modal-btn:active {
+  transform: scale(0.95);
 }
 </style>
