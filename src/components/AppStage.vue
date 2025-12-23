@@ -36,15 +36,18 @@
 
     <div class="triangle" />
     <div class="triangle tri2" />
+    
     <div class="controls">
-       <button 
-          class="pattern-btn" 
-          :class="{ locked: patternLocked }"
-          @click="togglePatternLock"
-        >
-          <span v-if="patternLocked" class="lock-icon">🔒</span>
-          Pattern: {{ currentPatternName }}
+      <button class="arrow-btn" @click="cyclePreviousPattern" title="Previous pattern">←</button>
+      <button 
+        class="pattern-btn" 
+        :class="{ locked: patternLocked }"
+        @click="togglePatternLock"
+      >
+        <span v-if="patternLocked" class="lock-icon">🔒</span>
+        Pattern: {{ currentPatternName }}
       </button>
+      <button class="arrow-btn" @click="cyclePattern" title="Next pattern">→</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
     </div>
 
@@ -78,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import MusicPlayer from './MusicPlayer.vue';
 import Seraphim from './Seraphim.vue';
 
@@ -89,6 +92,7 @@ const currentPatternIndex = ref(0);
 const currentPaletteIndex = ref(0);
 const isPaused = ref(false);
 const patternLocked = ref(false);
+const typographyColorIndex = ref(0);
 
 // Music player state
 const useMusicPlayer = ref(true); // Set to false to use file input instead
@@ -251,6 +255,11 @@ function togglePatternLock() {
 function getRandomPatternIndex() {
   return Math.floor(Math.random() * patterns.length);
 }
+
+const currentTypographyColor = computed(() => {
+  const palette = palettes[currentPaletteIndex.value].colors;
+  return palette[typographyColorIndex.value % palette.length];
+});
 
 // Particle system for ephemeral effects
 class Particle {
@@ -416,11 +425,11 @@ const patterns = [
   { name: 'Spkrwall', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
-  { name: 'Hex Flowers', draw: drawHexFlowers },
-  { name: 'Concentric Waves', draw: drawConcentricWaves },
-  { name: 'Flowing Rivers', draw: drawFlowingRivers },
+  { name: 'Hex Meadow', draw: drawHexFlowers },
+  { name: 'Wavepools', draw: drawConcentricWaves },
+  { name: 'Undertide', draw: drawFlowingRivers },
   { name: 'Dot Matrix', draw: drawDotMatrix },
-  { name: 'Liquid Crystals', draw: drawLiquidCrystals },
+  { name: 'Osmosis', draw: drawLiquidCrystals },
   { name: 'Petri', draw: drawEnergyShards },
   { name: 'Boombox', draw: drawBoombox },
 ];
@@ -2498,9 +2507,33 @@ function cyclePattern() {
   }
 }
 
+function cyclePreviousPattern() {
+  if (patternLocked.value) return;
+  
+  // Get random pattern different from current
+  let newIndex;
+  do {
+    newIndex = getRandomPatternIndex();
+  } while (newIndex === currentPatternIndex.value && patterns.length > 1);
+  
+  currentPatternIndex.value = newIndex;
+  currentPatternName.value = patterns[newIndex].name;
+  
+  // Reset timer
+  if (patternTimer) {
+    clearInterval(patternTimer);
+    patternTimer = setInterval(() => {
+      cyclePattern();
+    }, patternRotateInterval.value);
+  }
+}
+
 function cyclePalette() {
   currentPaletteIndex.value = (currentPaletteIndex.value + 1) % palettes.length;
   currentPaletteName.value = palettes[currentPaletteIndex.value].name;
+  
+  // Cycle to next color in palette
+  typographyColorIndex.value = (typographyColorIndex.value + 1) % palettes[currentPaletteIndex.value].colors.length;
   
   if (paletteTimer) {
     clearInterval(paletteTimer);
@@ -2706,10 +2739,6 @@ onUnmounted(() => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-.oww-1{fill:#808080;}
-
-#fore-text {fill: lime;}
-
 #oww-typog {
   position: absolute;
   z-index: 10;
@@ -2861,5 +2890,40 @@ canvas {
 .lock-icon {
   filter: brightness(0) invert(1); /* Makes emoji pure white */
   margin-right: 4px;
+}
+
+.arrow-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.arrow-btn:active {
+  transform: scale(0.95);
+}
+
+.oww-1 {
+  fill: #FFF;
+}
+
+#fore-text {
+  fill: v-bind(currentTypographyColor);
+  transition: fill 2s;
 }
 </style>
