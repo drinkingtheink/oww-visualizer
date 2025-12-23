@@ -2834,7 +2834,7 @@ onUnmounted(() => {
   transform: translateX(-50%);
   z-index: 100;
   display: flex;
-  gap: 5px;
+  gap: 2px;
   align-items: center;  
   padding: 8px 10px;
   border-radius: 50px;
