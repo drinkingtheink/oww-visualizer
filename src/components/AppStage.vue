@@ -3121,4 +3121,10 @@ canvas {
 .play-modal-btn:active {
   transform: scale(0.95);
 }
+
+#oww-typog,
+#oww-typog-modal {
+  stroke: black;
+  stroke-width: 10px;
+}
 </style>
