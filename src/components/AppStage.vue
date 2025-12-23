@@ -2880,6 +2880,10 @@ input[type="file"] {
   transform: scale(1.05);
 }
 
+.palette-btn { 
+  min-width: 150px;
+}
+
 .pattern-btn {
   min-width: 190px;
 }
