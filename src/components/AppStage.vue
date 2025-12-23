@@ -378,6 +378,7 @@ function drawParticles() {
 
 // Pattern Definitions
 const patterns = [
+  { name: 'Plasma Storm', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
@@ -819,6 +820,115 @@ function drawAuroraWaves() {
   
   ctx.restore();
 }
+
+function drawPlasmaStorm() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const orbCount = 20; // Fixed count
+  
+  ctx.save();
+  
+  // Generate energy orbs - FIXED positions based on index for consistency
+  const orbs = [];
+  let i = 0;
+  while (i < orbCount) {
+    const dataIndex = Math.floor((i / orbCount) * bufferLength);
+    const value = audioLoaded.value && !isPaused.value ? dataArray[dataIndex] / 255 : 0.5;
+    
+    // Smooth the value to reduce rapid changes
+    const smoothValue = value * 0.3 + 0.5; // Range: 0.5 to 0.8
+    
+    orbs.push({
+      x: (0.2 + (i % 5) * 0.15) * width, // Grid layout
+      y: (0.2 + Math.floor(i / 5) * 0.2) * height,
+      radius: 50 + smoothValue * 80,
+      value: smoothValue,
+      colorIndex: i
+    });
+    i++;
+  }
+  
+  // Draw smooth connections between nearby orbs
+  orbs.forEach((orb1, idx1) => {
+    orbs.forEach((orb2, idx2) => {
+      if (idx1 >= idx2) return;
+      
+      const dx = orb2.x - orb1.x;
+      const dy = orb2.y - orb1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Connect if close enough - simple smooth line
+      if (distance < 350) {
+        const avgValue = (orb1.value + orb2.value) / 2;
+        const strength = 1 - (distance / 350);
+        
+        const gradient = ctx.createLinearGradient(orb1.x, orb1.y, orb2.x, orb2.y);
+        gradient.addColorStop(0, getColor(orb1.colorIndex * 50, orbCount * 50, avgValue * strength * 0.4));
+        gradient.addColorStop(0.5, getColor((orb1.colorIndex + orb2.colorIndex) * 25, orbCount * 50, avgValue * strength * 0.6));
+        gradient.addColorStop(1, getColor(orb2.colorIndex * 50, orbCount * 50, avgValue * strength * 0.4));
+        
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 1 + avgValue * 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = getColor(orb1.colorIndex * 50, orbCount * 50, avgValue * strength * 0.3);
+        
+        // Simple straight line
+        ctx.beginPath();
+        ctx.moveTo(orb1.x, orb1.y);
+        ctx.lineTo(orb2.x, orb2.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    });
+  });
+  
+  // Draw simple glowing orbs
+  orbs.forEach((orb) => {
+    const x = orb.x;
+    const y = orb.y;
+    const radius = orb.radius;
+    
+    // Outer glow
+    const outerGradient = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius * 1.5);
+    outerGradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.6));
+    outerGradient.addColorStop(0.6, getColor(orb.colorIndex * 50 + 30, orbCount * 50, orb.value * 0.3));
+    outerGradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = outerGradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Main orb body with slow rotation
+    const spinAngle = rotationAngle * 0.2;
+    const x1 = x + Math.cos(spinAngle) * radius;
+    const y1 = y + Math.sin(spinAngle) * radius;
+    const x2 = x - Math.cos(spinAngle) * radius;
+    const y2 = y - Math.sin(spinAngle) * radius;
+    
+    const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+    gradient.addColorStop(0, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.7));
+    gradient.addColorStop(0.5, getColor(orb.colorIndex * 50 + 50, orbCount * 50, orb.value * 0.8));
+    gradient.addColorStop(1, getColor(orb.colorIndex * 50, orbCount * 50, orb.value * 0.7));
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Simple bright core
+    ctx.fillStyle = getColor(orb.colorIndex * 50 + 100, orbCount * 50, orb.value);
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = getColor(orb.colorIndex * 50 + 100, orbCount * 50, orb.value * 0.7);
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+  
+  ctx.restore();
+}
+
 
 function drawDiamondLattice() {
   const width = canvas.value.width;
