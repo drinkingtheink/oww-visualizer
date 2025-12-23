@@ -231,7 +231,7 @@ const palettes = [
     colors: ['#ff10f0', '#10ff10', '#ff8800', '#00ffff', '#ff0066', '#66ff00', '#8800ff']
   },
   {
-    name: 'Rainbow Explosion',
+    name: 'Rainblow',
     colors: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0088ff', '#4400ff', '#ff00ff']
   },
   {
@@ -242,13 +242,12 @@ const palettes = [
     name: 'Electric Dreams',
     colors: ['#ff00de', '#00ff9f', '#00b8ff', '#ff3c00', '#d4ff00', '#ff0080']
   },
-  // NEW PALETTES BELOW
   {
     name: 'Midnight Purple',
     colors: ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#e94560']
   },
   {
-    name: 'Tropical Paradise',
+    name: 'Tropicali',
     colors: ['#06d6a0', '#118ab2', '#073b4c', '#ef476f', '#ffd166']
   },
   {
@@ -280,7 +279,7 @@ const palettes = [
     colors: ['#f4acb7', '#ffcad4', '#b392ac', '#9d84b7', '#d4a5a5']
   },
   {
-    name: 'Aurora Borealis',
+    name: 'Borealis',
     colors: ['#00ffc8', '#00d9ff', '#7000ff', '#ff00ff', '#00ff88']
   },
   {
@@ -290,7 +289,35 @@ const palettes = [
   {
     name: 'Neon Tokyo',
     colors: ['#ff0080', '#ff8c00', '#00ffff', '#7fff00', '#ff1493', '#00ff7f']
-  }
+  },
+  {
+    name: 'Infrared',
+    colors: ['#ff0000', '#cc0000', '#990000', '#ff3333', '#ff6666']
+  },
+  {
+    name: 'Ultraviolet',
+    colors: ['#9d00ff', '#7000ff', '#5000cc', '#b366ff', '#cc99ff']
+  },
+  {
+    name: 'Toxic Slime',
+    colors: ['#39ff14', '#7fff00', '#adff2f', '#00ff00', '#32cd32']
+  },
+  {
+    name: 'Ice Cave',
+    colors: ['#00ced1', '#00bfff', '#1e90ff', '#87ceeb', '#b0e0e6']
+  },
+  {
+    name: 'Synthwave Nights',
+    colors: ['#ff00ff', '#ff006e', '#8338ec', '#3a0ca3', '#4cc9f0']
+  },
+  {
+    name: 'Nebula',
+    colors: ['#9d4edd', '#7209b7', '#5a189a', '#240046', '#ff006e']
+  },
+  {
+    name: 'Radioactive',
+    colors: ['#ccff00', '#ffff00', '#ff9900', '#ff0000', '#00ff00']
+  },
 ];
 
 function togglePatternLock() {
@@ -2869,7 +2896,7 @@ input[type="file"] {
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
-  cursor: pointer;
+  cursor: pointer; 
   transition: all 0.3s ease;
   font-size: 13px;
   font-weight: 500;
