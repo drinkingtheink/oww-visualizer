@@ -1,8 +1,6 @@
 <template>
   <div class="visualizer-app">
-    <div class="triangle">
-      <p>One Wax Wing</p>
-    </div>
+    <div class="triangle" />
     <div class="controls">
        <button 
           class="pattern-btn" 
@@ -378,7 +376,7 @@ function drawParticles() {
 
 // Pattern Definitions
 const patterns = [
-  { name: 'Plasma Storm', draw: drawPlasmaStorm },
+  { name: 'Spkrwall', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Flowers', draw: drawHexFlowers },
@@ -794,7 +792,7 @@ function drawAuroraWaves() {
     } else {
       // Minimal mode - just occasional subtle dots on wave lines
       points.forEach((point, idx) => {
-        if (idx % 8 === 0 && Math.random() > 0.85) {
+        if (idx % 8 === 0 && Math.random() > 0.65) {
           const dotSize = 1;
           ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
           ctx.shadowBlur = 4;
@@ -844,6 +842,11 @@ function drawPlasmaStorm() {
     const vibratePhase = Math.sin(breathePhase * 0.2 + i * 0.8);
     const isVibrating = audioLoaded.value && !isPaused.value && vibratePhase > -0.3; // 60% active
     
+    // RANDOM distribution - only ~1/3 of speakers create rings
+    // Use index-based seed for consistent assignment
+    const ringsSeed = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
+    const createsRings = (ringsSeed - Math.floor(ringsSeed)) < 0.75; // 1/3 probability
+    
     orbs.push({
       x: (0.15 + (i % 5) * 0.175) * width, // Grid layout - 5 columns
       y: (0.2 + Math.floor(i / 5) * 0.2) * height, // 4 rows
@@ -851,7 +854,8 @@ function drawPlasmaStorm() {
       value: smoothValue,
       colorIndex: i,
       isVibrating: isVibrating,
-      vibratePhase: vibratePhase
+      vibratePhase: vibratePhase,
+      createsRings: createsRings // NEW - random assignment
     });
     i++;
   }
@@ -934,9 +938,10 @@ function drawPlasmaStorm() {
     });
   });
   
-  // Draw expanding ripple rings from vibrating speakers
+  // Draw expanding ripple rings from designated speakers ONLY
   orbs.forEach((orb) => {
-    if (orb.isVibrating && orb.value > 0.7) {
+    // Only create rings if this speaker is designated AND vibrating AND high enough value
+    if (orb.createsRings && orb.isVibrating && orb.value > 0.65) {
       // Create ripple effect - multiple expanding rings
       const rippleCount = 3;
       for (let r = 0; r < rippleCount; r++) {
