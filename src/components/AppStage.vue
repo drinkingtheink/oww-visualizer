@@ -2833,6 +2833,10 @@ input[type="file"] {
   transform: scale(1.05);
 }
 
+.pattern-btn {
+  min-width: 190px;
+}
+
 .pattern-btn.active, .palette-btn.active {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   border-color: transparent;
