@@ -275,10 +275,6 @@ const palettes = [
     colors: ['#00f5ff', '#ff00ff', '#ffff00', '#00ff00', '#ff0099', '#9d00ff']
   },
   {
-    name: 'Pastel Dream',
-    colors: ['#f4acb7', '#ffcad4', '#b392ac', '#9d84b7', '#d4a5a5']
-  },
-  {
     name: 'Borealis',
     colors: ['#00ffc8', '#00d9ff', '#7000ff', '#ff00ff', '#00ff88']
   },
@@ -327,7 +323,7 @@ const palettes = [
   colors: ['#ffff00', '#ffd700', '#00ff00', '#00ff7f', '#0099ff', '#00bfff', '#7fff00']
   },
   {
-  name: 'Taxi Cab',
+  name: 'Hivemind',
   colors: ['#ffff00', '#ffd700', '#000000', '#ffffff', '#ffcc00']
   }
 ];
