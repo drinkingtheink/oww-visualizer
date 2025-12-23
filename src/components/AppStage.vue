@@ -1,38 +1,41 @@
 <template>
   <div class="visualizer-app">
-    <svg id="oww-typog" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
-      <g id="back-text">
-        <path class="oww-1" d="M12.45,142.6V39.8h15.63v-16.67h94.3v16.67h16.5v102.81h-16.5v16.67H28.08v-16.67h-15.63ZM55.34,123.85h39.59V59.59h-39.59v64.25Z" />
-        <path class="oww-1" d="M196.17,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V23.13h44.46Z" />
-        <path class="oww-1" d="M395.18,23.13v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V23.13h102.98Z" />
-        <path class="oww-1" d="M538.28,23.13v57.83h6.43v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
-        <path class="oww-1" d="M739.37,23.13v136.15h-44.46v-36.47h-15.11v36.47h-44.46V23.13h104.02ZM680.33,89.64h14.07v-34.38h-14.07v34.38Z" />
-        <path
-          class="oww-1"
-          d="M769.93,111.52v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V23.13h44.46v16.67h12.85v12.33h13.89v-12.33h13.02v-16.67h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
-        />
-        <path class="oww-1" d="M1025.03,23.13v57.83h6.42v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
-        <path class="oww-1" d="M1165,23.13v136.15h-42.89V23.13h42.89Z" />
-        <path class="oww-1" d="M1223.35,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V23.13h44.46Z" />
-        <path class="oww-1" d="M1319.38,143.64V40.84h16.67v-16.67h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
-      </g>
-      <g id="fore-text">
-        <path d="M0,119.48V16.67h15.63V0h94.3v16.67h16.5v102.81h-16.5v16.67H15.63v-16.67H0ZM42.89,100.72h39.59V36.47h-39.59v64.25Z" />
-        <path d="M183.73,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V0h44.46Z" />
-        <path d="M382.74,0v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V0h102.98Z" />
-        <path d="M525.83,0v57.83h6.43v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V0h43.41Z" />
-        <path d="M726.92,0v136.15h-44.46v-36.47h-15.11v36.47h-44.46V0h104.02ZM667.88,66.51h14.07v-34.38h-14.07v34.38Z" />
-        <path
-          d="M757.49,88.39v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V0h44.46v16.67h12.85v12.33h13.89v-12.33h13.02V0h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
-        />
-        <path d="M1012.59,0v57.83h6.42v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V0h43.41Z" />
-        <path d="M1152.55,0v136.15h-42.89V0h42.89Z" />
-        <path d="M1210.9,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V0h44.46Z" />
-        <path d="M1306.93,120.52V17.71h16.67V1.04h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
-      </g>
-    </svg>
+    <h1>
+      <svg id="oww-typog" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
+        <g id="back-text">
+          <path class="oww-1" d="M12.45,142.6V39.8h15.63v-16.67h94.3v16.67h16.5v102.81h-16.5v16.67H28.08v-16.67h-15.63ZM55.34,123.85h39.59V59.59h-39.59v64.25Z" />
+          <path class="oww-1" d="M196.17,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V23.13h44.46Z" />
+          <path class="oww-1" d="M395.18,23.13v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V23.13h102.98Z" />
+          <path class="oww-1" d="M538.28,23.13v57.83h6.43v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
+          <path class="oww-1" d="M739.37,23.13v136.15h-44.46v-36.47h-15.11v36.47h-44.46V23.13h104.02ZM680.33,89.64h14.07v-34.38h-14.07v34.38Z" />
+          <path
+            class="oww-1"
+            d="M769.93,111.52v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V23.13h44.46v16.67h12.85v12.33h13.89v-12.33h13.02v-16.67h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
+          />
+          <path class="oww-1" d="M1025.03,23.13v57.83h6.42v-14.93h26.74v14.93h7.64V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V23.13h43.41Z" />
+          <path class="oww-1" d="M1165,23.13v136.15h-42.89V23.13h42.89Z" />
+          <path class="oww-1" d="M1223.35,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V23.13h44.46Z" />
+          <path class="oww-1" d="M1319.38,143.64V40.84h16.67v-16.67h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
+        </g>
+        <g id="fore-text">
+          <path d="M0,119.48V16.67h15.63V0h94.3v16.67h16.5v102.81h-16.5v16.67H15.63v-16.67H0ZM42.89,100.72h39.59V36.47h-39.59v64.25Z" />
+          <path d="M183.73,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V0h44.46Z" />
+          <path d="M382.74,0v35.95h-58v13.89h58v36.47h-58v13.89h58v35.95h-102.98V0h102.98Z" />
+          <path d="M525.83,0v57.83h6.43v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.43v15.46h-17.19v16.67h-43.41V0h43.41Z" />
+          <path d="M726.92,0v136.15h-44.46v-36.47h-15.11v36.47h-44.46V0h104.02ZM667.88,66.51h14.07v-34.38h-14.07v34.38Z" />
+          <path
+            d="M757.49,88.39v-12.85h12.33v-14.93h-12.33v-12.85h-16.67V0h44.46v16.67h12.85v12.33h13.89v-12.33h13.02V0h44.46v47.76h-16.67v12.85h-12.33v14.93h12.33v12.85h16.67v47.76h-44.46v-16.67h-13.02v-12.33h-13.89v12.33h-12.85v16.67h-44.46v-47.76h16.67Z"
+          />
+          <path d="M1012.59,0v57.83h6.42v-14.93h26.74v14.93h7.64V0h42.2v136.15h-42.2v-16.67h-17.19v-15.46h-6.42v15.46h-17.19v16.67h-43.41V0h43.41Z" />
+          <path d="M1152.55,0v136.15h-42.89V0h42.89Z" />
+          <path d="M1210.9,0v16.67h16.15v15.98h17.19v16.67h6.43V0h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.42v49.32h-43.41V0h44.46Z" />
+          <path d="M1306.93,120.52V17.71h16.67V1.04h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
+        </g>
+      </svg>
+    </h1>
 
     <div class="triangle" />
+    <div class="triangle tri2" />
     <div class="controls">
        <button 
           class="pattern-btn" 
@@ -243,8 +246,10 @@ const palettes = [
 
 function togglePatternLock() {
   patternLocked.value = !patternLocked.value;
+}
 
-  cyclePattern();
+function getRandomPatternIndex() {
+  return Math.floor(Math.random() * patterns.length);
 }
 
 // Particle system for ephemeral effects
@@ -2478,6 +2483,12 @@ function cyclePattern() {
   
   currentPatternIndex.value = (currentPatternIndex.value + 1) % patterns.length;
   currentPatternName.value = patterns[currentPatternIndex.value].name;
+
+  // Get random pattern that's different from current
+  let newIndex;
+  do {
+    newIndex = getRandomPatternIndex();
+  } while (newIndex === currentPatternIndex.value && patterns.length > 1);
   
   if (patternTimer) {
     clearInterval(patternTimer);
@@ -2581,14 +2592,20 @@ function handleTouchEnd(e) {
 function handleKeyDown(e) {
   switch(e.key) {
     case 'ArrowRight': {
-      cyclePattern();
+      cyclePattern(); // Now random
       break;
     }
     case 'ArrowLeft': {
       if(patternLocked.value) return;
-
-      currentPatternIndex.value = (currentPatternIndex.value - 1 + patterns.length) % patterns.length;
-      currentPatternName.value = patterns[currentPatternIndex.value].name;
+      
+      // Get random pattern different from current
+      let newIndex;
+      do {
+        newIndex = getRandomPatternIndex();
+      } while (newIndex === currentPatternIndex.value && patterns.length > 1);
+      
+      currentPatternIndex.value = newIndex;
+      currentPatternName.value = patterns[newIndex].name;
       break;
     }
     case 'ArrowUp': {
@@ -2637,6 +2654,10 @@ onMounted(() => {
   window.addEventListener('resize', resize);
   window.addEventListener('keydown', handleKeyDown);  // Add this line
   
+
+  // Set random initial pattern
+  currentPatternIndex.value = getRandomPatternIndex();
+  currentPatternName.value = patterns[currentPatternIndex.value].name;
   // Mouse events
   canvas.value.addEventListener('mousemove', handleMouseMove);
   canvas.value.addEventListener('mousedown', handleMouseDown);
@@ -2693,7 +2714,7 @@ onUnmounted(() => {
   position: absolute;
   z-index: 10;
   width: 350px;
-  top: 20px;
+  top: 30px;
   left: 20px;
 }
 
@@ -2704,15 +2725,18 @@ onUnmounted(() => {
   border-width: 0 0 200px 400px; /* height, then width */
   border-color: transparent transparent #000000 transparent;
   left: 0; top: 0;
-  z-index: 1;
+  z-index: 2;
   transform: rotate(180deg);
   position: absolute;
 }
 
-.triangle p {
-  color: lime;
-  z-index: 2;
-  position: relative;
+.triangle.tri2 {
+  border-color: transparent transparent white transparent;
+  z-index: 1;
+  left: -13px;
+  top: 4px;
+  border-width: 0 0 210px 410px;
+  opacity: 0.4;
 }
 
 .visualizer-app {
