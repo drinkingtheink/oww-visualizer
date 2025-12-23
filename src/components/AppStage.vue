@@ -256,7 +256,7 @@ const palettes = [
   },
   {
     name: 'Deep Space',
-    colors: ['#0d1b2a', '#1b263b', '#415a77', '#778da9', '#e0e1dd']
+    colors: ['#0d1b2a', '#1b263b', '#415a77', '#778da9', '#e0e1dd', '#FF0000']
   },
   {
     name: 'Retro Wave',
