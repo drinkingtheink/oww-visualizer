@@ -318,6 +318,18 @@ const palettes = [
     name: 'Radioactive',
     colors: ['#ccff00', '#ffff00', '#ff9900', '#ff0000', '#00ff00']
   },
+  {
+  name: 'Blue Flame',
+  colors: ['#0066ff', '#0099ff', '#ff6600', '#ff8c00', '#ffa500', '#00bfff']
+  },
+  {
+  name: 'Tropical Storm',
+  colors: ['#ffff00', '#ffd700', '#00ff00', '#00ff7f', '#0099ff', '#00bfff', '#7fff00']
+  },
+  {
+  name: 'Taxi Cab',
+  colors: ['#ffff00', '#ffd700', '#000000', '#ffffff', '#ffcc00']
+  }
 ];
 
 function togglePatternLock() {
