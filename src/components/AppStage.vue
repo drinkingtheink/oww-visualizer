@@ -3130,5 +3130,6 @@ canvas {
 #oww-typog-modal {
   stroke: black;
   stroke-width: 10px;
+  overflow: visible;
 }
 </style>
