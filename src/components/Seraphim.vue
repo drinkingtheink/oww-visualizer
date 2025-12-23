@@ -268,7 +268,7 @@ data() {
   position: absolute;
   padding: 0 20px;
   width: 300px;
-  top: 5rem;
+  top: 3rem;
   /* pointer-events: none; */
 }
 
