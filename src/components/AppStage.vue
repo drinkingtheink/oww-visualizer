@@ -515,6 +515,7 @@ const patterns = [
   { name: 'Osmosis', draw: drawLiquidCrystals },
   { name: 'Petri', draw: drawEnergyShards },
   { name: 'Boombox', draw: drawBoombox },
+  { name: 'Moiré', draw: drawMoire },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -669,6 +670,353 @@ function applyWarpDistortion(x, y) {
     y: y + totalDy,
     scale: totalScale
   };
+}
+
+function drawMoire() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  
+  ctx.save();
+  
+  // MINIMAL MODE - simple static Moiré
+  if (!audioLoaded.value || isPaused.value) {
+    const lineCount = 40;
+    const spacing = Math.min(width, height) / lineCount;
+    
+    // First layer - vertical lines
+    ctx.strokeStyle = getColor(0, 1, 0.3);
+    ctx.lineWidth = 2;
+    
+    for (let i = 0; i < lineCount; i++) {
+      const x = i * spacing;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    
+    // Second layer - slightly rotated lines
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(Math.PI / 12 + breathePhase * 0.01);
+    ctx.translate(-centerX, -centerY);
+    
+    ctx.strokeStyle = getColor(500, 1000, 0.3);
+    
+    for (let i = 0; i < lineCount; i++) {
+      const x = (i - lineCount / 2) * spacing + centerX;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+    ctx.restore();
+    return;
+  }
+  
+  // ACTIVE MODE - dynamic Moiré interference
+  
+  // Pattern types to layer
+  const patterns = [
+    { type: 'concentric', count: 30 },
+    { type: 'radial', count: 36 },
+    { type: 'grid', count: 40 },
+    { type: 'waves', count: 25 }
+  ];
+  
+  // Draw multiple overlapping patterns
+  patterns.forEach((pattern, patternIdx) => {
+    const dataIndex = Math.floor((patternIdx / patterns.length) * bufferLength);
+    const value = dataArray[dataIndex] / 255;
+    
+    // Pattern opacity and rotation based on audio
+    const baseAlpha = 0.15 + value * 0.25;
+    const patternRotation = rotationAngle * (patternIdx + 1) * 0.3 + value * Math.PI;
+    
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    
+    // Apply warp distortion offset to center
+    if (mouseX && mouseY && warpIntensity > 0.01) {
+      const dx = mouseX - centerX;
+      const dy = mouseY - centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxDistance = Math.min(width, height) * 0.5;
+      
+      if (distance < maxDistance) {
+        const strength = (1 - distance / maxDistance) * warpIntensity;
+        ctx.translate(dx * strength * 0.1, dy * strength * 0.1);
+      }
+    }
+    
+    ctx.rotate(patternRotation);
+    
+    switch (pattern.type) {
+      case 'concentric':
+        drawConcentricPattern(pattern.count, value, baseAlpha, patternIdx, patterns.length);
+        break;
+      case 'radial':
+        drawRadialPattern(pattern.count, value, baseAlpha, patternIdx, patterns.length);
+        break;
+      case 'grid':
+        drawGridPattern(pattern.count, value, baseAlpha, patternIdx, patterns.length, width, height);
+        break;
+      case 'waves':
+        drawWavePattern(pattern.count, value, baseAlpha, patternIdx, patterns.length, width, height);
+        break;
+    }
+    
+    ctx.restore();
+  });
+  
+  // Helper: Concentric circles
+  function drawConcentricPattern(count, value, baseAlpha, idx, total) {
+    const maxRadius = Math.min(width, height) * 0.8;
+    const spacing = maxRadius / count;
+    
+    for (let i = 0; i < count; i++) {
+      const radius = spacing * (i + 1);
+      const ringValue = dataArray[Math.floor((i / count) * bufferLength)] / 255;
+      
+      // Line thickness varies with audio
+      const thickness = 1 + ringValue * 4;
+      const alpha = baseAlpha + ringValue * 0.2;
+      
+      ctx.strokeStyle = getColor(idx * 200 + i * 10, total * 200 + count * 10, alpha);
+      ctx.lineWidth = thickness;
+      
+      // Glow for high energy rings
+      if (ringValue > 0.7) {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = getColor(idx * 200 + i * 10, total * 200, ringValue * 0.5);
+      }
+      
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+  
+  // Helper: Radial lines
+  function drawRadialPattern(count, value, baseAlpha, idx, total) {
+    const maxLength = Math.min(width, height) * 0.9;
+    
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const lineValue = dataArray[Math.floor((i / count) * bufferLength)] / 255;
+      
+      // Line extends based on audio
+      const length = maxLength * (0.5 + lineValue * 0.5);
+      const thickness = 1 + lineValue * 3;
+      const alpha = baseAlpha + lineValue * 0.2;
+      
+      const x = Math.cos(angle) * length;
+      const y = Math.sin(angle) * length;
+      
+      // Gradient along line
+      const gradient = ctx.createLinearGradient(0, 0, x, y);
+      gradient.addColorStop(0, getColor(idx * 200 + i * 8, total * 200 + count * 8, alpha * 0.5));
+      gradient.addColorStop(0.5, getColor(idx * 200 + i * 8 + 50, total * 200 + count * 8, alpha));
+      gradient.addColorStop(1, getColor(idx * 200 + i * 8, total * 200 + count * 8, alpha * 0.3));
+      
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = thickness;
+      
+      if (lineValue > 0.75) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = getColor(idx * 200 + i * 8, total * 200, lineValue * 0.4);
+      }
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+  
+  // Helper: Grid pattern
+  function drawGridPattern(count, value, baseAlpha, idx, total, w, h) {
+    const spacing = Math.min(w, h) / count;
+    const size = Math.min(w, h) * 0.9;
+    
+    // Vertical lines
+    for (let i = -count / 2; i <= count / 2; i++) {
+      const x = i * spacing;
+      const lineIdx = Math.abs(i);
+      const lineValue = dataArray[Math.floor((lineIdx / (count / 2)) * bufferLength)] / 255;
+      
+      const thickness = 1 + lineValue * 3;
+      const alpha = baseAlpha + lineValue * 0.15;
+      
+      // Apply warp to line position
+      const warped = applyWarpDistortion(centerX + x, centerY);
+      const warpedX = warped.x - centerX;
+      
+      ctx.strokeStyle = getColor(idx * 200 + lineIdx * 5, total * 200, alpha);
+      ctx.lineWidth = thickness;
+      
+      ctx.beginPath();
+      ctx.moveTo(warpedX, -size / 2);
+      ctx.lineTo(warpedX, size / 2);
+      ctx.stroke();
+    }
+    
+    // Horizontal lines
+    for (let i = -count / 2; i <= count / 2; i++) {
+      const y = i * spacing;
+      const lineIdx = Math.abs(i);
+      const lineValue = dataArray[Math.floor((lineIdx / (count / 2)) * bufferLength)] / 255;
+      
+      const thickness = 1 + lineValue * 3;
+      const alpha = baseAlpha + lineValue * 0.15;
+      
+      // Apply warp to line position
+      const warped = applyWarpDistortion(centerX, centerY + y);
+      const warpedY = warped.y - centerY;
+      
+      ctx.strokeStyle = getColor(idx * 200 + lineIdx * 5 + 100, total * 200, alpha);
+      ctx.lineWidth = thickness;
+      
+      ctx.beginPath();
+      ctx.moveTo(-size / 2, warpedY);
+      ctx.lineTo(size / 2, warpedY);
+      ctx.stroke();
+    }
+  }
+  
+  // Helper: Wave pattern
+  function drawWavePattern(count, value, baseAlpha, idx, total, w, h) {
+    const size = Math.min(w, h) * 0.9;
+    const spacing = size / count;
+    
+    for (let i = 0; i < count; i++) {
+      const y = (i - count / 2) * spacing;
+      const waveValue = dataArray[Math.floor((i / count) * bufferLength)] / 255;
+      
+      const amplitude = 30 + waveValue * 60;
+      const frequency = 3 + waveValue * 5;
+      const thickness = 1 + waveValue * 3;
+      const alpha = baseAlpha + waveValue * 0.2;
+      
+      ctx.strokeStyle = getColor(idx * 200 + i * 12, total * 200 + count * 12, alpha);
+      ctx.lineWidth = thickness;
+      
+      if (waveValue > 0.7) {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = getColor(idx * 200 + i * 12, total * 200, waveValue * 0.4);
+      }
+      
+      // Draw sine wave
+      ctx.beginPath();
+      const segments = 100;
+      for (let s = 0; s <= segments; s++) {
+        const t = (s / segments) * 2 - 1; // -1 to 1
+        const x = t * size / 2;
+        const waveY = y + Math.sin(t * Math.PI * frequency + rotationAngle * 2) * amplitude;
+        
+        // Apply warp to wave points
+        const warped = applyWarpDistortion(centerX + x, centerY + waveY);
+        const warpedX = warped.x - centerX;
+        const warpedY = warped.y - centerY;
+        
+        if (s === 0) ctx.moveTo(warpedX, warpedY);
+        else ctx.lineTo(warpedX, warpedY);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+  
+  // Draw interference hotspots - bright areas where patterns align
+  const hotspotCount = 8;
+  for (let h = 0; h < hotspotCount; h++) {
+    const angle = (h / hotspotCount) * Math.PI * 2 + rotationAngle * 0.8;
+    const dataIndex = Math.floor((h / hotspotCount) * bufferLength);
+    const value = dataArray[dataIndex] / 255;
+    
+    if (value > 0.65) {
+      const distance = (Math.min(width, height) * 0.3) + value * (Math.min(width, height) * 0.2);
+      const x = centerX + Math.cos(angle) * distance;
+      const y = centerY + Math.sin(angle) * distance;
+      
+      // Apply warp to hotspot
+      const warped = applyWarpDistortion(x, y);
+      
+      // Interference glow
+      const glowSize = 20 + value * 40;
+      const glowGradient = ctx.createRadialGradient(warped.x, warped.y, 0, warped.x, warped.y, glowSize);
+      glowGradient.addColorStop(0, getColor(h * 100, hotspotCount * 100, value * 0.8));
+      glowGradient.addColorStop(0.5, getColor(h * 100 + 50, hotspotCount * 100, value * 0.5));
+      glowGradient.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(warped.x, warped.y, glowSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Bright center
+      ctx.fillStyle = getColor(h * 100 + 150, hotspotCount * 100, value);
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = getColor(h * 100 + 150, hotspotCount * 100, value * 0.8);
+      ctx.beginPath();
+      ctx.arc(warped.x, warped.y, 4 + value * 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      
+      // Spawn particles at very high energy
+      if (value > 0.85 && Math.random() > 0.9) {
+        createParticles(warped.x, warped.y, value, h, hotspotCount, 3);
+      }
+    }
+  }
+  
+  // Central interference core
+  const coreValue = dataArray[Math.floor(bufferLength / 2)] / 255;
+  if (coreValue > 0.5) {
+    const coreSize = 15 + coreValue * 30;
+    const coreRotation = rotationAngle * 3;
+    
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(coreRotation);
+    
+    // Rotating interference lines
+    const coreLines = 12;
+    for (let cl = 0; cl < coreLines; cl++) {
+      const angle = (cl / coreLines) * Math.PI * 2;
+      const length = coreSize * 2;
+      
+      ctx.strokeStyle = getColor(cl * 60, coreLines * 60, coreValue * 0.8);
+      ctx.lineWidth = 2 + coreValue * 3;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = getColor(cl * 60, coreLines * 60, coreValue * 0.5);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(angle) * length, Math.sin(angle) * length);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    
+    // Core circle
+    ctx.fillStyle = getColor(300, 600, coreValue);
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = getColor(300, 600, coreValue);
+    ctx.beginPath();
+    ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    ctx.restore();
+  }
+  
+  ctx.restore();
 }
 
 function drawAuroraWaves() {
@@ -971,20 +1319,27 @@ function drawPlasmaStorm() {
     const vibratePhase = Math.sin(breathePhase * 0.2 + i * 0.8);
     const isVibrating = audioLoaded.value && !isPaused.value && vibratePhase > -0.3; // 60% active
     
-    // RANDOM distribution - only ~1/3 of speakers create rings
+    // RANDOM distribution - only ~75% of speakers create rings
     // Use index-based seed for consistent assignment
     const ringsSeed = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
-    const createsRings = (ringsSeed - Math.floor(ringsSeed)) < 0.75; // 1/3 probability
+    const createsRings = (ringsSeed - Math.floor(ringsSeed)) < 0.75;
+    
+    // Base grid position
+    const baseX = (0.15 + (i % 5) * 0.175) * width; // Grid layout - 5 columns
+    const baseY = (0.2 + Math.floor(i / 5) * 0.2) * height; // 4 rows
+    
+    // Apply warp distortion to position
+    const warped = applyWarpDistortion(baseX, baseY);
     
     orbs.push({
-      x: (0.15 + (i % 5) * 0.175) * width, // Grid layout - 5 columns
-      y: (0.2 + Math.floor(i / 5) * 0.2) * height, // 4 rows
-      radius: 50 + smoothValue * 80,
+      x: warped.x,
+      y: warped.y,
+      radius: (50 + smoothValue * 80) * warped.scale,
       value: smoothValue,
       colorIndex: i,
       isVibrating: isVibrating,
       vibratePhase: vibratePhase,
-      createsRings: createsRings // NEW - random assignment
+      createsRings: createsRings
     });
     i++;
   }
@@ -1193,7 +1548,7 @@ function drawPlasmaStorm() {
         ctx.beginPath();
         ctx.moveTo(baseX, baseY);
         ctx.lineTo(tipX, tipY);
-        ctx.stroke();
+      ctx.stroke();
         ctx.shadowBlur = 0;
       }
     }
