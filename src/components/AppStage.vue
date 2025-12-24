@@ -3631,7 +3631,7 @@ canvas {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 20, 20, 0.3);
+  background: rgba(20, 20, 20, 0.6);
   backdrop-filter: blur(20px) saturate(150%);
   padding: 10px 20px;
   border-radius: 20px;
