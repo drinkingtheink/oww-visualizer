@@ -163,37 +163,85 @@
                 <span class="symbol">{{ symbol }}</span>
             </div>
         </div>
+
+        <div 
+            v-show="!isPaused"
+            v-for="(bubble) in speechBubbles" 
+            :key="`bubble-${bubble.id}`"
+            class="speech-bubble"
+            :style="getBubbleStyle(bubble)"
+        >
+            {{ bubble.text }}
+        </div>
     </div>
 </template>
 
 <script>
 const symbols = ['✧', '☆', '◇', '○', '△', '☾', '⊹', '✧', '☆', '◇'];
 const totalSymbols = symbols.length;
+const MYSTICAL_SYMBOLS = [
+    '✧', '◇', '○', '△', '☾', '⊹', '◈', '◉', '◊',
+    '⬡', '⬢', '⬣', '⬥', '⬦', '⬧', '⬨', '⬩', '⬪',
+    '☽', '☉', '☼', '✦','✱', '✲', '✳', '✴', '✵', '✶', '✷',
+    '✸', '✹', '✺', '✻', '✼', '✽', '✾',
+    '⚞', '⚟', '⟡', '⟢', '⟣'
+];
+
+function generateSymbolWord() {
+    const symbolCount = Math.floor(Math.random() * 3) + 2; // 2-5 symbols
+    let word = '';
+    
+    for (let i = 0; i < symbolCount; i++) {
+        const symbol = MYSTICAL_SYMBOLS[Math.floor(Math.random() * MYSTICAL_SYMBOLS.length)];
+        word += symbol;
+        
+        // Sometimes add a space for readability (20% chance)
+        if (i < symbolCount - 1 && Math.random() > 0.8) {
+            word += ' ';
+        }
+    }
+    
+    return word;
+}
+
+function generateSymbolPhrase() {
+    const wordCount = Math.floor(Math.random() * 2) + 1; // 1-2 words
+    const words = [];
+    
+    for (let i = 0; i < wordCount; i++) {
+        words.push(generateSymbolWord());
+    }
+    
+    return words.join('  '); // Double space between symbol words
+}
 
 export default {
-name: 'seraphimn',
-props: {
-    audioData: {
-        type: Uint8Array,
-        default: null
-    },
-    audioLoaded: {
-        type: Boolean,
-        default: false
-    },
-    isPaused: {
-        type: Boolean,
-        default: true
-    }
-},
-data() {
-    return {
-            counter: 0,
-            intervalId: null,
-            doAnimate: false,
-            symbols
+    name: 'seraphimn',
+    props: {
+        audioData: {
+            type: Uint8Array,
+            default: null
+        },
+        audioLoaded: {
+            type: Boolean,
+            default: false
+        },
+        isPaused: {
+            type: Boolean,
+            default: true
         }
     },
+    data() {
+        return {
+                counter: 0,
+                intervalId: null,
+                doAnimate: false,
+                symbols,
+                speechBubbles: [],
+                bubbleIdCounter: 0,
+                speechIntervalId: null
+            }
+        },
     mounted() {
         this.intervalId = setInterval(() => {
             this.doAnimate = true
@@ -207,6 +255,8 @@ data() {
         setTimeout(() => {
             this.doAnimate = false
         }, 5000)
+
+        this.startSpeaking();
     },
     beforeUnmount() {
         clearInterval(this.intervalId)
@@ -219,6 +269,58 @@ data() {
                 '--angle': `${angle}deg`,
                 '--opposite-angle': `${angle + 180}deg`,
                 animationDelay: `${(index % 2) * 0.3}s` // Alternate timing for pairs
+            };
+        },
+        startSpeaking() {
+            // Speak randomly every 5-15 seconds
+            const scheduleNextSpeech = () => {
+                const delay = (Math.random() * 10000) + 5000; // 5-15 seconds
+                
+                this.speechIntervalId = setTimeout(() => {
+                    this.speak();
+                    scheduleNextSpeech();
+                }, delay);
+            };
+            
+            scheduleNextSpeech();
+        },
+        speak() {
+            const phrase = generateSymbolPhrase();
+            const bubble = {
+                id: this.bubbleIdCounter++,
+                text: phrase,
+                x: Math.random() * 60 - 30, // -30 to 30
+                y: 0, // Changed: start at seraph level, will move down
+                createdAt: Date.now(),
+                // Random color tint
+                hue: Math.random() * 360
+            };
+            
+            this.speechBubbles.push(bubble);
+            
+            // Remove bubble after 4 seconds
+            setTimeout(() => {
+                const index = this.speechBubbles.findIndex(b => b.id === bubble.id);
+                if (index !== -1) {
+                    this.speechBubbles.splice(index, 1);
+                }
+            }, 4000);
+        },
+        getBubbleStyle(bubble) {
+            const age = Date.now() - bubble.createdAt;
+            const progress = Math.min(age / 4000, 1); // 0 to 1 over 4 seconds
+            
+            // Float downward with slight drift
+            const xDrift = Math.sin(progress * Math.PI * 2) * 10;
+            const yOffset = progress * 120; // Changed: positive for downward movement
+            
+            // Fade out near the end
+            const opacity = progress < 0.75 ? 1 : (1 - (progress - 0.75) / 0.25);
+            
+            return {
+                transform: `translate(${bubble.x + xDrift}px, ${yOffset}px)`,
+                opacity: opacity,
+                '--bubble-hue': bubble.hue
             };
         }
     },
@@ -270,12 +372,19 @@ data() {
   width: 300px;
   top: 3rem;
   /* pointer-events: none; */
+  z-index: 100;
+}
+
+.seraphim-wrapper:hover {
+  filter: blur(5px);
+  
 }
 
 .animate svg {
     animation: float 3s infinite alternate;
     z-index: 2;
     position: relative;
+    transition: all 0.4s;
 }
 
 .seraphim-wrapper:hover #CLOSED-EYE {
@@ -651,5 +760,101 @@ data() {
 .symbol-wrapper:nth-child(10) .symbol {
   color: #8B5CF6; /* Violet */
   text-shadow: 0 0 10px rgba(139, 92, 246, 0.7);
+}
+
+/* Speech bubbles - mystical symbol text */
+.speech-bubble {
+    position: absolute;
+    top: 70%;
+    left: 72px;
+    padding: 12px 10px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    border-radius: 16px;
+    font-family: 'Arial', sans-serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        0 0 30px rgba(255, 255, 255, 0.6);
+    border: 2px solid black;
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+    opacity: 0;
+}
+
+/* Mystical glow effect with dynamic color */
+.animate .speech-bubble {
+    opacity: 1;
+    background: linear-gradient(
+        135deg, 
+        hsla(var(--bubble-hue), 70%, 95%, 0.98), 
+        hsla(calc(var(--bubble-hue) + 30), 60%, 90%, 0.98)
+    );
+    box-shadow: 
+        0 4px 16px hsla(var(--bubble-hue), 80%, 50%, 0.3),
+        0 0 40px hsla(var(--bubble-hue), 70%, 60%, 0.2),
+        inset 0 2px 4px rgba(255, 255, 255, 0.9);
+    color: hsl(var(--bubble-hue), 60%, 35%);
+    text-shadow: 
+        0 0 2px hsla(var(--bubble-hue), 80%, 70%, 0.5),
+        0 0 4px hsla(var(--bubble-hue), 70%, 80%, 0.3);
+    border: 2px solid hsl(var(--bubble-hue), 60%, 70%);
+}
+
+/* Symbol animation - gentle pulse */
+.animate .speech-bubble {
+    animation: symbol-pulse 2s ease-in-out infinite;
+}
+
+@keyframes symbol-pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.05);
+        filter: brightness(1.1);
+    }
+}
+
+/* Arrow BORDER (black outline) */
+.speech-bubble::before {
+    content: '';
+    position: absolute;
+    top: -13px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-bottom: 13px solid black;
+    z-index: 1;
+}
+
+/* Arrow FILL (white/colored inside) */
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid rgba(255, 255, 255, 0.95);
+    z-index: 2;
+}
+
+.animate .speech-bubble::before {
+    border-bottom-color: hsl(var(--bubble-hue), 60%, 35%); /* Colored border */
+}
+
+.animate .speech-bubble::after {
+    border-bottom-color: hsla(var(--bubble-hue), 70%, 95%, 0.98); /* Colored fill */
 }
 </style>
