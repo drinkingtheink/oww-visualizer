@@ -272,9 +272,8 @@ export default {
             };
         },
         startSpeaking() {
-            // Speak randomly every 5-15 seconds
             const scheduleNextSpeech = () => {
-                const delay = (Math.random() * 10000) + 5000; // 5-15 seconds
+                const delay = (Math.random() * 40000) + 20000;
                 
                 this.speechIntervalId = setTimeout(() => {
                     this.speak();
