@@ -505,6 +505,7 @@ function drawParticles() {
 
 // Pattern Definitions
 const patterns = [
+  { name: 'Swarm', draw: drawParticleSwarm },
   { name: 'Spkrwall', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
@@ -670,6 +671,329 @@ function applyWarpDistortion(x, y) {
     y: y + totalDy,
     scale: totalScale
   };
+}
+
+function drawParticleSwarm() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  
+  ctx.save();
+  
+  // Initialize swarm particles (store in a persistent way)
+  if (!window.swarmParticles || window.swarmParticles.length === 0) {
+    window.swarmParticles = [];
+    const particleCount = 200;
+    
+    for (let i = 0; i < particleCount; i++) {
+      window.swarmParticles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+        hue: Math.random() * 1000,
+        size: 2 + Math.random() * 3,
+        group: Math.floor(Math.random() * 5) // 5 different swarms
+      });
+    }
+  }
+  
+  const particles = window.swarmParticles;
+  const avgEnergy = audioLoaded.value && !isPaused.value 
+    ? dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255 
+    : 0.5;
+  
+  // Swarm behavior parameters
+  const separationDistance = 30;
+  const alignmentDistance = 50;
+  const cohesionDistance = 80;
+  const maxSpeed = audioLoaded.value && !isPaused.value ? 3 + avgEnergy * 4 : 2;
+  const maxForce = 0.1;
+  
+  // Attractors - based on audio frequency bands
+  const attractors = [];
+  const attractorCount = 5;
+  for (let a = 0; a < attractorCount; a++) {
+    const dataIndex = Math.floor((a / attractorCount) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.5;
+    
+    const angle = (a / attractorCount) * Math.PI * 2 + rotationAngle * 0.5;
+    const distance = 100 + value * 200;
+    
+    attractors.push({
+      x: width / 2 + Math.cos(angle) * distance,
+      y: height / 2 + Math.sin(angle) * distance,
+      strength: value,
+      group: a
+    });
+  }
+  
+  // Mouse influence
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    attractors.push({
+      x: mouseX,
+      y: mouseY,
+      strength: warpIntensity * 2,
+      group: -1 // Attracts all groups
+    });
+  }
+  
+  // Update particles
+  particles.forEach((particle, i) => {
+    let separation = { x: 0, y: 0 };
+    let alignment = { x: 0, y: 0 };
+    let cohesion = { x: 0, y: 0 };
+    let separationCount = 0;
+    let alignmentCount = 0;
+    let cohesionCount = 0;
+    
+    // Calculate forces from nearby particles
+    particles.forEach((other, j) => {
+      if (i === j) return;
+      
+      const dx = particle.x - other.x;
+      const dy = particle.y - other.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance === 0) return;
+      
+      // Separation - avoid crowding
+      if (distance < separationDistance) {
+        separation.x += dx / distance;
+        separation.y += dy / distance;
+        separationCount++;
+      }
+      
+      // Only align and cohere with same group
+      if (particle.group === other.group) {
+        // Alignment - steer towards average heading
+        if (distance < alignmentDistance) {
+          alignment.x += other.vx;
+          alignment.y += other.vy;
+          alignmentCount++;
+        }
+        
+        // Cohesion - steer towards average position
+        if (distance < cohesionDistance) {
+          cohesion.x += other.x;
+          cohesion.y += other.y;
+          cohesionCount++;
+        }
+      }
+    });
+    
+    // Average the forces
+    if (separationCount > 0) {
+      separation.x /= separationCount;
+      separation.y /= separationCount;
+      const sepMag = Math.sqrt(separation.x * separation.x + separation.y * separation.y);
+      if (sepMag > 0) {
+        separation.x = (separation.x / sepMag) * maxSpeed - particle.vx;
+        separation.y = (separation.y / sepMag) * maxSpeed - particle.vy;
+      }
+    }
+    
+    if (alignmentCount > 0) {
+      alignment.x /= alignmentCount;
+      alignment.y /= alignmentCount;
+      const alignMag = Math.sqrt(alignment.x * alignment.x + alignment.y * alignment.y);
+      if (alignMag > 0) {
+        alignment.x = (alignment.x / alignMag) * maxSpeed - particle.vx;
+        alignment.y = (alignment.y / alignMag) * maxSpeed - particle.vy;
+      }
+    }
+    
+    if (cohesionCount > 0) {
+      cohesion.x /= cohesionCount;
+      cohesion.y /= cohesionCount;
+      const cohDx = cohesion.x - particle.x;
+      const cohDy = cohesion.y - particle.y;
+      const cohMag = Math.sqrt(cohDx * cohDx + cohDy * cohDy);
+      if (cohMag > 0) {
+        cohesion.x = (cohDx / cohMag) * maxSpeed - particle.vx;
+        cohesion.y = (cohDy / cohMag) * maxSpeed - particle.vy;
+      }
+    }
+    
+    // Limit forces
+    const limitForce = (force) => {
+      const mag = Math.sqrt(force.x * force.x + force.y * force.y);
+      if (mag > maxForce) {
+        force.x = (force.x / mag) * maxForce;
+        force.y = (force.y / mag) * maxForce;
+      }
+      return force;
+    };
+    
+    separation = limitForce(separation);
+    alignment = limitForce(alignment);
+    cohesion = limitForce(cohesion);
+    
+    // Apply weights to forces
+    const sepWeight = 1.5;
+    const alignWeight = 1.0;
+    const cohWeight = 1.0;
+    
+    particle.vx += separation.x * sepWeight + alignment.x * alignWeight + cohesion.x * cohWeight;
+    particle.vy += separation.y * sepWeight + alignment.y * alignWeight + cohesion.y * cohWeight;
+    
+    // Attraction to group attractor
+    const attractor = attractors.find(a => a.group === particle.group || a.group === -1);
+    if (attractor) {
+      const dx = attractor.x - particle.x;
+      const dy = attractor.y - particle.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > 0) {
+        const attractForce = attractor.strength * 0.05;
+        particle.vx += (dx / distance) * attractForce;
+        particle.vy += (dy / distance) * attractForce;
+      }
+    }
+    
+    // Limit speed
+    const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+    if (speed > maxSpeed) {
+      particle.vx = (particle.vx / speed) * maxSpeed;
+      particle.vy = (particle.vy / speed) * maxSpeed;
+    }
+    
+    // Update position
+    particle.x += particle.vx;
+    particle.y += particle.vy;
+    
+    // Wrap around edges
+    if (particle.x < 0) particle.x = width;
+    if (particle.x > width) particle.x = 0;
+    if (particle.y < 0) particle.y = height;
+    if (particle.y > height) particle.y = 0;
+    
+    // Update hue
+    particle.hue += avgEnergy * 2;
+  });
+  
+  // Draw connections between nearby particles
+  if (audioLoaded.value && !isPaused.value) {
+    particles.forEach((particle, i) => {
+      particles.forEach((other, j) => {
+        if (i >= j) return;
+        if (particle.group !== other.group) return;
+        
+        const dx = particle.x - other.x;
+        const dy = particle.y - other.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 60) {
+          const alpha = (1 - distance / 60) * 0.3;
+          
+          ctx.strokeStyle = getColor(
+            particle.hue + particle.group * 200,
+            1000,
+            alpha
+          );
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(particle.x, particle.y);
+          ctx.lineTo(other.x, other.y);
+          ctx.stroke();
+        }
+      });
+    });
+  }
+  
+  // Draw particles
+  particles.forEach((particle) => {
+    const intensity = audioLoaded.value && !isPaused.value ? 0.7 : 0.5;
+    
+    // Particle glow
+    if (audioLoaded.value && !isPaused.value && avgEnergy > 0.6) {
+      const glowSize = particle.size * 3;
+      const glowGradient = ctx.createRadialGradient(
+        particle.x, particle.y, 0,
+        particle.x, particle.y, glowSize
+      );
+      glowGradient.addColorStop(0, getColor(particle.hue + particle.group * 200, 1000, intensity * 0.5));
+      glowGradient.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, glowSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Particle body
+    ctx.fillStyle = getColor(particle.hue + particle.group * 200, 1000, intensity);
+    ctx.shadowBlur = audioLoaded.value && !isPaused.value ? 8 : 4;
+    ctx.shadowColor = getColor(particle.hue + particle.group * 200, 1000, intensity * 0.8);
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Direction indicator (triangle pointing forward)
+    if (audioLoaded.value && !isPaused.value) {
+      const angle = Math.atan2(particle.vy, particle.vx);
+      const triSize = particle.size * 1.5;
+      
+      ctx.save();
+      ctx.translate(particle.x, particle.y);
+      ctx.rotate(angle);
+      
+      ctx.fillStyle = getColor(particle.hue + particle.group * 200 + 100, 1000, intensity * 0.8);
+      ctx.beginPath();
+      ctx.moveTo(triSize, 0);
+      ctx.lineTo(-triSize * 0.5, triSize * 0.5);
+      ctx.lineTo(-triSize * 0.5, -triSize * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+    }
+  });
+  
+  // Draw attractors
+  attractors.forEach((attractor) => {
+    if (attractor.group === -1) return; // Skip mouse attractor
+    
+    const attractorSize = 8 + attractor.strength * 20;
+    
+    // Attractor glow
+    const glowGradient = ctx.createRadialGradient(
+      attractor.x, attractor.y, 0,
+      attractor.x, attractor.y, attractorSize * 2
+    );
+    glowGradient.addColorStop(0, getColor(attractor.group * 200, 1000, attractor.strength * 0.6));
+    glowGradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = glowGradient;
+    ctx.beginPath();
+    ctx.arc(attractor.x, attractor.y, attractorSize * 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Attractor core
+    ctx.fillStyle = getColor(attractor.group * 200 + 100, 1000, attractor.strength);
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = getColor(attractor.group * 200 + 100, 1000, attractor.strength);
+    ctx.beginPath();
+    ctx.arc(attractor.x, attractor.y, attractorSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Pulsing rings
+    const ringCount = 3;
+    for (let r = 1; r <= ringCount; r++) {
+      const ringPhase = (breathePhase + r * 0.5) % (Math.PI * 2);
+      const ringRadius = attractorSize + (ringPhase / (Math.PI * 2)) * attractorSize * 2;
+      const ringAlpha = (1 - ringPhase / (Math.PI * 2)) * attractor.strength * 0.5;
+      
+      ctx.strokeStyle = getColor(attractor.group * 200, 1000, ringAlpha);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(attractor.x, attractor.y, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+  
+  ctx.restore();
 }
 
 function drawMoire() {
@@ -3067,11 +3391,16 @@ function handleTouchEnd(e) {
 function handleKeyDown(e) {
   switch(e.key) {
     case 'ArrowRight': {
-      cyclePattern(); // Now random
+      if(patternLocked.value) {
+        patternLocked.value = false;
+      }
+      cyclePattern();
       break;
     }
     case 'ArrowLeft': {
-      if(patternLocked.value) return;
+      if(patternLocked.value) {
+        patternLocked.value = false;
+      }
       
       // Get random pattern different from current
       let newIndex;
