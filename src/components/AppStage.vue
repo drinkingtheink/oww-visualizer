@@ -3024,7 +3024,7 @@ canvas {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(6px) brightness(1.5);
   display: flex;
   align-items: center;
