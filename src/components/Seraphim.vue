@@ -374,9 +374,8 @@ export default {
   z-index: 100;
 }
 
-.seraphim-wrapper:hover {
+.animate.seraphim-wrapper:hover {
   filter: blur(5px);
-  
 }
 
 .animate svg {
