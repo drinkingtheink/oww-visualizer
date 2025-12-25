@@ -39,7 +39,7 @@
         </svg>
         <div class="modal-subtitle">Debut Album - "Let Slip" - Available Everywhere</div>
         <button class="play-modal-btn" @click="startPlayback">
-          ▶ Play "Let Slip"
+          {{ playButtonText }}
         </button>
       </div>
     </div>
@@ -341,6 +341,16 @@ function getRandomPatternIndex() {
 const currentTypographyColor = computed(() => {
   const palette = palettes[currentPaletteIndex.value].colors;
   return palette[typographyColorIndex.value % palette.length];
+});
+
+const playButtonText = computed(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const trackParam = urlParams.get('track');
+
+  if (trackParam) {
+    return `▶ Play "Let Slip" - Track ${trackParam}`;
+  }
+  return '▶ Play "Let Slip"';
 });
 
 // Particle system for ephemeral effects
