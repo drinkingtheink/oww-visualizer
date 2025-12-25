@@ -535,6 +535,7 @@ const patterns = [
   { name: 'Boombox', draw: drawBoombox },
   { name: 'Moiré', draw: drawMoire },
   { name: 'Circuitous', draw: drawCircuitBoard },
+  { name: 'Orbital', draw: drawCosmicSphere },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -1922,6 +1923,423 @@ function drawCircuitBoard() {
     return false;
   });
 
+  ctx.restore();
+}
+
+function drawCosmicSphere() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Check if visualization is active
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Calculate smoothed average audio energy (reduce strobing)
+  let avgEnergy = 0;
+  if (audioLoaded.value) {
+    for (let i = 0; i < bufferLength; i++) {
+      avgEnergy += dataArray[i];
+    }
+    avgEnergy = avgEnergy / bufferLength / 255;
+  } else {
+    avgEnergy = Math.sin(breathePhase) * 0.3 + 0.5;
+  }
+
+  // Smooth the energy changes to reduce strobing - slower, smoother transitions
+  if (!window.smoothedEnergy) window.smoothedEnergy = avgEnergy;
+  window.smoothedEnergy += (avgEnergy - window.smoothedEnergy) * 0.08; // Slower lerp for smoother color changes
+  const smoothEnergy = window.smoothedEnergy;
+
+  // Even slower smoothing for color transitions
+  if (!window.colorEnergy) window.colorEnergy = avgEnergy;
+  window.colorEnergy += (avgEnergy - window.colorEnergy) * 0.04; // Very slow for color changes
+  const colorEnergy = window.colorEnergy;
+
+  // Initialize background stars
+  if (!window.cosmicStars) {
+    window.cosmicStars = [];
+    for (let i = 0; i < 150; i++) {
+      window.cosmicStars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: Math.random() * 2 + 0.5,
+        opacity: Math.random() * 0.6 + 0.2,
+        twinkleSpeed: Math.random() * 0.02 + 0.01,
+        twinklePhase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  // Initialize nebula clouds
+  if (!window.nebulaClouds) {
+    window.nebulaClouds = [];
+    for (let i = 0; i < 5; i++) {
+      window.nebulaClouds.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 200 + 150,
+        colorOffset: Math.random() * 360,
+        drift: Math.random() * 0.1 - 0.05
+      });
+    }
+  }
+
+  // Draw nebula clouds in background
+  window.nebulaClouds.forEach(cloud => {
+    cloud.x += cloud.drift;
+    if (cloud.x < -cloud.radius) cloud.x = width + cloud.radius;
+    if (cloud.x > width + cloud.radius) cloud.x = -cloud.radius;
+
+    const nebulaGradient = ctx.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.radius);
+    nebulaGradient.addColorStop(0, getColor(cloud.colorOffset, 360, isActive ? colorEnergy * 0.15 : 0.05));
+    nebulaGradient.addColorStop(0.5, getColor(cloud.colorOffset + 60, 360, isActive ? colorEnergy * 0.08 : 0.02));
+    nebulaGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+    ctx.fillStyle = nebulaGradient;
+    ctx.globalAlpha = isActive ? 0.4 : 0.15;
+    ctx.fillRect(0, 0, width, height);
+  });
+
+  ctx.globalAlpha = 1;
+
+  // Draw stars
+  window.cosmicStars.forEach(star => {
+    star.twinklePhase += star.twinkleSpeed;
+    const twinkle = Math.sin(star.twinklePhase) * 0.3 + 0.7;
+
+    ctx.globalAlpha = isActive ? star.opacity * twinkle : star.opacity * 0.3;
+    ctx.fillStyle = isActive ?
+      getColor(200 + colorEnergy * 100, 360, 0.9) :
+      'rgba(200, 200, 220, 0.5)';
+
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Add subtle glow to larger stars when active
+    if (isActive && star.size > 1.5) {
+      ctx.globalAlpha = star.opacity * twinkle * 0.3;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+
+  // Larger, more prominent sphere with subtle pulse
+  const baseRadius = Math.min(width, height) * 0.35;
+  const sphereRadius = baseRadius * (1 + (isActive ? smoothEnergy * 0.15 : 0));
+
+  // Smoother rotation (slower when inactive)
+  const sphereRotation = rotationAngle * (isActive ? 0.8 : 0.3);
+
+  // Draw subtle atmosphere glow around sphere
+  ctx.translate(centerX, centerY);
+
+  const atmosphereGradient = ctx.createRadialGradient(0, 0, sphereRadius * 0.85, 0, 0, sphereRadius * 1.3);
+  atmosphereGradient.addColorStop(0, 'rgba(0,0,0,0)');
+  atmosphereGradient.addColorStop(0.5, getColor(200 + colorEnergy * 80, 500, isActive ? colorEnergy * 0.12 : 0.03));
+  atmosphereGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.fillStyle = atmosphereGradient;
+  ctx.globalAlpha = isActive ? 1 : 0.3;
+  ctx.beginPath();
+  ctx.arc(0, 0, sphereRadius * 1.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Draw solid sphere body with gradient for 3D effect - using colorEnergy for smoother transitions
+  const sphereGradient = ctx.createRadialGradient(
+    -sphereRadius * 0.3, -sphereRadius * 0.3, sphereRadius * 0.1,
+    0, 0, sphereRadius
+  );
+  // Smoother color transitions with narrower hue range
+  const baseHue = 200 + colorEnergy * 100; // Slower color shift
+  if (isActive) {
+    sphereGradient.addColorStop(0, getColor(baseHue - 30, 400, 0.35 + colorEnergy * 0.1));
+    sphereGradient.addColorStop(0.4, getColor(baseHue, 400, 0.2 + colorEnergy * 0.05));
+    sphereGradient.addColorStop(0.8, getColor(baseHue + 30, 400, 0.1 + colorEnergy * 0.03));
+    sphereGradient.addColorStop(1, getColor(baseHue + 50, 400, 0.05));
+  } else {
+    // Dimmed inactive state
+    sphereGradient.addColorStop(0, getColor(220, 400, 0.15));
+    sphereGradient.addColorStop(0.4, getColor(220, 400, 0.08));
+    sphereGradient.addColorStop(0.8, getColor(220, 400, 0.04));
+    sphereGradient.addColorStop(1, getColor(220, 400, 0.02));
+  }
+
+  ctx.fillStyle = sphereGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, sphereRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
+
+  // Latitude lines (horizontal bands) - more prominent
+  const latitudeCount = 8;
+  for (let i = 0; i < latitudeCount; i++) {
+    const t = i / latitudeCount;
+    const angle = (t - 0.5) * Math.PI;
+    const y = Math.sin(angle) * sphereRadius;
+    const radius = Math.cos(angle) * sphereRadius;
+
+    const dataIndex = Math.floor((i / latitudeCount) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    // Different line styles
+    const lineStyles = [[], [5, 5], [10, 5], [2, 3]];
+    ctx.setLineDash(lineStyles[i % 4]);
+
+    // Brighter gradient for depth (dimmed when inactive)
+    const latGradient = ctx.createLinearGradient(-radius, y, radius, y);
+    if (isActive) {
+      latGradient.addColorStop(0, getColor(i * 50, latitudeCount * 50, 0.2));
+      latGradient.addColorStop(0.5, getColor(i * 50, latitudeCount * 50, 0.7 + value * 0.3));
+      latGradient.addColorStop(1, getColor(i * 50, latitudeCount * 50, 0.2));
+    } else {
+      latGradient.addColorStop(0, getColor(220, latitudeCount * 50, 0.08));
+      latGradient.addColorStop(0.5, getColor(220, latitudeCount * 50, 0.25));
+      latGradient.addColorStop(1, getColor(220, latitudeCount * 50, 0.08));
+    }
+
+    ctx.strokeStyle = latGradient;
+    ctx.lineWidth = isActive ? 2 + value * 1 : 1.5;
+    ctx.globalAlpha = isActive ? 0.7 + value * 0.3 : 0.3;
+
+    ctx.beginPath();
+    ctx.ellipse(0, y, radius, radius * 0.15, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+
+  // Longitude lines (vertical bands) - more prominent
+  const longitudeCount = 12;
+  for (let i = 0; i < longitudeCount; i++) {
+    const angle = (i / longitudeCount) * Math.PI * 2 + sphereRotation;
+    const dataIndex = Math.floor((i / longitudeCount) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    ctx.save();
+    ctx.rotate(angle);
+
+    // Different border styles
+    if (i % 3 === 0) {
+      ctx.setLineDash([8, 4]);
+    } else if (i % 3 === 1) {
+      ctx.setLineDash([2, 2]);
+    }
+
+    // Brighter gradient for 3D effect (dimmed when inactive)
+    const longGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, sphereRadius);
+    if (isActive) {
+      longGradient.addColorStop(0, getColor(i * 40 + 200, longitudeCount * 40, 0.8 + value * 0.2));
+      longGradient.addColorStop(0.5, getColor(i * 40 + 200, longitudeCount * 40, 0.6 + value * 0.2));
+      longGradient.addColorStop(1, getColor(i * 40 + 200, longitudeCount * 40, 0.2));
+    } else {
+      longGradient.addColorStop(0, getColor(220, longitudeCount * 40, 0.3));
+      longGradient.addColorStop(0.5, getColor(220, longitudeCount * 40, 0.2));
+      longGradient.addColorStop(1, getColor(220, longitudeCount * 40, 0.08));
+    }
+
+    ctx.strokeStyle = longGradient;
+    ctx.lineWidth = isActive ? 2 + value * 1 : 1.5;
+    ctx.globalAlpha = isActive ? 0.75 + value * 0.25 : 0.3;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, sphereRadius * 0.2, sphereRadius, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  // Draw energy core at center with subtle pulse (dimmed when inactive)
+  const coreSize = sphereRadius * 0.12 * (1 + (isActive ? smoothEnergy * 0.2 : 0));
+  const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coreSize * 2.5);
+  if (isActive) {
+    coreGradient.addColorStop(0, getColor(400, 600, 0.9));
+    coreGradient.addColorStop(0.4, getColor(450, 600, 0.6));
+    coreGradient.addColorStop(0.7, getColor(500, 600, 0.3));
+    coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
+  } else {
+    coreGradient.addColorStop(0, getColor(220, 600, 0.3));
+    coreGradient.addColorStop(0.4, getColor(220, 600, 0.2));
+    coreGradient.addColorStop(0.7, getColor(220, 600, 0.1));
+    coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
+  }
+
+  ctx.fillStyle = coreGradient;
+  ctx.shadowBlur = isActive ? 25 : 10;
+  ctx.shadowColor = getColor(isActive ? 400 : 220, 600, isActive ? smoothEnergy * 0.6 : 0.2);
+  ctx.globalAlpha = isActive ? 1 : 0.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, coreSize * 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bright inner core
+  ctx.fillStyle = getColor(isActive ? 450 : 220, 600, isActive ? 1 : 0.4);
+  ctx.shadowBlur = isActive ? 15 : 8;
+  ctx.beginPath();
+  ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+
+  // Dynamic orbiting bodies system - more varied bodies with intense music
+  // Base bodies: 3, can go up to 12 with high energy
+  // Different sizes: asteroids (small), moons (medium), planets (large)
+  // When inactive, only show 2 bodies
+  const baseBodyCount = isActive ? 3 : 2;
+  const maxBodyCount = isActive ? 12 : 2;
+  const bodyCount = Math.floor(baseBodyCount + (isActive ? smoothEnergy * (maxBodyCount - baseBodyCount) : 0));
+
+  if (!window.moonOrbits) {
+    window.moonOrbits = [];
+  }
+
+  // Initialize or update orbiting bodies with varied sizes
+  while (window.moonOrbits.length < bodyCount) {
+    const bodyIndex = window.moonOrbits.length;
+    // Determine body type based on index
+    let bodyType, bodySize, orbitDistance, orbitSpeed;
+
+    if (bodyIndex % 3 === 0) {
+      // Small asteroid
+      bodyType = 'asteroid';
+      bodySize = 3 + Math.random() * 3;
+      orbitDistance = sphereRadius * (1.3 + bodyIndex * 0.15);
+      orbitSpeed = 0.5 + Math.random() * 0.3;
+    } else if (bodyIndex % 3 === 1) {
+      // Medium moon
+      bodyType = 'moon';
+      bodySize = 6 + Math.random() * 5;
+      orbitDistance = sphereRadius * (1.5 + bodyIndex * 0.18);
+      orbitSpeed = 0.3 + Math.random() * 0.2;
+    } else {
+      // Large planet
+      bodyType = 'planet';
+      bodySize = 10 + Math.random() * 8;
+      orbitDistance = sphereRadius * (1.7 + bodyIndex * 0.22);
+      orbitSpeed = 0.2 + Math.random() * 0.15;
+    }
+
+    window.moonOrbits.push({
+      type: bodyType,
+      distance: orbitDistance,
+      angle: (bodyIndex / maxBodyCount) * Math.PI * 2,
+      speed: orbitSpeed,
+      size: bodySize,
+      colorOffset: bodyIndex * 60,
+      ellipticalRatio: 0.3 + Math.random() * 0.3 // Varied orbit ellipse ratios
+    });
+  }
+
+  // Remove excess bodies smoothly
+  if (window.moonOrbits.length > bodyCount) {
+    window.moonOrbits = window.moonOrbits.slice(0, bodyCount);
+  }
+
+  // Draw orbiting bodies with trails and varied appearances
+  window.moonOrbits.forEach((body, i) => {
+    // Update body position
+    body.angle += body.speed * 0.015;
+
+    const dataIndex = Math.floor((i / bodyCount) * bufferLength);
+    const bodyEnergy = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    const bodyX = Math.cos(body.angle) * body.distance;
+    const bodyY = Math.sin(body.angle) * body.distance * body.ellipticalRatio; // Varied elliptical orbit
+
+    // Draw orbital path (lighter for asteroids, more prominent for planets, dim when inactive)
+    const pathAlpha = body.type === 'asteroid' ? 0.08 : (body.type === 'planet' ? 0.2 : 0.12);
+    ctx.globalAlpha = isActive ? (pathAlpha + bodyEnergy * 0.08) : pathAlpha * 0.3;
+    ctx.strokeStyle = getColor(body.colorOffset, maxBodyCount * 60, isActive ? 0.3 : 0.15);
+    ctx.lineWidth = body.type === 'planet' ? 1.5 : 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, body.distance, body.distance * body.ellipticalRatio, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw body trail (longer trails for planets, shorter for asteroids, dimmed when inactive)
+    const trailLength = body.type === 'asteroid' ? 2 : (body.type === 'planet' ? 5 : 3);
+    if (isActive) {
+      for (let t = 1; t <= trailLength; t++) {
+        const trailAngle = body.angle - t * 0.12;
+        const trailX = Math.cos(trailAngle) * body.distance;
+        const trailY = Math.sin(trailAngle) * body.distance * body.ellipticalRatio;
+        const trailAlpha = (1 - t / trailLength) * 0.4;
+
+        ctx.globalAlpha = trailAlpha;
+        ctx.fillStyle = getColor(body.colorOffset + 50, maxBodyCount * 60, bodyEnergy * 0.6);
+        ctx.beginPath();
+        ctx.arc(trailX, trailY, body.size * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Draw body glow (stronger for planets, subtler for asteroids, dimmed when inactive)
+    const glowIntensity = body.type === 'asteroid' ? 0.5 : (body.type === 'planet' ? 1.2 : 0.8);
+    ctx.globalAlpha = isActive ? 0.7 * glowIntensity : 0.3 * glowIntensity;
+    const bodyGlow = ctx.createRadialGradient(bodyX, bodyY, 0, bodyX, bodyY, body.size * 2);
+    bodyGlow.addColorStop(0, getColor(body.colorOffset, maxBodyCount * 60, isActive ? bodyEnergy * glowIntensity : 0.2 * glowIntensity));
+    bodyGlow.addColorStop(0.5, getColor(body.colorOffset, maxBodyCount * 60, isActive ? bodyEnergy * 0.5 * glowIntensity : 0.1 * glowIntensity));
+    bodyGlow.addColorStop(1, 'rgba(0,0,0,0)');
+
+    ctx.fillStyle = bodyGlow;
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, body.size * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw body with varied appearance (dimmed when inactive)
+    ctx.globalAlpha = isActive ? 1 : 0.4;
+
+    // Planets get gradient fill, others get solid
+    if (body.type === 'planet') {
+      const planetGradient = ctx.createRadialGradient(
+        bodyX - body.size * 0.3, bodyY - body.size * 0.3, 0,
+        bodyX, bodyY, body.size
+      );
+      if (isActive) {
+        planetGradient.addColorStop(0, getColor(body.colorOffset + 120, maxBodyCount * 60, 0.9 + bodyEnergy * 0.1));
+        planetGradient.addColorStop(0.6, getColor(body.colorOffset + 100, maxBodyCount * 60, 0.7 + bodyEnergy * 0.2));
+        planetGradient.addColorStop(1, getColor(body.colorOffset + 80, maxBodyCount * 60, 0.4 + bodyEnergy * 0.2));
+      } else {
+        planetGradient.addColorStop(0, getColor(220, maxBodyCount * 60, 0.4));
+        planetGradient.addColorStop(0.6, getColor(220, maxBodyCount * 60, 0.3));
+        planetGradient.addColorStop(1, getColor(220, maxBodyCount * 60, 0.2));
+      }
+      ctx.fillStyle = planetGradient;
+    } else {
+      ctx.fillStyle = getColor(body.colorOffset + 100, maxBodyCount * 60, isActive ? 0.7 + bodyEnergy * 0.3 : 0.3);
+    }
+
+    ctx.shadowBlur = isActive ? (body.type === 'planet' ? 15 : 8) + bodyEnergy * 10 : 5;
+    ctx.shadowColor = getColor(body.colorOffset + 100, maxBodyCount * 60, isActive ? bodyEnergy : 0.2);
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, body.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Shimmer effect on high energy (more intense for larger bodies, only when active)
+    if (isActive && bodyEnergy > 0.65) {
+      const shimmerIntensity = body.type === 'asteroid' ? 1.5 : (body.type === 'planet' ? 2.5 : 2);
+      ctx.globalAlpha = (bodyEnergy - 0.65) * shimmerIntensity;
+      ctx.fillStyle = getColor(body.colorOffset + 150, maxBodyCount * 60, 1);
+      ctx.beginPath();
+      ctx.arc(bodyX, bodyY, body.size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
