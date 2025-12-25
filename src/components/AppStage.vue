@@ -534,6 +534,7 @@ const patterns = [
   { name: 'Petri', draw: drawEnergyShards },
   { name: 'Boombox', draw: drawBoombox },
   { name: 'Moiré', draw: drawMoire },
+  { name: 'Circuitous', draw: drawCircuitBoard },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -1366,6 +1367,561 @@ function drawMoire() {
     ctx.restore();
   }
   
+  ctx.restore();
+}
+
+function drawCircuitBoard() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+
+  // Check if music is actively playing
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  ctx.save();
+
+  // PCB green solder mask background - darker when inactive
+  ctx.fillStyle = isActive ? 'rgba(15, 40, 25, 0.15)' : 'rgba(10, 25, 15, 0.2)';
+  ctx.fillRect(0, 0, width, height);
+
+  // Draw subtle grid pattern (FR4 texture) - dimmer when inactive
+  ctx.strokeStyle = isActive ? 'rgba(0, 255, 100, 0.03)' : 'rgba(0, 150, 60, 0.015)';
+  ctx.lineWidth = 0.5;
+  const gridSpacing = 20;
+  for (let x = 0; x < width; x += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let y = 0; y < height; y += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  // Component grid settings
+  const gridSize = 150;
+  const cols = Math.floor(width / gridSize);
+  const rows = Math.floor(height / gridSize);
+  const offsetX = (width - cols * gridSize) / 2;
+  const offsetY = (height - rows * gridSize) / 2;
+
+  // Store signal pulses traveling along traces
+  if (!window.circuitPulses) {
+    window.circuitPulses = [];
+  }
+  if (!window.travelingSignals) {
+    window.travelingSignals = [];
+  }
+
+  // Clear signals when inactive
+  if (!isActive) {
+    window.circuitPulses = [];
+    window.travelingSignals = [];
+  }
+
+  // Define trace routes with right angles (like real PCB routing)
+  const traces = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const x = offsetX + i * gridSize + gridSize / 2;
+      const y = offsetY + j * gridSize + gridSize / 2;
+      const index = i + j * cols;
+
+      // Right-angled horizontal trace
+      if (i < cols - 1) {
+        const nextX = offsetX + (i + 1) * gridSize + gridSize / 2;
+        const midX = x + gridSize / 3;
+        const midY = y + (index % 2 === 0 ? -20 : 20);
+        traces.push({
+          path: [
+            { x, y },
+            { x: midX, y },
+            { x: midX, y: midY },
+            { x: nextX - gridSize / 3, y: midY },
+            { x: nextX - gridSize / 3, y },
+            { x: nextX, y }
+          ],
+          index,
+          direction: 'horizontal'
+        });
+      }
+
+      // Right-angled vertical trace
+      if (j < rows - 1) {
+        const nextY = offsetY + (j + 1) * gridSize + gridSize / 2;
+        const midY = y + gridSize / 3;
+        const midX = x + (index % 2 === 0 ? 20 : -20);
+        traces.push({
+          path: [
+            { x, y },
+            { x, y: midY },
+            { x: midX, y: midY },
+            { x: midX, y: nextY - gridSize / 3 },
+            { x, y: nextY - gridSize / 3 },
+            { x, y: nextY }
+          ],
+          index: index + cols,
+          direction: 'vertical'
+        });
+      }
+
+      // Diagonal/longer traces for more coverage
+      if (i < cols - 2 && j < rows - 1) {
+        const nextX = offsetX + (i + 2) * gridSize + gridSize / 2;
+        const nextY = offsetY + (j + 1) * gridSize + gridSize / 2;
+        const midX = x + gridSize;
+        const midY = y + gridSize / 2;
+        traces.push({
+          path: [
+            { x, y },
+            { x: midX, y },
+            { x: midX, y: midY },
+            { x: nextX, y: midY },
+            { x: nextX, y: nextY }
+          ],
+          index: index + 2,
+          direction: 'diagonal'
+        });
+      }
+
+      // Long horizontal bus traces
+      if (i === 0 && j < rows) {
+        const pathPoints = [{ x, y }];
+        for (let k = 1; k < cols; k++) {
+          const px = offsetX + k * gridSize + gridSize / 2;
+          pathPoints.push({ x: px, y: y + ((k % 2) * 10 - 5) });
+        }
+        traces.push({
+          path: pathPoints,
+          index: j * 100,
+          direction: 'bus-horizontal'
+        });
+      }
+
+      // Long vertical bus traces
+      if (j === 0 && i < cols) {
+        const pathPoints = [{ x, y }];
+        for (let k = 1; k < rows; k++) {
+          const py = offsetY + k * gridSize + gridSize / 2;
+          pathPoints.push({ x: x + ((k % 2) * 10 - 5), y: py });
+        }
+        traces.push({
+          path: pathPoints,
+          index: i * 100 + 50,
+          direction: 'bus-vertical'
+        });
+      }
+    }
+  }
+
+  // Draw copper traces
+  traces.forEach(trace => {
+    const dataIndex = Math.floor((trace.index / (cols * rows)) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    // Dim traces when inactive
+    const brightness = isActive ? (0.4 + value * 0.5) : 0.15;
+    const traceColor = getColor(trace.index * 30, cols * rows * 30, brightness);
+    ctx.strokeStyle = traceColor;
+    ctx.lineWidth = isActive ? (4 + value * 4) : 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // No glow when inactive
+    if (isActive && value > 0.6) {
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = traceColor;
+    }
+
+    // Draw trace path
+    ctx.beginPath();
+    trace.path.forEach((point, idx) => {
+      if (idx === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Add via holes at corners
+    trace.path.forEach((point, idx) => {
+      if (idx > 0 && idx < trace.path.length - 1) {
+        // Via hole
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Via ring - dimmer when inactive
+        const viaRingBrightness = isActive ? 0.6 : 0.2;
+        ctx.strokeStyle = getColor(trace.index * 30 + 100, cols * rows * 30, viaRingBrightness);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    });
+
+    // Spawn traveling signals - only when active
+    if (isActive) {
+      let spawnChance = 0.97;
+      if (trace.direction === 'bus-horizontal' || trace.direction === 'bus-vertical') {
+        spawnChance = 0.92; // Higher chance for bus traces
+      } else if (trace.direction === 'diagonal') {
+        spawnChance = 0.94; // Medium chance for diagonal
+      }
+
+      if (value > 0.5 && Math.random() > spawnChance) {
+        window.travelingSignals.push({
+          path: trace.path,
+          progress: 0,
+          speed: 0.008 + value * 0.025,
+          colorIndex: trace.index,
+          total: cols * rows,
+          brightness: value
+        });
+      }
+    }
+  });
+
+  // Draw components
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const x = offsetX + i * gridSize + gridSize / 2;
+      const y = offsetY + j * gridSize + gridSize / 2;
+      const index = i + j * cols;
+      const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
+      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.2) * 0.3 + 0.5;
+
+      const componentType = index % 5;
+
+      // Create signal pulse on high energy - only when active
+      if (isActive && value > 0.75 && Math.random() > 0.95) {
+        window.circuitPulses.push({
+          x: x,
+          y: y,
+          life: 1,
+          colorIndex: index,
+          total: cols * rows
+        });
+      }
+
+      ctx.save();
+      ctx.translate(x, y);
+
+      // No glow when inactive
+      const glowIntensity = isActive && value > 0.5 ? value : 0;
+
+      // Draw silkscreen label (white text) - dimmer when inactive
+      ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.15)';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      const labels = ['R', 'C', 'IC', 'D', 'Q'];
+      ctx.fillText(labels[componentType] + index, 0, -35);
+
+      switch(componentType) {
+        case 0: { // Resistor
+          const resistorBrightness = isActive ? (0.5 + value * 0.5) : 0.2;
+          const resistorStroke = isActive ? 0.8 : 0.3;
+          ctx.fillStyle = getColor(index * 40, cols * rows * 40, resistorBrightness);
+          ctx.strokeStyle = getColor(index * 40 + 50, cols * rows * 40, resistorStroke);
+          ctx.lineWidth = 2;
+
+          if (glowIntensity > 0.5) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = getColor(index * 40, cols * rows * 40, value);
+          }
+
+          // Resistor body
+          ctx.fillRect(-20, -8, 40, 16);
+          ctx.strokeRect(-20, -8, 40, 16);
+
+          // Color bands
+          for (let b = 0; b < 3; b++) {
+            const bandBrightness = isActive ? (0.6 + value * 0.4) : 0.25;
+            ctx.fillStyle = getColor(index * 40 + b * 100, cols * rows * 40, bandBrightness);
+            ctx.fillRect(-15 + b * 12, -8, 4, 16);
+          }
+
+          // Leads
+          const leadBrightness = isActive ? 0.8 : 0.3;
+          ctx.strokeStyle = getColor(index * 40 + 150, cols * rows * 40, leadBrightness);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-30, 0);
+          ctx.lineTo(-20, 0);
+          ctx.moveTo(20, 0);
+          ctx.lineTo(30, 0);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          break;
+        }
+
+        case 1: { // Capacitor
+          const capBrightness = isActive ? (0.5 + value * 0.5) : 0.2;
+          ctx.fillStyle = getColor(index * 40 + 200, cols * rows * 40, capBrightness);
+
+          if (glowIntensity > 0.5) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = getColor(index * 40 + 200, cols * rows * 40, value);
+          }
+
+          // Capacitor plates
+          ctx.fillRect(-3, -20, 6, 40);
+          ctx.fillRect(-20, -20, 6, 40);
+
+          // Leads
+          const capLeadBrightness = isActive ? 0.8 : 0.3;
+          ctx.strokeStyle = getColor(index * 40 + 250, cols * rows * 40, capLeadBrightness);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-20, 0);
+          ctx.lineTo(-30, 0);
+          ctx.moveTo(-3, 0);
+          ctx.lineTo(30, 0);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          break;
+        }
+
+        case 2: { // IC Chip
+          const icBrightness = isActive ? (0.4 + value * 0.6) : 0.2;
+          const icStroke = isActive ? 0.9 : 0.3;
+          ctx.fillStyle = getColor(index * 40 + 300, cols * rows * 40, icBrightness);
+          ctx.strokeStyle = getColor(index * 40 + 350, cols * rows * 40, icStroke);
+          ctx.lineWidth = 2;
+
+          if (glowIntensity > 0.5) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = getColor(index * 40 + 300, cols * rows * 40, value);
+          }
+
+          // IC body
+          ctx.fillRect(-25, -20, 50, 40);
+          ctx.strokeRect(-25, -20, 50, 40);
+
+          // Pins
+          ctx.lineWidth = 2;
+          for (let p = 0; p < 4; p++) {
+            const py = -15 + p * 10;
+            ctx.beginPath();
+            ctx.moveTo(-25, py);
+            ctx.lineTo(-30, py);
+            ctx.moveTo(25, py);
+            ctx.lineTo(30, py);
+            ctx.stroke();
+          }
+
+          // Indicator dot
+          const dotBrightness = isActive ? value : 0.2;
+          ctx.fillStyle = getColor(index * 40 + 400, cols * rows * 40, dotBrightness);
+          ctx.beginPath();
+          ctx.arc(-15, -12, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          break;
+        }
+
+        case 3: { // LED/Diode
+          const brightness = isActive ? (0.5 + value * 0.5) : 0.2;
+
+          // Diode body
+          ctx.fillStyle = getColor(index * 40 + 350, cols * rows * 40, brightness);
+          const ledStroke = isActive ? 0.9 : 0.3;
+          ctx.strokeStyle = getColor(index * 40 + 400, cols * rows * 40, ledStroke);
+          ctx.lineWidth = 2;
+
+          if (glowIntensity > 0.6) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = getColor(index * 40 + 350, cols * rows * 40, value);
+          }
+
+          // LED dome
+          ctx.beginPath();
+          ctx.arc(0, 0, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Leads
+          const ledLeadBrightness = isActive ? 0.8 : 0.3;
+          ctx.strokeStyle = getColor(index * 40 + 450, cols * rows * 40, ledLeadBrightness);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-25, 10);
+          ctx.lineTo(-18, 10);
+          ctx.moveTo(18, 10);
+          ctx.lineTo(25, 10);
+          ctx.stroke();
+
+          // LED glow only when active and high value
+          if (isActive && value > 0.6) {
+            const ledGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+            ledGlow.addColorStop(0, getColor(index * 40 + 350, cols * rows * 40, value * 0.8));
+            ledGlow.addColorStop(0.5, getColor(index * 40 + 350, cols * rows * 40, value * 0.4));
+            ledGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = ledGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.shadowBlur = 0;
+          break;
+        }
+
+        case 4: { // Transistor
+          const transBrightness = isActive ? (0.4 + value * 0.5) : 0.2;
+          const transStroke = isActive ? 0.9 : 0.3;
+          ctx.fillStyle = getColor(index * 40 + 500, cols * rows * 40, transBrightness);
+          ctx.strokeStyle = getColor(index * 40 + 550, cols * rows * 40, transStroke);
+          ctx.lineWidth = 2;
+
+          if (glowIntensity > 0.5) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = getColor(index * 40 + 500, cols * rows * 40, value);
+          }
+
+          // Transistor body (TO-92 package)
+          ctx.beginPath();
+          ctx.arc(0, 0, 20, 0, Math.PI, false);
+          ctx.lineTo(-20, 15);
+          ctx.lineTo(20, 15);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Three leads
+          ctx.lineWidth = 2;
+          const transLeadBrightness = isActive ? 0.8 : 0.3;
+          ctx.strokeStyle = getColor(index * 40 + 600, cols * rows * 40, transLeadBrightness);
+          for (let t = 0; t < 3; t++) {
+            const tx = -15 + t * 15;
+            ctx.beginPath();
+            ctx.moveTo(tx, 15);
+            ctx.lineTo(tx, 25);
+            ctx.stroke();
+          }
+
+          ctx.shadowBlur = 0;
+          break;
+        }
+      }
+
+      ctx.restore();
+    }
+  }
+
+  // Draw and update traveling signals along traces
+  window.travelingSignals = window.travelingSignals.filter(signal => {
+    signal.progress += signal.speed;
+
+    if (signal.progress <= 1) {
+      // Calculate position along path
+      const totalSegments = signal.path.length - 1;
+      const segment = Math.floor(signal.progress * totalSegments);
+      const segmentProgress = (signal.progress * totalSegments) % 1;
+
+      if (segment < totalSegments) {
+        const start = signal.path[segment];
+        const end = signal.path[segment + 1];
+        const signalX = start.x + (end.x - start.x) * segmentProgress;
+        const signalY = start.y + (end.y - start.y) * segmentProgress;
+
+        // Draw signal traveling along trace
+        const signalSize = 6 + signal.brightness * 8;
+
+        // Outer glow
+        const gradient = ctx.createRadialGradient(signalX, signalY, 0, signalX, signalY, signalSize * 2);
+        gradient.addColorStop(0, getColor(signal.colorIndex * 50, signal.total * 50, signal.brightness));
+        gradient.addColorStop(0.5, getColor(signal.colorIndex * 50 + 100, signal.total * 50, signal.brightness * 0.5));
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(signalX, signalY, signalSize * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright core
+        ctx.fillStyle = getColor(signal.colorIndex * 50 + 200, signal.total * 50, 1);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = getColor(signal.colorIndex * 50 + 200, signal.total * 50, signal.brightness);
+        ctx.beginPath();
+        ctx.arc(signalX, signalY, signalSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Trail effect
+        for (let t = 1; t <= 3; t++) {
+          const trailProgress = signal.progress - (t * 0.05);
+          if (trailProgress > 0) {
+            const trailSegment = Math.floor(trailProgress * totalSegments);
+            const trailSegmentProgress = (trailProgress * totalSegments) % 1;
+
+            if (trailSegment < totalSegments) {
+              const trailStart = signal.path[trailSegment];
+              const trailEnd = signal.path[trailSegment + 1];
+              const trailX = trailStart.x + (trailEnd.x - trailStart.x) * trailSegmentProgress;
+              const trailY = trailStart.y + (trailEnd.y - trailStart.y) * trailSegmentProgress;
+
+              const trailAlpha = (1 - t / 3) * 0.5;
+              ctx.globalAlpha = trailAlpha;
+              ctx.fillStyle = getColor(signal.colorIndex * 50 + 150, signal.total * 50, signal.brightness * 0.6);
+              ctx.beginPath();
+              ctx.arc(trailX, trailY, signalSize * 0.6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+      }
+
+      return true;
+    }
+    return false;
+  });
+
+  // Draw and update signal pulses
+  window.circuitPulses = window.circuitPulses.filter(pulse => {
+    pulse.life -= 0.015;
+
+    if (pulse.life > 0) {
+      const size = 8 + (1 - pulse.life) * 15;
+      const alpha = pulse.life * 0.8;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // Pulse glow
+      const gradient = ctx.createRadialGradient(pulse.x, pulse.y, 0, pulse.x, pulse.y, size);
+      gradient.addColorStop(0, getColor(pulse.colorIndex * 50, pulse.total * 50, 1));
+      gradient.addColorStop(0.5, getColor(pulse.colorIndex * 50 + 100, pulse.total * 50, 0.6));
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(pulse.x, pulse.y, size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright center
+      ctx.fillStyle = getColor(pulse.colorIndex * 50 + 200, pulse.total * 50, 1);
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = getColor(pulse.colorIndex * 50 + 200, pulse.total * 50, 0.8);
+      ctx.beginPath();
+      ctx.arc(pulse.x, pulse.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.restore();
+
+      return true;
+    }
+    return false;
+  });
+
   ctx.restore();
 }
 
