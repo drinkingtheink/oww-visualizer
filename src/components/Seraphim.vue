@@ -376,6 +376,7 @@ export default {
 
 .animate.seraphim-wrapper:hover {
   filter: blur(5px);
+  opacity: 0.6;
 }
 
 .animate svg {
