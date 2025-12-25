@@ -138,6 +138,12 @@ const isPaused = ref(false);
 const patternLocked = ref(false);
 const typographyColorIndex = ref(0);
 const showPlayModal = ref(true);
+const lastFrameTime = ref(0);
+const fps = ref(60);
+const performanceMode = ref(false);
+const frameSkipCounter = ref(0);
+const cachedAvgEnergy = ref(0);
+const lastEnergyCalcTime = ref(0);
 
 // Music player state
 const useMusicPlayer = ref(true); // Set to false to use file input instead
@@ -1346,8 +1352,14 @@ function drawMoire() {
 function drawAuroraWaves() {
   const width = canvas.value.width;
   const height = canvas.value.height;
-  const waveCount = audioLoaded.value && !isPaused.value ? 15 : 8; // Fewer waves when no audio
-  const segments = 80;
+  
+  // Reduce wave count in performance mode
+  const baseWaveCount = audioLoaded.value && !isPaused.value ? 15 : 8;
+  const waveCount = performanceMode.value ? Math.floor(baseWaveCount * 0.6) : baseWaveCount;
+  
+  // Reduce segments in performance mode
+  const baseSegments = 80;
+  const segments = performanceMode.value ? 50 : baseSegments;
 
   ctx.save();
   
@@ -1376,7 +1388,10 @@ function drawAuroraWaves() {
     
     // Only draw filled layers when audio is playing
     if (audioLoaded.value && !isPaused.value) {
-      const layers = 7;
+      // Reduce layers in performance mode
+      const baseLayers = 7;
+      const layers = performanceMode.value ? 4 : baseLayers;
+      
       for (let layer = layers - 1; layer >= 0; layer--) {
         const layerOffset = (layer - layers / 2) * 6;
         const layerAlpha = (layers - layer) / layers * 0.5;
@@ -1385,8 +1400,10 @@ function drawAuroraWaves() {
         const gradient = ctx.createLinearGradient(0, 0, width, 0);
         const colorShift = w * 50 + layer * 30;
         
-        for (let g = 0; g <= 5; g++) {
-          const stop = g / 5;
+        // Reduce gradient stops in performance mode
+        const gradientStops = performanceMode.value ? 3 : 5;
+        for (let g = 0; g <= gradientStops; g++) {
+          const stop = g / gradientStops;
           const colorIdx = Math.floor((stop * 1000 + colorShift + rotationAngle * 100) % 1000);
           gradient.addColorStop(stop, getColor(colorIdx, 1000, 0.05 * layerAlpha));
         }
@@ -1414,12 +1431,16 @@ function drawAuroraWaves() {
         ctx.closePath();
         ctx.fill();
         
-        // Draw subtle glowing edge on some layers
-        if (layer === 0 || layer === 3) {
+        // Draw glowing edge ONLY on first layer in performance mode
+        if ((layer === 0 || layer === 3) && !performanceMode.value || (layer === 0 && performanceMode.value)) {
           ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.3);
           ctx.lineWidth = 1;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = getColor(w * 50, waveCount * 50, 0.4);
+          
+          // Skip shadows in performance mode
+          if (!performanceMode.value) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = getColor(w * 50, waveCount * 50, 0.4);
+          }
           
           ctx.beginPath();
           points.forEach((point, idx) => {
@@ -1438,7 +1459,7 @@ function drawAuroraWaves() {
       }
     } else {
       // Minimal mode - just draw a single subtle wave line
-      ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.2); // Very subtle
+      ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.2);
       ctx.lineWidth = 1;
       ctx.shadowBlur = 0;
       
@@ -1457,39 +1478,51 @@ function drawAuroraWaves() {
     }
     
     if (audioLoaded.value && !isPaused.value) {
-      // Full effects when audio is playing
+      // HEAVILY optimized particle/star effects
       
-      // Shimmering light particles along wave peaks
+      // Reduce particle spawn rate in performance mode
+      const particleThreshold = performanceMode.value ? 0.85 : 0.65;
+      const particleSkip = performanceMode.value ? 6 : 3;
+      
       points.forEach((point, idx) => {
-        if (point.value > 0.65 && idx % 3 === 0 && Math.random() > 0.75) {
-          createParticles(point.x, point.y, point.value, w * segments + idx, waveCount * segments, 2);
+        // Shimmering light particles - less frequent
+        if (point.value > particleThreshold && idx % particleSkip === 0 && Math.random() > 0.75) {
+          createParticles(point.x, point.y, point.value, w * segments + idx, waveCount * segments, performanceMode.value ? 1 : 2);
         }
         
-        // Bright stars/dots at medium-high energy points
-        if (point.value > 0.6 && idx % 2 === 0) {
+        // Stars - reduced in performance mode
+        const starSkip = performanceMode.value ? 4 : 2;
+        if (point.value > 0.6 && idx % starSkip === 0 && (!performanceMode.value || idx % 8 === 0)) {
           const starSize = 1.5 + point.value * 3;
           
-          // Star glow
-          const starGradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, starSize * 4);
-          starGradient.addColorStop(0, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.9));
-          starGradient.addColorStop(0.3, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.5));
-          starGradient.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = starGradient;
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, starSize * 4, 0, Math.PI * 2);
-          ctx.fill();
+          // Skip star glow in performance mode
+          if (!performanceMode.value) {
+            const starGradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, starSize * 4);
+            starGradient.addColorStop(0, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.9));
+            starGradient.addColorStop(0.3, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.5));
+            starGradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = starGradient;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, starSize * 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
           
           // Bright center dot
           ctx.fillStyle = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 1);
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.8);
+          
+          // Skip shadows in performance mode
+          if (!performanceMode.value) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.8);
+          }
+          
           ctx.beginPath();
           ctx.arc(point.x, point.y, starSize, 0, Math.PI * 2);
           ctx.fill();
           ctx.shadowBlur = 0;
           
-          // Four-pointed star rays
-          if (point.value > 0.75) {
+          // Star rays - only in high-performance mode
+          if (point.value > 0.75 && !performanceMode.value) {
             for (let ray = 0; ray < 4; ray++) {
               const angle = (ray / 4) * Math.PI * 2 + rotationAngle * 2;
               const rayLength = starSize * 3;
@@ -1510,12 +1543,16 @@ function drawAuroraWaves() {
           }
         }
         
-        // Small ambient dots everywhere for atmosphere
-        if (idx % 5 === 0 && Math.random() > 0.6) {
+        // Ambient dots - much less frequent in performance mode
+        if (idx % 5 === 0 && Math.random() > (performanceMode.value ? 0.85 : 0.6)) {
           const dotSize = 0.5 + Math.random() * 1.5;
           ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.6);
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
+          
+          if (!performanceMode.value) {
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
+          }
+          
           ctx.beginPath();
           ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
           ctx.fill();
@@ -1523,75 +1560,75 @@ function drawAuroraWaves() {
         }
       });
       
-      // Flowing light streaks/connections between points
-      for (let i = 0; i < points.length - 1; i++) {
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        
-        // Horizontal connections along wave
-        if (p1.value > 0.55 && p2.value > 0.55 && Math.random() > 0.5) {
-          const avgValue = (p1.value + p2.value) / 2;
+      // Skip ALL connection effects in performance mode
+      if (!performanceMode.value) {
+        // Flowing light streaks/connections
+        for (let i = 0; i < points.length - 1; i++) {
+          const p1 = points[i];
+          const p2 = points[i + 1];
           
-          // Glowing connecting line
-          ctx.strokeStyle = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.5);
-          ctx.lineWidth = 1 + avgValue * 2;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.4);
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-        
-        // Vertical light beams
-        if (p1.value > 0.65 && Math.random() > 0.6) {
-          const beamHeight = 80 + p1.value * 120;
-          
-          // Vertical light beam
-          const beamGradient = ctx.createLinearGradient(p1.x, p1.y, p1.x, p1.y + beamHeight);
-          beamGradient.addColorStop(0, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.7));
-          beamGradient.addColorStop(0.5, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.3));
-          beamGradient.addColorStop(1, 'rgba(0,0,0,0)');
-          
-          ctx.strokeStyle = beamGradient;
-          ctx.lineWidth = 2 + p1.value * 3;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.5);
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p1.x, p1.y + beamHeight);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-      }
-      
-      // Cross-wave connections
-      if (w > 0 && Math.random() > 0.7) {
-        const connectionPoints = 5;
-        for (let c = 0; c < connectionPoints; c++) {
-          const pointIdx = Math.floor(Math.random() * points.length);
-          const point = points[pointIdx];
-          
-          if (point.value > 0.7) {
-            const targetY = point.y - (height / waveCount);
+          if (p1.value > 0.55 && p2.value > 0.55 && Math.random() > 0.7) {
+            const avgValue = (p1.value + p2.value) / 2;
             
-            ctx.strokeStyle = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.4);
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.5);
+            ctx.lineWidth = 1 + avgValue * 2;
             ctx.shadowBlur = 8;
-            ctx.shadowColor = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.3);
-            ctx.setLineDash([4, 6]);
+            ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.4);
             ctx.beginPath();
-            ctx.moveTo(point.x, point.y);
-            ctx.lineTo(point.x + (Math.random() - 0.5) * 40, targetY);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
-            ctx.setLineDash([]);
             ctx.shadowBlur = 0;
+          }
+          
+          // Vertical beams - less frequent
+          if (p1.value > 0.7 && Math.random() > 0.75) {
+            const beamHeight = 80 + p1.value * 120;
+            
+            const beamGradient = ctx.createLinearGradient(p1.x, p1.y, p1.x, p1.y + beamHeight);
+            beamGradient.addColorStop(0, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.7));
+            beamGradient.addColorStop(0.5, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.3));
+            beamGradient.addColorStop(1, 'rgba(0,0,0,0)');
+            
+            ctx.strokeStyle = beamGradient;
+            ctx.lineWidth = 2 + p1.value * 3;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p1.x, p1.y + beamHeight);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
+        }
+        
+        // Cross-wave connections - less frequent
+        if (w > 0 && Math.random() > 0.85) {
+          const connectionPoints = 3;
+          for (let c = 0; c < connectionPoints; c++) {
+            const pointIdx = Math.floor(Math.random() * points.length);
+            const point = points[pointIdx];
+            
+            if (point.value > 0.7) {
+              const targetY = point.y - (height / waveCount);
+              
+              ctx.strokeStyle = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.4);
+              ctx.lineWidth = 1;
+              ctx.shadowBlur = 8;
+              ctx.shadowColor = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.3);
+              ctx.setLineDash([4, 6]);
+              ctx.beginPath();
+              ctx.moveTo(point.x, point.y);
+              ctx.lineTo(point.x + (Math.random() - 0.5) * 40, targetY);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.shadowBlur = 0;
+            }
           }
         }
       }
     } else {
-      // Minimal mode - just occasional subtle dots on wave lines
+      // Minimal mode - occasional dots
       points.forEach((point, idx) => {
         if (idx % 8 === 0 && Math.random() > 0.65) {
           const dotSize = 1;
@@ -1607,8 +1644,8 @@ function drawAuroraWaves() {
     }
   }
   
-  // Atmospheric fog/mist effect at bottom - only when audio playing
-  if (audioLoaded.value && !isPaused.value) {
+  // Mist effect - skip in performance mode
+  if (audioLoaded.value && !isPaused.value && !performanceMode.value) {
     const mistGradient = ctx.createLinearGradient(0, height - 200, 0, height);
     mistGradient.addColorStop(0, 'rgba(0,0,0,0)');
     mistGradient.addColorStop(0.5, getColor(500, 1000, 0.05));
@@ -3189,54 +3226,100 @@ function drawBoombox() {
 }
 
 function animate() {
+  // Performance monitoring
+  const now = performance.now();
+  if (lastFrameTime.value) {
+    const delta = now - lastFrameTime.value;
+    fps.value = Math.round(1000 / delta);
+    performanceMode.value = fps.value < 40; // Auto-detect performance issues
+  }
+  lastFrameTime.value = now;
+
+  // Skip frames in performance mode
+  frameSkipCounter.value++;
+  if (performanceMode.value && frameSkipCounter.value % 2 === 0) {
+    animationId = requestAnimationFrame(animate);
+    return;
+  }
+
   const width = canvas.value.width;
   const height = canvas.value.height;
 
-  // Pulsing background for psychedelic effect
+  // Cache expensive calculations - only recalculate every ~33ms (30fps)
+  let avgEnergy = cachedAvgEnergy.value;
   if (audioLoaded.value && !isPaused.value) {
-    const avgEnergy = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255;
-    const bgPulse = Math.floor(10 + avgEnergy * 15);
-    ctx.fillStyle = `rgba(${bgPulse}, ${bgPulse * 0.5}, ${bgPulse * 1.5}, 0.25)`;
+    if (now - lastEnergyCalcTime.value > 33) { // ~30fps for energy calc
+      analyser.getByteFrequencyData(dataArray);
+      avgEnergy = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255;
+      cachedAvgEnergy.value = avgEnergy;
+      lastEnergyCalcTime.value = now;
+    }
+  }
+
+  // Optimized background - simpler calculation
+  if (audioLoaded.value && !isPaused.value) {
+    const bgPulse = 10 + (avgEnergy * 15) | 0; // Bitwise OR for floor()
+    // Pre-calculate color string if pulse value hasn't changed significantly
+    ctx.fillStyle = `rgba(${bgPulse}, ${(bgPulse * 0.5) | 0}, ${(bgPulse * 1.5) | 0}, 0.25)`;
   } else {
     ctx.fillStyle = 'rgba(10, 10, 10, 0.25)';
   }
   ctx.fillRect(0, 0, width, height);
 
+  // Update rotation/breathing
   if (audioLoaded.value && !isPaused.value) {
-    analyser.getByteFrequencyData(dataArray);
-    rotationAngle += 0.007; // Medium rotation speed
+    // Audio data already fetched above
+    rotationAngle += 0.007;
   } else {
-    // Breathing animation when no audio
     breathePhase += 0.02;
-    rotationAngle += 0.003; // Medium idle rotation
+    rotationAngle += 0.003;
   }
 
-
-  // Draw current pattern
+  // Draw current pattern (this is the heaviest operation)
   patterns[currentPatternIndex.value].draw();
 
-  // Update and draw particles
-  updateParticles();
+  // Conditionally update particles based on performance
+  if (!performanceMode.value || frameSkipCounter.value % 2 === 1) {
+    updateParticles();
+  }
   drawParticles();
 
-  // Update and clean up ripples
-  ripples = ripples.filter(r => !r.isDead());
-  ripples.forEach(r => r.update());
+  // Optimize ripple updates - batch operations
+  // Filter and update in single pass
+  const aliveRipples = [];
+  for (let i = 0; i < ripples.length; i++) {
+    const r = ripples[i];
+    r.update();
+    if (!r.isDead()) {
+      aliveRipples.push(r);
+    }
+  }
+  ripples = aliveRipples;
 
   // Smooth warp intensity
   warpIntensity += (targetWarpIntensity - warpIntensity) * 0.1;
 
-  // Draw soundwaves on top  // Draw ripple effects
-  ripples.forEach(ripple => {
-    ctx.strokeStyle = 'solid';
+  // Optimized ripple drawing - batch stroke operations
+  if (ripples.length > 0) {
+    ctx.strokeStyle = 'red'; // Move outside loop
     ctx.lineWidth = 3;
     ctx.shadowBlur = 10;
     ctx.shadowColor = 'red';
-    ctx.beginPath();
-    ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  });
+    
+    // Disable shadows in performance mode
+    if (performanceMode.value) {
+      ctx.shadowBlur = 0;
+    }
+    
+    for (let i = 0; i < ripples.length; i++) {
+      const ripple = ripples[i];
+      ctx.beginPath();
+      ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    ctx.shadowBlur = 0; // Reset once at end
+  }
 
   animationId = requestAnimationFrame(animate);
 }
