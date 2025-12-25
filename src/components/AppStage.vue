@@ -445,7 +445,7 @@ class Particle {
 function startPlayback() {
   showPlayModal.value = false;
   if (useMusicPlayer.value) {
-    loadTrack(0);
+    loadTrack(currentTrackIndex.value);
   }
 }
 
@@ -3540,7 +3540,7 @@ onMounted(() => {
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('keydown', handleKeyDown);  // Add this line
-  
+
 
   // Set random initial pattern
   currentPatternIndex.value = getRandomPatternIndex();
@@ -3551,12 +3551,27 @@ onMounted(() => {
   canvas.value.addEventListener('mouseup', handleMouseUp);
   canvas.value.addEventListener('mouseleave', handleMouseLeave);
   canvas.value.addEventListener('click', handleClick);
-  
+
   // Touch events
   canvas.value.addEventListener('touchstart', handleTouchStart);
   canvas.value.addEventListener('touchmove', handleTouchMove);
   canvas.value.addEventListener('touchend', handleTouchEnd);
-  
+
+  // Check for track query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const trackParam = urlParams.get('track');
+
+  if (trackParam) {
+    const trackNumber = parseInt(trackParam, 10);
+    // Convert from 1-indexed (user-facing) to 0-indexed (internal)
+    const trackIndex = trackNumber - 1;
+
+    // Validate track index is within bounds
+    if (trackIndex >= 0 && trackIndex < tracks.value.length) {
+      currentTrackIndex.value = trackIndex;
+    }
+  }
+
   animate();
 
   startAutoRotation();
