@@ -456,6 +456,7 @@ function startPlayback() {
   showPlayModal.value = false;
   if (useMusicPlayer.value) {
     loadTrack(currentTrackIndex.value);
+    updateURLWithTrack(currentTrackIndex.value);
   }
 }
 
@@ -542,6 +543,15 @@ const currentPaletteName = ref(palettes[0].name);
 function handleTrackChange(index) {
   currentTrackIndex.value = index;
   loadTrack(index);
+  updateURLWithTrack(index);
+}
+
+function updateURLWithTrack(index) {
+  // Convert from 0-indexed to 1-indexed for user-facing URL
+  const trackNumber = index + 1;
+  const url = new URL(window.location);
+  url.searchParams.set('track', trackNumber);
+  window.history.replaceState({}, '', url);
 }
 
 function nextTrack() {
