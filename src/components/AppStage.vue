@@ -1962,6 +1962,12 @@ function drawDiamondLattice() {
   ctx.rotate(rotationAngle * 0.15);
   ctx.translate(-width / 2, -height / 2);
 
+  // Pre-calculate octagon angles
+  const octagonAngles = [];
+  for (let k = 0; k < 8; k++) {
+    octagonAngles.push((k / 8) * Math.PI * 2);
+  }
+
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
       const baseX = (i - 1) * size + size / 2;
@@ -1969,31 +1975,36 @@ function drawDiamondLattice() {
       const index = i + j * cols;
       const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
       const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.15) * 0.3 + 0.5;
-      
+
       // Apply warp distortion
       const warped = applyWarpDistortion(baseX, baseY);
       const x = warped.x;
       const y = warped.y;
-      
+
       const octagonSize = size * 0.35 * (0.7 + value * 0.5) * warped.scale;
       const diamondSize = size * 0.25 * (0.8 + value * 0.4) * warped.scale;
 
-      // Spawn particles
-      if (audioLoaded.value && value > 0.77 && Math.random() > 0.9) {
-        createParticles(x, y, value, index, cols * rows, 3);
+      // Spawn particles less frequently
+      if (audioLoaded.value && value > 0.8 && Math.random() > 0.95) {
+        createParticles(x, y, value, index, cols * rows, 2);
       }
 
-      // Outer glow ring
-      if (value > 0.5) {
-        ctx.strokeStyle = getColor(index, cols * rows, (value - 0.5) * 0.3);
-        ctx.lineWidth = 8;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = getColor(index, cols * rows, value);
+      // Cache color calculations
+      const mainColor = getColor(index, cols * rows, value * 0.7);
+      const strokeColor = getColor(index, cols * rows, 1);
+      const diamondColor = getColor(index + 100, cols * rows, value);
+
+      // Outer glow ring - only for high values
+      if (value > 0.6) {
+        ctx.strokeStyle = getColor(index, cols * rows, (value - 0.6) * 0.4);
+        ctx.lineWidth = 6;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = strokeColor;
         ctx.beginPath();
         for (let k = 0; k < 8; k++) {
-          const angle = (k / 8) * Math.PI * 2;
-          const px = x + Math.cos(angle) * (octagonSize + 10);
-          const py = y + Math.sin(angle) * (octagonSize + 10);
+          const angle = octagonAngles[k];
+          const px = x + Math.cos(angle) * (octagonSize + 8);
+          const py = y + Math.sin(angle) * (octagonSize + 8);
           if (k === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
@@ -2003,10 +2014,10 @@ function drawDiamondLattice() {
       }
 
       // Draw octagon
-      ctx.fillStyle = getColor(index, cols * rows, value * 0.7);
+      ctx.fillStyle = mainColor;
       ctx.beginPath();
       for (let k = 0; k < 8; k++) {
-        const angle = (k / 8) * Math.PI * 2;
+        const angle = octagonAngles[k];
         const px = x + Math.cos(angle) * octagonSize;
         const py = y + Math.sin(angle) * octagonSize;
         if (k === 0) ctx.moveTo(px, py);
@@ -2014,16 +2025,16 @@ function drawDiamondLattice() {
       }
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = getColor(index, cols * rows, 1);
+      ctx.strokeStyle = strokeColor;
       ctx.lineWidth = value > 0.6 ? 3 : 2;
       ctx.stroke();
 
-      // Draw center diamond with glow
+      // Draw center diamond with glow (only if value is high)
       if (value > 0.6) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = getColor(index + 100, cols * rows, value);
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = diamondColor;
       }
-      ctx.fillStyle = getColor(index + 100, cols * rows, value);
+      ctx.fillStyle = diamondColor;
       ctx.beginPath();
       ctx.moveTo(x, y - diamondSize);
       ctx.lineTo(x + diamondSize, y);
@@ -2031,42 +2042,47 @@ function drawDiamondLattice() {
       ctx.lineTo(x - diamondSize, y);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = getColor(index + 100, cols * rows, 1);
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
 
-      // Draw corner diamonds
-      const corners = [
-        [x, y - octagonSize - diamondSize / 2],
-        [x + octagonSize + diamondSize / 2, y],
-        [x, y + octagonSize + diamondSize / 2],
-        [x - octagonSize - diamondSize / 2, y]
-      ];
+      if (value > 0.6) {
+        ctx.strokeStyle = getColor(index + 100, cols * rows, 1);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
 
-      corners.forEach(([cx, cy], ci) => {
-        const cornerValue = audioLoaded.value ? dataArray[(dataIndex + ci) % bufferLength] / 255 : value;
-        const cSize = diamondSize * 0.6 * (0.8 + cornerValue * 0.4);
-        
-        ctx.fillStyle = getColor(index + ci * 50, cols * rows, cornerValue * 0.8);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - cSize);
-        ctx.lineTo(cx + cSize, cy);
-        ctx.lineTo(cx, cy + cSize);
-        ctx.lineTo(cx - cSize, cy);
-        ctx.closePath();
-        ctx.fill();
+      // Draw corner diamonds - only every other cell for performance
+      if ((i + j) % 2 === 0) {
+        const corners = [
+          [x, y - octagonSize - diamondSize / 2],
+          [x + octagonSize + diamondSize / 2, y],
+          [x, y + octagonSize + diamondSize / 2],
+          [x - octagonSize - diamondSize / 2, y]
+        ];
 
-        // Energy lines connecting to center
-        if (value > 0.6) {
-          ctx.strokeStyle = getColor(index, cols * rows, value * 0.3);
-          ctx.lineWidth = 1;
+        corners.forEach(([cx, cy], ci) => {
+          const cornerValue = audioLoaded.value ? dataArray[(dataIndex + ci) % bufferLength] / 255 : value;
+          const cSize = diamondSize * 0.6 * (0.8 + cornerValue * 0.4);
+
+          ctx.fillStyle = getColor(index + ci * 50, cols * rows, cornerValue * 0.8);
           ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(x, y);
-          ctx.stroke();
-        }
-      });
+          ctx.moveTo(cx, cy - cSize);
+          ctx.lineTo(cx + cSize, cy);
+          ctx.lineTo(cx, cy + cSize);
+          ctx.lineTo(cx - cSize, cy);
+          ctx.closePath();
+          ctx.fill();
+
+          // Energy lines - only for very high values
+          if (value > 0.7) {
+            ctx.strokeStyle = getColor(index, cols * rows, value * 0.3);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+          }
+        });
+      }
     }
   }
 
