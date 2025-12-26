@@ -4235,6 +4235,94 @@ function drawBoombox() {
   ctx.restore();
 }
 
+function drawAnalogEffects() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+
+  // Initialize static timer
+  if (!window.analogStaticTimer) {
+    window.analogStaticTimer = 0;
+    window.nextStaticBurst = Math.random() * 300 + 100; // Random interval between bursts
+    window.staticBurstActive = false;
+    window.staticBurstDuration = 0;
+  }
+
+  window.analogStaticTimer++;
+
+  // Trigger static burst intermittently
+  if (window.analogStaticTimer > window.nextStaticBurst && !window.staticBurstActive) {
+    window.staticBurstActive = true;
+    window.staticBurstDuration = Math.random() * 15 + 5; // 5-20 frames
+    window.analogStaticTimer = 0;
+    window.nextStaticBurst = Math.random() * 300 + 100;
+  }
+
+  // Draw TV static burst
+  if (window.staticBurstActive) {
+    const staticIntensity = 0.15; // Subtle static
+    const pixelSize = 3; // Size of static pixels
+
+    for (let x = 0; x < width; x += pixelSize) {
+      for (let y = 0; y < height; y += pixelSize) {
+        if (Math.random() > 0.7) { // Only some pixels
+          const brightness = Math.random() * 255;
+          ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${staticIntensity})`;
+          ctx.fillRect(x, y, pixelSize, pixelSize);
+        }
+      }
+    }
+
+    window.staticBurstDuration--;
+    if (window.staticBurstDuration <= 0) {
+      window.staticBurstActive = false;
+    }
+  }
+
+  // Subtle scan lines (always present)
+  ctx.globalAlpha = 0.08;
+  for (let y = 0; y < height; y += 4) { // Every 4 pixels
+    ctx.strokeStyle = y % 8 === 0 ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  // Occasional tracking line (horizontal glitch)
+  if (Math.random() > 0.98) {
+    const trackingY = Math.random() * height;
+    const trackingHeight = 2 + Math.random() * 3;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillRect(0, trackingY, width, trackingHeight);
+  }
+
+  // Film grain overlay
+  ctx.globalAlpha = 0.03;
+  for (let i = 0; i < 50; i++) { // Sparse grain
+    const grainX = Math.random() * width;
+    const grainY = Math.random() * height;
+    const grainSize = Math.random() * 2;
+    const grainBrightness = Math.random() > 0.5 ? 255 : 0;
+    ctx.fillStyle = `rgb(${grainBrightness}, ${grainBrightness}, ${grainBrightness})`;
+    ctx.fillRect(grainX, grainY, grainSize, grainSize);
+  }
+
+  // Vignette effect for that vintage feel
+  const vignetteGradient = ctx.createRadialGradient(
+    width / 2, height / 2, Math.min(width, height) * 0.3,
+    width / 2, height / 2, Math.min(width, height) * 0.7
+  );
+  vignetteGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignetteGradient.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = vignetteGradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.globalAlpha = 1;
+}
+
 function animate() {
   // Performance monitoring
   const now = performance.now();
@@ -4315,21 +4403,24 @@ function animate() {
     ctx.lineWidth = 3;
     ctx.shadowBlur = 10;
     ctx.shadowColor = 'red';
-    
+
     // Disable shadows in performance mode
     if (performanceMode.value) {
       ctx.shadowBlur = 0;
     }
-    
+
     for (let i = 0; i < ripples.length; i++) {
       const ripple = ripples[i];
       ctx.beginPath();
       ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
       ctx.stroke();
     }
-    
+
     ctx.shadowBlur = 0; // Reset once at end
   }
+
+  // Apply analog TV effects overlay
+  drawAnalogEffects();
 
   animationId = requestAnimationFrame(animate);
 }
