@@ -175,7 +175,7 @@ const tracks = ref([
   },
   { 
     name: 'Down And Out In Sidereal Time', 
-    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-down-and-out-in-sidereal-time-MASTER-Balanced-Medium.wav' 
+    url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-down-and-out-in-sidereal-time-FINAL-MASTER-Balanced-Low.wav' 
   }
 ]);
 const patternRotateInterval = ref(15000); // 15 seconds per pattern
@@ -270,7 +270,7 @@ const palettes = [
   },
   {
     name: 'Forest Glow',
-    colors: ['#114b5f', '#1a936f', '#88d498', '#c6dabf', '#f3e9d2']
+    colors: ['#114b5f', '#1a936f', '#88d498', '#c6dabf', '#f3e9d2', '#ebcf34']
   },
   {
     name: 'Lava Flow',
@@ -298,23 +298,23 @@ const palettes = [
   },
   {
     name: 'Ultraviolet',
-    colors: ['#9d00ff', '#7000ff', '#5000cc', '#b366ff', '#cc99ff']
+    colors: ['#9d00ff', '#7000ff', '#5000cc', '#b366ff', '#cc99ff', '#000000']
   },
   {
     name: 'Toxic Slime',
-    colors: ['#39ff14', '#7fff00', '#adff2f', '#00ff00', '#32cd32']
+    colors: ['#39ff14', '#7fff00', '#adff2f', '#00ff00', '#32cd32', '#f7a202']
   },
   {
     name: 'Ice Cave',
     colors: ['#00ced1', '#00bfff', '#1e90ff', '#87ceeb', '#b0e0e6']
   },
   {
-    name: 'Synthwave Nights',
+    name: 'Synthwave',
     colors: ['#ff00ff', '#ff006e', '#8338ec', '#3a0ca3', '#4cc9f0']
   },
   {
     name: 'Nebula',
-    colors: ['#9d4edd', '#7209b7', '#5a189a', '#240046', '#ff006e']
+    colors: ['#9d4edd', '#7209b7', '#5a189a', '#240046', '#ff006e', '#f3f702']
   },
   {
     name: 'Radioactive',
@@ -327,7 +327,13 @@ const palettes = [
   {
   name: 'Hivemind',
   colors: ['#ffff00', '#ffd700', '#000000', '#ffffff', '#ffcc00']
-  }
+  },
+  
+  // COMPLEMENTARY PALETTES 
+  { name: 'Purple-Yellow', colors: ['#9933FF', '#FFFF00', '#B366FF', '#FFFF33', '#7700CC', '#CCCC00'] },
+  { name: 'Teal-Coral', colors: ['#00CED1', '#FF6F61', '#33D6D9', '#FF8C82', '#00A8AB', '#CC5850'] },
+  { name: 'Indigo-Peach', colors: ['#4B0082', '#FFDAB9', '#6A00B8', '#FFE4CC', '#3A0066', '#FFCFA3'] },
+  { name: 'Mint-Rose', colors: ['#98FF98', '#FF007F', '#ADFFAD', '#FF3399', '#7FE57F', '#CC0066'] },
 ];
 
 function togglePatternLock() {
