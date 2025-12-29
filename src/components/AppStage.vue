@@ -1,7 +1,7 @@
 <template>
   <div class="visualizer-app">
     
-    <!-- Play Modal -->
+    <!-- Intro Modal -->
     <div v-if="showPlayModal" class="modal-overlay">
       <div class="modal-content">
         <!-- <div class="modal-logo">ONE WAX WING</div>
@@ -95,7 +95,6 @@
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
     </div>
 
-    <!-- Music Player Component -->
     <MusicPlayer
       v-if="useMusicPlayer"
       :tracks="tracks"
