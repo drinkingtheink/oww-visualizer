@@ -670,7 +670,7 @@ function setupAudioContext(audio) {
 function getColor(index, total, intensity) {
   const palette = palettes[currentPaletteIndex.value].colors;
   // Add color cycling for psychedelic effect
-  const cycleOffset = Math.floor(rotationAngle * 10) % palette.length;
+  const cycleOffset = Math.floor(rotationAngle * 1) % palette.length;
   const colorIndex = Math.floor((index / total) * palette.length) + cycleOffset;
   const color = palette[colorIndex % palette.length];
   
