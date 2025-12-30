@@ -856,4 +856,14 @@ export default {
 .animate .speech-bubble::after {
     border-bottom-color: hsla(var(--bubble-hue), 70%, 95%, 0.98); /* Colored fill */
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .seraphim-wrapper {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0;
+  }
+}
 </style>
