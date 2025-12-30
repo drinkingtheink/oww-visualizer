@@ -561,6 +561,21 @@ function updateURLWithTrack(index) {
   window.history.replaceState({}, '', url);
 }
 
+function updateDocumentTitle() {
+  if (audioLoaded.value && !isPaused.value) {
+    // Playing - show track name
+    const track = tracks.value[currentTrackIndex.value];
+    document.title = `♫ ${track.name} - One Wax Wing`;
+  } else if (audioLoaded.value) {
+    // Paused - show paused status
+    const track = tracks.value[currentTrackIndex.value];
+    document.title = `⏸ ${track.name} - One Wax Wing`;
+  } else {
+    // No track loaded
+    document.title = 'One Wax Wing - Let Slip';
+  }
+}
+
 function nextTrack() {
   const nextIndex = (currentTrackIndex.value + 1) % tracks.value.length;
   handleTrackChange(nextIndex);
@@ -592,12 +607,14 @@ function loadTrack(index) {
     setupAudioContext(audioElement);
     audioLoaded.value = true;
     isPaused.value = false;
+    updateDocumentTitle();
   }).catch(err => {
     console.error('Error playing track:', err);
     // If auto-play fails, just load it ready to play
     setupAudioContext(audioElement);
     audioLoaded.value = true;
     isPaused.value = true;
+    updateDocumentTitle();
   });
   
   // Handle track end - auto-advance to next track
@@ -4432,13 +4449,15 @@ function animate() {
 
 function togglePause() {
   if (!audioElement) return;
-  
+
   if (isPaused.value) {
     audioElement.play();
     isPaused.value = false;
+    updateDocumentTitle();
   } else {
     audioElement.pause();
     isPaused.value = true;
+    updateDocumentTitle();
   }
 }
 
@@ -4679,6 +4698,9 @@ onMounted(() => {
   }
 
   animate();
+
+  // Set initial document title
+  updateDocumentTitle();
 
   startAutoRotation();
 });
