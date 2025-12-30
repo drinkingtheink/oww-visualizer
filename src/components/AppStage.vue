@@ -45,7 +45,7 @@
     </div>
 
     <h1>
-      <svg id="oww-typog" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
+      <svg id="oww-typog" :class="{ 'logo-animate': isLogoAnimating }" @click="triggerLogoAnimation" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1435.21 160.32">
         <g id="back-text">
           <path class="oww-1" d="M12.45,142.6V39.8h15.63v-16.67h94.3v16.67h16.5v102.81h-16.5v16.67H28.08v-16.67h-15.63ZM55.34,123.85h39.59V59.59h-39.59v64.25Z" />
           <path class="oww-1" d="M196.17,23.13v16.67h16.15v15.98h17.19v16.67h6.43V23.13h42.2v136.15h-42.2v-16.67h-17.19v-15.98h-17.19v-16.67h-6.43v49.32h-43.41V23.13h44.46Z" />
@@ -142,6 +142,7 @@ const fps = ref(60);
 const performanceMode = ref(false);
 const frameSkipCounter = ref(0);
 const cachedAvgEnergy = ref(0);
+const isLogoAnimating = ref(false);
 const lastEnergyCalcTime = ref(0);
 
 // Music player state
@@ -463,6 +464,17 @@ function startPlayback() {
     loadTrack(currentTrackIndex.value);
     updateURLWithTrack(currentTrackIndex.value);
   }
+}
+
+function triggerLogoAnimation() {
+  if (isLogoAnimating.value) return; // Prevent spam clicking
+
+  isLogoAnimating.value = true;
+
+  // Remove the animation class after it completes
+  setTimeout(() => {
+    isLogoAnimating.value = false;
+  }, 700); // Match animation duration
 }
 
 // Ripple effect class
@@ -4737,6 +4749,55 @@ onUnmounted(() => {
   width: 350px;
   top: 30px;
   left: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+#oww-typog:hover {
+  transform: scale(1.02);
+}
+
+#oww-typog.logo-animate {
+  animation: logoBlast 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes logoBlast {
+  0% {
+    transform: scale(1) rotate(0deg);
+    filter: hue-rotate(0deg) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+  10% {
+    transform: scale(1.15) rotate(-3deg) translateX(-5px);
+    filter: hue-rotate(60deg) drop-shadow(0 0 20px rgba(102, 126, 234, 0.8));
+  }
+  20% {
+    transform: scale(1.1) rotate(2deg) translateX(5px);
+    filter: hue-rotate(120deg) drop-shadow(0 0 25px rgba(118, 75, 162, 0.9));
+  }
+  30% {
+    transform: scale(1.2) rotate(-2deg) translateX(-3px);
+    filter: hue-rotate(180deg) drop-shadow(0 0 30px rgba(255, 100, 200, 1));
+  }
+  40% {
+    transform: scale(1.15) rotate(3deg) translateX(4px);
+    filter: hue-rotate(240deg) drop-shadow(0 0 25px rgba(100, 200, 255, 0.9));
+  }
+  50% {
+    transform: scale(1.25) rotate(0deg) translateX(0px);
+    filter: hue-rotate(300deg) drop-shadow(0 0 35px rgba(255, 200, 100, 1));
+  }
+  65% {
+    transform: scale(1.1) rotate(-1deg);
+    filter: hue-rotate(200deg) drop-shadow(0 0 20px rgba(150, 100, 255, 0.7));
+  }
+  80% {
+    transform: scale(1.05) rotate(1deg);
+    filter: hue-rotate(100deg) drop-shadow(0 0 10px rgba(100, 255, 150, 0.5));
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: hue-rotate(0deg) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
 }
 
 .triangle {
@@ -5067,6 +5128,50 @@ canvas {
     top: auto;
     bottom: 20px;
     width: 280px; /* Slightly smaller for mobile */
+  }
+
+  #oww-typog:hover {
+    transform: translateX(-50%) scale(1.02);
+  }
+
+  /* Mobile animation - preserve centering */
+  @keyframes logoBlast {
+    0% {
+      transform: translateX(-50%) scale(1) rotate(0deg);
+      filter: hue-rotate(0deg) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+    }
+    10% {
+      transform: translateX(-50%) scale(1.15) rotate(-3deg);
+      filter: hue-rotate(60deg) drop-shadow(0 0 20px rgba(102, 126, 234, 0.8));
+    }
+    20% {
+      transform: translateX(-50%) scale(1.1) rotate(2deg);
+      filter: hue-rotate(120deg) drop-shadow(0 0 25px rgba(118, 75, 162, 0.9));
+    }
+    30% {
+      transform: translateX(-50%) scale(1.2) rotate(-2deg);
+      filter: hue-rotate(180deg) drop-shadow(0 0 30px rgba(255, 100, 200, 1));
+    }
+    40% {
+      transform: translateX(-50%) scale(1.15) rotate(3deg);
+      filter: hue-rotate(240deg) drop-shadow(0 0 25px rgba(100, 200, 255, 0.9));
+    }
+    50% {
+      transform: translateX(-50%) scale(1.25) rotate(0deg);
+      filter: hue-rotate(300deg) drop-shadow(0 0 35px rgba(255, 200, 100, 1));
+    }
+    65% {
+      transform: translateX(-50%) scale(1.1) rotate(-1deg);
+      filter: hue-rotate(200deg) drop-shadow(0 0 20px rgba(150, 100, 255, 0.7));
+    }
+    80% {
+      transform: translateX(-50%) scale(1.05) rotate(1deg);
+      filter: hue-rotate(100deg) drop-shadow(0 0 10px rgba(100, 255, 150, 0.5));
+    }
+    100% {
+      transform: translateX(-50%) scale(1) rotate(0deg);
+      filter: hue-rotate(0deg) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+    }
   }
 }
 </style>
