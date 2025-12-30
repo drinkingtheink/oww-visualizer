@@ -5012,6 +5012,7 @@ canvas {
 .modal-content {
   text-align: center;
   animation: slideUp 0.5s ease;
+  padding: 0 1rem;
 }
 
 @keyframes slideUp {
