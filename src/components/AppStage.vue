@@ -5042,4 +5042,31 @@ canvas {
   stroke-width: 10px;
   overflow: visible;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Hide controls and info on mobile */
+  .controls {
+    display: none;
+  }
+
+  .info {
+    display: none;
+  }
+
+  /* Hide triangle seraphim SVGs on mobile */
+  .triangle,
+  .triangle.tri2 {
+    display: none;
+  }
+
+  /* Center the One Wax Wing logo at the bottom */
+  #oww-typog {
+    left: 50%;
+    transform: translateX(-50%);
+    top: auto;
+    bottom: 20px;
+    width: 280px; /* Slightly smaller for mobile */
+  }
+}
 </style>
