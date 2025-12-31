@@ -372,11 +372,13 @@ export default {
   top: 3rem;
   /* pointer-events: none; */
   z-index: 100;
+  opacity: 1;
+  transition: opacity 2s;
 }
 
 .animate.seraphim-wrapper:hover {
   filter: blur(5px);
-  opacity: 0.6;
+  opacity: 0;
 }
 
 .animate svg {
