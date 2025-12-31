@@ -4498,20 +4498,19 @@ function animate() {
   // Smooth warp intensity
   warpIntensity += (targetWarpIntensity - warpIntensity) * 0.1;
 
-  // Optimized ripple drawing - batch stroke operations
+  // Optimized ripple drawing - use palette colors
   if (ripples.length > 0) {
-    ctx.strokeStyle = 'red'; // Move outside loop
-    ctx.lineWidth = 3;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = 'red';
-
-    // Disable shadows in performance mode
-    if (performanceMode.value) {
-      ctx.shadowBlur = 0;
-    }
-
     for (let i = 0; i < ripples.length; i++) {
       const ripple = ripples[i];
+
+      // Get color from current palette based on ripple index
+      const rippleColor = getColor(i, ripples.length, ripple.intensity);
+
+      ctx.strokeStyle = rippleColor;
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = performanceMode.value ? 0 : 10;
+      ctx.shadowColor = rippleColor;
+
       ctx.beginPath();
       ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
       ctx.stroke();
