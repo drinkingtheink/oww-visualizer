@@ -2114,7 +2114,7 @@ function drawCosmicSphere() {
   ctx.globalAlpha = 1;
 
   // Latitude lines (horizontal bands) - more prominent
-  const latitudeCount = 8;
+  const latitudeCount = 20;
   for (let i = 0; i < latitudeCount; i++) {
     const t = i / latitudeCount;
     const angle = (t - 0.5) * Math.PI;
@@ -2152,7 +2152,7 @@ function drawCosmicSphere() {
   ctx.setLineDash([]);
 
   // Longitude lines (vertical bands) - more prominent
-  const longitudeCount = 12;
+  const longitudeCount = 50;
   for (let i = 0; i < longitudeCount; i++) {
     const angle = (i / longitudeCount) * Math.PI * 2 + sphereRotation;
     const dataIndex = Math.floor((i / longitudeCount) * bufferLength);
