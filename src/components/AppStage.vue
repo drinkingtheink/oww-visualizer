@@ -4843,7 +4843,7 @@ onUnmounted(() => {
   }
   20% {
     transform: scale(1.1) rotate(2deg) translateX(5px);
-    filter: hue-rotate(120deg) drop-shadow(0 0 25px rgba(118, 75, 162, 0.9));
+    filter: hue-rotate(120deg) drop-shadow(0 0 25px rgba(249, 218, 45, 0.9));
   }
   30% {
     transform: scale(1.2) rotate(-2deg) translateX(-3px);
@@ -4863,7 +4863,7 @@ onUnmounted(() => {
   }
   80% {
     transform: scale(1.05) rotate(1deg);
-    filter: hue-rotate(100deg) drop-shadow(0 0 10px rgba(100, 255, 150, 0.5));
+    filter: hue-rotate(100deg) drop-shadow(0 0 10px rgba(34, 247, 102, 0.5));
   }
   100% {
     transform: scale(1) rotate(0deg);
