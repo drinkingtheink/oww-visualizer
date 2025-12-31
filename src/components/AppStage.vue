@@ -471,6 +471,15 @@ function triggerLogoAnimation() {
 
   isLogoAnimating.value = true;
 
+  // Change to a random pattern different from the current one
+  let newPatternIndex;
+  do {
+    newPatternIndex = getRandomPatternIndex();
+  } while (newPatternIndex === currentPatternIndex.value && patterns.length > 1);
+
+  currentPatternIndex.value = newPatternIndex;
+  currentPatternName.value = patterns[currentPatternIndex.value].name;
+
   // Remove the animation class after it completes
   setTimeout(() => {
     isLogoAnimating.value = false;
