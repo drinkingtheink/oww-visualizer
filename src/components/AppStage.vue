@@ -3621,7 +3621,7 @@ function drawLiquidCrystals() {
       ctx.shadowBlur = 0;
       
       // Draw energy pulses (small dots) around high-energy cells
-      if (value > 0.75) {
+      if (value > 0.25) {
         const pulseCount = 4 + Math.floor(value * 4);
         for (let p = 0; p < pulseCount; p++) {
           const pulseAngle = (p / pulseCount) * Math.PI * 2 + breathePhase;
@@ -3653,12 +3653,12 @@ function drawLiquidCrystals() {
       const y = warped.y;
       
       // HORIZONTAL connections - lower threshold, more connections
-      if (i < cols - 1 && value > 0.5) { // Lowered from 0.7
+      if (i < cols - 1 && value > 0.15) { // Lowered from 0.7
         const nextIndex = (i + 1) + j * cols;
         const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
         const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
         
-        if (nextValue > 0.5) { // Lowered from 0.7
+        if (nextValue > 0.3) { // Lowered from 0.7
           const nextWarped = applyWarpDistortion((i + 1) * cellSize, baseY);
           const midX = (x + nextWarped.x) / 2;
           const midY = (y + nextWarped.y) / 2;
@@ -3672,8 +3672,8 @@ function drawLiquidCrystals() {
           ctx.beginPath();
           ctx.moveTo(x, y);
           ctx.quadraticCurveTo(
-            midX + Math.sin(breathePhase + index * 0.2) * 20,
-            midY + Math.cos(breathePhase + index * 0.2) * 20,
+            midX + Math.sin(breathePhase + index * 0.2) * 50,
+            midY + Math.cos(breathePhase + index * 0.2) * 50,
             nextWarped.x, nextWarped.y
           );
           ctx.stroke();
@@ -3682,12 +3682,12 @@ function drawLiquidCrystals() {
       }
       
       // VERTICAL connections - lower threshold, more connections
-      if (j < rows - 1 && value > 0.5) { // Lowered from 0.7
+      if (j < rows - 1 && value > 0.15) { // Lowered from 0.7
         const nextIndex = i + (j + 1) * cols;
         const nextDataIndex = Math.floor((nextIndex / (cols * rows)) * bufferLength);
         const nextValue = audioLoaded.value ? dataArray[nextDataIndex] / 255 : value;
         
-        if (nextValue > 0.5) { // Lowered from 0.7
+        if (nextValue > 0.15) { // Lowered from 0.7
           const nextWarped = applyWarpDistortion(baseX, (j + 1) * cellSize);
           const midX = (x + nextWarped.x) / 2;
           const midY = (y + nextWarped.y) / 2;
@@ -3710,7 +3710,7 @@ function drawLiquidCrystals() {
       }
       
       // DIAGONAL connections (NEW!) - top-right and bottom-right
-      if (i < cols - 1 && j < rows - 1 && value > 0.55) {
+      if (i < cols - 1 && j < rows - 1 && value > 0.15) {
         // Bottom-right diagonal
         const diagIndex = (i + 1) + (j + 1) * cols;
         const diagDataIndex = Math.floor((diagIndex / (cols * rows)) * bufferLength);
@@ -3732,7 +3732,7 @@ function drawLiquidCrystals() {
         }
       }
       
-      if (i < cols - 1 && j > 0 && value > 0.55) {
+      if (i < cols - 1 && j > 0 && value > 0.15) {
         // Top-right diagonal
         const diagIndex = (i + 1) + (j - 1) * cols;
         const diagDataIndex = Math.floor((diagIndex / (cols * rows)) * bufferLength);
