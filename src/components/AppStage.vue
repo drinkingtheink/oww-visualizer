@@ -4405,6 +4405,12 @@ function handleTouchStart(e) {
   mouseY = touch.clientY - rect.top;
   isMouseDown = true;
   targetWarpIntensity = 1;
+
+  // Store initial touch position for swipe detection
+  if (!window.touchStartY) {
+    window.touchStartY = touch.clientY;
+    window.touchStartX = touch.clientX;
+  }
 }
 
 function handleTouchMove(e) {
@@ -4424,10 +4430,50 @@ function handleTouchEnd(e) {
   e.preventDefault();
   isMouseDown = false;
   targetWarpIntensity = 0;
-  
+
   // Create final ripple on release
   if (mouseX && mouseY) {
     ripples.push(new Ripple(mouseX, mouseY, 1.5));
+  }
+
+  // Detect swipe gesture
+  if (window.touchStartY !== undefined && window.touchStartX !== undefined) {
+    const touch = e.changedTouches[0];
+    const touchEndY = touch.clientY;
+    const touchEndX = touch.clientX;
+
+    const deltaY = window.touchStartY - touchEndY;
+    const deltaX = Math.abs(window.touchStartX - touchEndX);
+
+    // Minimum swipe distance threshold
+    const swipeThreshold = 50;
+
+    // Check if it's primarily a vertical swipe (deltaY > deltaX)
+    if (Math.abs(deltaY) > swipeThreshold && Math.abs(deltaY) > deltaX) {
+      if (deltaY > 0) {
+        // Swiped up - same as ArrowUp
+        cyclePalette();
+      } else {
+        // Swiped down - same as ArrowDown
+        currentPaletteIndex.value = (currentPaletteIndex.value - 1 + palettes.length) % palettes.length;
+        currentPaletteName.value = palettes[currentPaletteIndex.value].name;
+
+        // Random color in the new palette
+        typographyColorIndex.value = Math.floor(Math.random() * palettes[currentPaletteIndex.value].colors.length);
+
+        // Reset palette rotation timer
+        if (paletteTimer) {
+          clearInterval(paletteTimer);
+          paletteTimer = setInterval(() => {
+            cyclePalette();
+          }, paletteRotateInterval.value);
+        }
+      }
+    }
+
+    // Reset touch start position
+    window.touchStartY = undefined;
+    window.touchStartX = undefined;
   }
 }
 
