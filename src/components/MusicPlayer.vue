@@ -396,4 +396,34 @@ function previousTrack() {
 .mini-controls .control-btn.play-pause {
   padding: 7px;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .music-player {
+    right: 10px;
+    top: 10px;
+    max-width: calc(100vw - 20px); /* Prevent overflow */
+  }
+
+  .music-player.collapsed {
+    min-width: auto;
+    max-width: calc(100vw - 20px);
+  }
+
+  .collapsed-view {
+    padding: 6px 10px;
+    gap: 6px;
+    max-width: 100%;
+  }
+
+  .collapsed-view .track-name {
+    font-size: 10px;
+    max-width: 100px; /* Prevent very long track names from overflowing */
+  }
+
+  .expanded-view {
+    width: min(280px, calc(100vw - 40px)); /* Responsive width */
+    max-width: calc(100vw - 40px);
+  }
+}
 </style>
