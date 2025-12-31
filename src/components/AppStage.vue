@@ -5170,6 +5170,18 @@ canvas {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
+  /* Prevent scrolling on mobile */
+  .visualizer-app {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height for mobile browsers */
+  }
+
   /* Hide controls and info on mobile */
   .controls {
     display: none;
@@ -5190,8 +5202,9 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
     top: auto;
-    bottom: 20px;
+    bottom: 10px;
     width: 280px; /* Slightly smaller for mobile */
+    max-height: 15vh; /* Ensure it doesn't get too large */
   }
 
   #oww-typog:hover {
