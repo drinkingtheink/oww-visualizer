@@ -588,6 +588,62 @@ function updateDocumentTitle() {
   }
 }
 
+function updateMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+
+  const track = tracks.value[currentTrackIndex.value];
+
+  // eslint-disable-next-line no-undef
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: track.name,
+    artist: 'One Wax Wing',
+    album: 'Let Slip',
+    artwork: [
+      // You can add album artwork URLs here if available
+      // { src: 'path/to/96x96.png', sizes: '96x96', type: 'image/png' },
+      // { src: 'path/to/128x128.png', sizes: '128x128', type: 'image/png' },
+      // { src: 'path/to/256x256.png', sizes: '256x256', type: 'image/png' },
+    ]
+  });
+
+  // Update playback state
+  navigator.mediaSession.playbackState = isPaused.value ? 'paused' : 'playing';
+}
+
+function setupMediaSessionHandlers() {
+  if (!('mediaSession' in navigator)) return;
+
+  navigator.mediaSession.setActionHandler('play', () => {
+    if (audioElement && isPaused.value) {
+      togglePause();
+    }
+  });
+
+  navigator.mediaSession.setActionHandler('pause', () => {
+    if (audioElement && !isPaused.value) {
+      togglePause();
+    }
+  });
+
+  navigator.mediaSession.setActionHandler('previoustrack', () => {
+    previousTrack();
+  });
+
+  navigator.mediaSession.setActionHandler('nexttrack', () => {
+    nextTrack();
+  });
+
+  navigator.mediaSession.setActionHandler('stop', () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      isPaused.value = true;
+      updateDocumentTitle();
+      updateMediaSession();
+    }
+  });
+}
+
 function nextTrack() {
   const nextIndex = (currentTrackIndex.value + 1) % tracks.value.length;
   handleTrackChange(nextIndex);
@@ -620,6 +676,7 @@ function loadTrack(index) {
     audioLoaded.value = true;
     isPaused.value = false;
     updateDocumentTitle();
+    updateMediaSession();
   }).catch(err => {
     console.error('Error playing track:', err);
     // If auto-play fails, just load it ready to play
@@ -627,6 +684,7 @@ function loadTrack(index) {
     audioLoaded.value = true;
     isPaused.value = true;
     updateDocumentTitle();
+    updateMediaSession();
   });
   
   // Handle track end - auto-advance to next track
@@ -4466,10 +4524,12 @@ function togglePause() {
     audioElement.play();
     isPaused.value = false;
     updateDocumentTitle();
+    updateMediaSession();
   } else {
     audioElement.pause();
     isPaused.value = true;
     updateDocumentTitle();
+    updateMediaSession();
   }
 }
 
@@ -4713,6 +4773,9 @@ onMounted(() => {
 
   // Set initial document title
   updateDocumentTitle();
+
+  // Set up Media Session API handlers
+  setupMediaSessionHandlers();
 
   startAutoRotation();
 });
