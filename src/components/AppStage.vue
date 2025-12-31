@@ -561,6 +561,7 @@ const patterns = [
   { name: 'Boombox', draw: drawBoombox },
   { name: 'Moiré', draw: drawMoire },
   { name: 'Orbital', draw: drawCosmicSphere },
+  { name: 'Kaleido', draw: drawKaleidoscope },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -1885,6 +1886,316 @@ function drawCosmicSphere() {
     }
   });
 
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawKaleidoscope() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Check if visualization is active
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Calculate average energy
+  let avgEnergy = 0;
+  if (audioLoaded.value) {
+    for (let i = 0; i < bufferLength; i++) {
+      avgEnergy += dataArray[i];
+    }
+    avgEnergy = avgEnergy / bufferLength / 255;
+  } else {
+    avgEnergy = Math.sin(breathePhase) * 0.3 + 0.5;
+  }
+
+  // Number of symmetry segments (6-fold symmetry)
+  const segments = 6;
+  const segmentAngle = (Math.PI * 2) / segments;
+
+  // Initialize kaleidoscope shapes
+  if (!window.kaleidoShapes) {
+    window.kaleidoShapes = [];
+  }
+
+  // Initialize decorative particles
+  if (!window.kaleidoParticles) {
+    window.kaleidoParticles = [];
+    for (let i = 0; i < 30; i++) {
+      window.kaleidoParticles.push({
+        distance: Math.random() * 200 + 30,
+        angle: Math.random() * Math.PI * 2,
+        size: Math.random() * 3 + 1,
+        speed: Math.random() * 0.01 + 0.005,
+        colorIndex: i
+      });
+    }
+  }
+
+  // Manage shapes based on activity
+  const maxShapes = isActive ? 12 : 4;
+  const currentShapeCount = Math.floor(maxShapes * (isActive ? avgEnergy : 0.5));
+
+  // Add new shapes when active
+  while (window.kaleidoShapes.length < currentShapeCount) {
+    const shapeIndex = window.kaleidoShapes.length;
+    window.kaleidoShapes.push({
+      distance: Math.random() * 150 + 50,
+      angle: Math.random() * Math.PI * 2,
+      size: Math.random() * 30 + 10,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.05,
+      pulsePhase: Math.random() * Math.PI * 2,
+      colorIndex: shapeIndex,
+      type: Math.floor(Math.random() * 3) // 0: circle, 1: triangle, 2: square
+    });
+  }
+
+  // Remove excess shapes
+  if (window.kaleidoShapes.length > currentShapeCount) {
+    window.kaleidoShapes = window.kaleidoShapes.slice(0, currentShapeCount);
+  }
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+
+  // Background radial gradient with multiple palette colors
+  const bgGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(width, height) / 2);
+  bgGradient.addColorStop(0, getColor(0, 10, isActive ? 0.1 : 0.05));
+  bgGradient.addColorStop(0.3, getColor(1, 10, isActive ? 0.05 : 0.02));
+  bgGradient.addColorStop(0.6, getColor(2, 10, isActive ? 0.03 : 0.01));
+  bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+  ctx.fillStyle = bgGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(width, height) / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Overall rotation
+  const overallRotation = rotationAngle * (isActive ? 0.5 : 0.1);
+  ctx.rotate(overallRotation);
+
+  // Draw orbital rings at different radii with different colors
+  const orbitalRings = [60, 100, 140, 180];
+  orbitalRings.forEach((radius, ringIndex) => {
+    ctx.globalAlpha = isActive ? 0.15 : 0.08;
+    ctx.strokeStyle = getColor(ringIndex + 3, 10, isActive ? 0.4 : 0.2);
+    ctx.lineWidth = isActive ? 1.5 : 1;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  });
+
+  // Draw decorative particles
+  window.kaleidoParticles.forEach((particle, i) => {
+    particle.angle += particle.speed * (isActive ? 1 : 0.3);
+
+    const dataIndex = Math.floor((i / window.kaleidoParticles.length) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    const x = Math.cos(particle.angle) * particle.distance;
+    const y = Math.sin(particle.angle) * particle.distance;
+
+    const particleColor = getColor(particle.colorIndex + 5, 30, isActive ? 0.5 + value * 0.3 : 0.2);
+
+    for (let s = 0; s < segments; s++) {
+      ctx.save();
+      ctx.rotate(s * segmentAngle);
+
+      ctx.fillStyle = particleColor;
+      ctx.shadowBlur = isActive && value > 0.5 ? 8 : 0;
+      ctx.shadowColor = particleColor;
+      ctx.beginPath();
+      ctx.arc(x, y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.restore();
+    }
+  });
+
+  // Draw connecting lines between nearby shapes with different colors
+  if (isActive && window.kaleidoShapes.length > 1) {
+    window.kaleidoShapes.forEach((shape1, i) => {
+      const x1 = Math.cos(shape1.angle) * shape1.distance;
+      const y1 = Math.sin(shape1.angle) * shape1.distance;
+
+      window.kaleidoShapes.forEach((shape2, j) => {
+        if (j <= i) return;
+
+        const x2 = Math.cos(shape2.angle) * shape2.distance;
+        const y2 = Math.sin(shape2.angle) * shape2.distance;
+
+        const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
+        if (distance < 120) {
+          const lineColor = getColor(i + j + 7, maxShapes * 2, 0.15);
+
+          for (let s = 0; s < segments; s++) {
+            ctx.save();
+            ctx.rotate(s * segmentAngle);
+
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x1, -y1);
+            ctx.lineTo(x2, -y2);
+            ctx.stroke();
+
+            ctx.restore();
+          }
+        }
+      });
+    });
+  }
+
+  // Draw each shape with radial symmetry
+  window.kaleidoShapes.forEach((shape, i) => {
+    const dataIndex = Math.floor((i / window.kaleidoShapes.length) * bufferLength);
+    const value = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    // Update shape properties
+    shape.angle += shape.rotationSpeed * (isActive ? 1 : 0.3);
+    shape.rotation += shape.rotationSpeed * 2;
+    shape.pulsePhase += 0.05;
+
+    // Calculate position
+    const pulse = Math.sin(shape.pulsePhase) * 0.3 + 1;
+    const distance = shape.distance * (isActive ? 1 + value * 0.5 : 1);
+    const x = Math.cos(shape.angle) * distance;
+    const y = Math.sin(shape.angle) * distance;
+
+    // Size with pulse and audio response
+    const size = shape.size * pulse * (isActive ? 1 + value * 0.8 : 0.8);
+
+    // Multiple colors for gradient fill
+    const color1 = getColor(shape.colorIndex, maxShapes, isActive ? 0.7 + value * 0.3 : 0.3);
+    const color2 = getColor(shape.colorIndex + 1, maxShapes, isActive ? 0.5 + value * 0.2 : 0.2);
+
+    // Draw shape in all segments with mirror symmetry
+    for (let s = 0; s < segments; s++) {
+      ctx.save();
+      ctx.rotate(s * segmentAngle);
+
+      // Draw original with gradient
+      drawKaleidoShape(ctx, x, y, size, shape.rotation, shape.type, color1, color2, isActive, value);
+
+      // Draw mirrored version with gradient
+      drawKaleidoShape(ctx, x, -y, size, -shape.rotation, shape.type, color1, color2, isActive, value);
+
+      ctx.restore();
+    }
+  });
+
+  // Draw segment dividing rays using different palette colors
+  for (let s = 0; s < segments; s++) {
+    ctx.save();
+    ctx.rotate(s * segmentAngle);
+
+    const rayGradient = ctx.createLinearGradient(0, 0, 0, 220);
+    rayGradient.addColorStop(0, getColor(s, segments, isActive ? 0.3 : 0.1));
+    rayGradient.addColorStop(1, getColor(s, segments, 0));
+
+    ctx.strokeStyle = rayGradient;
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.globalAlpha = isActive ? 0.2 : 0.1;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 220);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
+  // Center ornament with multiple gradient colors
+  const centerSize = isActive ? 30 + avgEnergy * 40 : 20;
+  const centerGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, centerSize);
+  centerGradient.addColorStop(0, getColor(0, 10, isActive ? 0.9 : 0.5));
+  centerGradient.addColorStop(0.3, getColor(1, 10, isActive ? 0.7 : 0.4));
+  centerGradient.addColorStop(0.6, getColor(2, 10, isActive ? 0.5 : 0.3));
+  centerGradient.addColorStop(1, getColor(3, 10, isActive ? 0.2 : 0.1));
+
+  ctx.fillStyle = centerGradient;
+  ctx.shadowBlur = isActive ? 20 : 10;
+  ctx.shadowColor = getColor(0, 10, isActive ? avgEnergy : 0.3);
+  ctx.beginPath();
+  ctx.arc(0, 0, centerSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Draw decorative ring around center with alternating colors
+  const ringSegments = 12;
+  const ringRadius = centerSize + 15;
+  for (let i = 0; i < ringSegments; i++) {
+    const angle1 = (i / ringSegments) * Math.PI * 2;
+    const angle2 = ((i + 0.4) / ringSegments) * Math.PI * 2;
+
+    ctx.fillStyle = getColor(i, ringSegments, isActive ? 0.4 : 0.2);
+    ctx.beginPath();
+    ctx.arc(0, 0, ringRadius, angle1, angle2);
+    ctx.arc(0, 0, ringRadius - 6, angle2, angle1, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// Helper function to draw different kaleidoscope shapes
+function drawKaleidoShape(ctx, x, y, size, rotation, type, color1, color2, isActive, value) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+
+  // Create gradient fill using two palette colors
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size / 2);
+  gradient.addColorStop(0, color1);
+  gradient.addColorStop(1, color2);
+
+  ctx.fillStyle = gradient;
+  ctx.strokeStyle = color1;
+  ctx.lineWidth = isActive ? 2 + value * 3 : 1.5;
+
+  if (isActive && value > 0.6) {
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = color1;
+  }
+
+  ctx.globalAlpha = isActive ? 0.8 : 0.4;
+
+  if (type === 0) {
+    // Circle
+    ctx.beginPath();
+    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (type === 1) {
+    // Triangle
+    ctx.beginPath();
+    ctx.moveTo(0, -size / 2);
+    ctx.lineTo(size / 2, size / 2);
+    ctx.lineTo(-size / 2, size / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    // Square
+    ctx.beginPath();
+    ctx.rect(-size / 2, -size / 2, size, size);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
   ctx.restore();
 }
