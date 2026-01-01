@@ -562,6 +562,7 @@ const patterns = [
   { name: 'Moiré', draw: drawMoire },
   { name: 'Toroid', draw: drawCosmicSphere },
   { name: 'Kaleido', draw: drawKaleidoscope },
+  { name: 'Synaptic', draw: drawNeuralWeb },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -2197,6 +2198,200 @@ function drawKaleidoShape(ctx, x, y, size, rotation, type, color1, color2, isAct
 
   ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawNeuralWeb() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Check if visualization is active
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Initialize vortex state
+  if (!window.vortexDepth) {
+    window.vortexDepth = 0;
+  }
+
+  // Background with multiple palette colors
+  const bgGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(width, height) / 2);
+  bgGradient.addColorStop(0, getColor(0, 12, isActive ? 0.2 : 0.1));
+  bgGradient.addColorStop(0.3, getColor(1, 12, isActive ? 0.15 : 0.08));
+  bgGradient.addColorStop(0.6, getColor(2, 12, isActive ? 0.1 : 0.05));
+  bgGradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(0, 0, width, height);
+
+  // Update vortex depth animation
+  window.vortexDepth += isActive ? 0.02 : 0.005;
+
+  // Number of concentric layers
+  const layerCount = isActive ? 20 : 12;
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+
+  // Draw concentric rotating geometric shapes creating tunnel effect
+  for (let layer = layerCount - 1; layer >= 0; layer--) {
+    // Calculate audio influence for this layer
+    const dataIndex = Math.floor((layer / layerCount) * bufferLength);
+    const audioValue = audioLoaded.value ? dataArray[dataIndex] / 255 : 0.3;
+
+    // Depth calculation - farther layers are smaller
+    const depthRatio = layer / layerCount;
+    const baseScale = depthRatio * 0.9 + 0.1;
+    const scale = baseScale * (isActive ? 1 + audioValue * 0.3 : 1);
+
+    // Size of this layer
+    const layerSize = Math.min(width, height) * 0.45 * scale;
+
+    // Rotation - each layer rotates at different speed
+    const rotationSpeed = (layer % 2 === 0 ? 1 : -1) * (isActive ? 0.5 : 0.2);
+    const rotation = rotationAngle * rotationSpeed + window.vortexDepth * layer * 0.1;
+
+    // Opacity based on depth
+    const opacity = isActive ? depthRatio * 0.8 + 0.2 : depthRatio * 0.5 + 0.1;
+
+    // Number of sides for polygon (varies per layer)
+    const sides = 3 + (layer % 4);
+
+    ctx.save();
+    ctx.rotate(rotation);
+
+    // Draw filled polygon with gradient
+    const color1 = getColor(layer, layerCount, opacity * (isActive ? 0.4 : 0.2));
+    const color2 = getColor(layer + 1, layerCount, opacity * (isActive ? 0.2 : 0.1));
+
+    const shapeGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, layerSize);
+    shapeGradient.addColorStop(0, color1);
+    shapeGradient.addColorStop(0.7, color2);
+    shapeGradient.addColorStop(1, getColor(layer + 2, layerCount, 0));
+
+    ctx.fillStyle = shapeGradient;
+    ctx.beginPath();
+    for (let i = 0; i <= sides; i++) {
+      const angle = (i / sides) * Math.PI * 2;
+      const x = Math.cos(angle) * layerSize;
+      const y = Math.sin(angle) * layerSize;
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw outline with different color
+    const outlineColor = getColor(layer + 3, layerCount, opacity * (isActive ? 0.8 : 0.5));
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = isActive ? 2 + audioValue * 3 : 1.5;
+
+    if (isActive && audioValue > 0.6) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = outlineColor;
+    }
+
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Draw corner decorations at vertices
+    for (let i = 0; i < sides; i++) {
+      const angle = (i / sides) * Math.PI * 2;
+      const x = Math.cos(angle) * layerSize;
+      const y = Math.sin(angle) * layerSize;
+
+      const decorColor = getColor(layer + i + 5, layerCount + sides, opacity * (isActive ? 0.9 : 0.6));
+      const decorSize = isActive ? 4 + audioValue * 4 : 3;
+
+      ctx.fillStyle = decorColor;
+      ctx.shadowBlur = isActive ? 10 : 5;
+      ctx.shadowColor = decorColor;
+      ctx.beginPath();
+      ctx.arc(x, y, decorSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Draw connecting rays on active layers
+      if (isActive && audioValue > 0.5 && layer < layerCount - 1) {
+        const rayGradient = ctx.createLinearGradient(0, 0, x, y);
+        rayGradient.addColorStop(0, getColor(layer + 7, layerCount, audioValue * 0.5));
+        rayGradient.addColorStop(1, getColor(layer + i, layerCount, 0));
+
+        ctx.strokeStyle = rayGradient;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(x * 0.3, y * 0.3);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+
+    // Draw orbital particles around this layer
+    if (isActive && layer % 3 === 0) {
+      const particleCount = 6;
+      for (let p = 0; p < particleCount; p++) {
+        const particleAngle = (p / particleCount) * Math.PI * 2 + rotation * 0.5;
+        const px = Math.cos(particleAngle) * layerSize * 1.1;
+        const py = Math.sin(particleAngle) * layerSize * 1.1;
+
+        const particleColor = getColor(layer + p + 8, layerCount + particleCount, audioValue * 0.7);
+        const particleSize = 2 + audioValue * 3;
+
+        ctx.fillStyle = particleColor;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = particleColor;
+        ctx.beginPath();
+        ctx.arc(px, py, particleSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  // Draw central core with pulsing effect
+  const coreSize = isActive ? 30 + Math.sin(rotationAngle * 3) * 15 : 20;
+  const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coreSize);
+  coreGradient.addColorStop(0, getColor(0, 8, isActive ? 1.0 : 0.6));
+  coreGradient.addColorStop(0.4, getColor(1, 8, isActive ? 0.8 : 0.5));
+  coreGradient.addColorStop(0.7, getColor(2, 8, isActive ? 0.5 : 0.3));
+  coreGradient.addColorStop(1, getColor(3, 8, isActive ? 0.2 : 0.1));
+
+  ctx.fillStyle = coreGradient;
+  ctx.shadowBlur = isActive ? 30 : 15;
+  ctx.shadowColor = getColor(0, 8, isActive ? 0.8 : 0.4);
+  ctx.beginPath();
+  ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Draw spinning rays from center
+  const rayCount = 12;
+  for (let i = 0; i < rayCount; i++) {
+    const rayAngle = (i / rayCount) * Math.PI * 2 + rotationAngle * (isActive ? 2 : 0.5);
+    const rayLength = isActive ? 100 + Math.sin(rotationAngle * 2 + i) * 30 : 60;
+
+    const rayGradient = ctx.createLinearGradient(
+      0, 0,
+      Math.cos(rayAngle) * rayLength,
+      Math.sin(rayAngle) * rayLength
+    );
+    rayGradient.addColorStop(0, getColor(i, rayCount, isActive ? 0.6 : 0.3));
+    rayGradient.addColorStop(0.5, getColor(i + 1, rayCount, isActive ? 0.4 : 0.2));
+    rayGradient.addColorStop(1, getColor(i + 2, rayCount, 0));
+
+    ctx.strokeStyle = rayGradient;
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(rayAngle) * rayLength, Math.sin(rayAngle) * rayLength);
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 
