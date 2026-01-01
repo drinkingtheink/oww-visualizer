@@ -560,7 +560,7 @@ const patterns = [
   { name: 'Petri', draw: drawEnergyShards },
   { name: 'Boombox', draw: drawBoombox },
   { name: 'Moiré', draw: drawMoire },
-  { name: 'Orbital', draw: drawCosmicSphere },
+  { name: 'Toroid', draw: drawCosmicSphere },
   { name: 'Kaleido', draw: drawKaleidoscope },
 ];
 
