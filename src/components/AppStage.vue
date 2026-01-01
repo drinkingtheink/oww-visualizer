@@ -4427,7 +4427,7 @@ function drawAnalogEffects() {
 
   // Draw TV static burst
   if (window.staticBurstActive) {
-    const staticIntensity = 0.35; // Static
+    const staticIntensity = 0.25; // Static
     const pixelSize = 3; // Size of static pixels
 
     for (let x = 0; x < width; x += pixelSize) {
