@@ -4299,7 +4299,25 @@ function drawAnalogEffects() {
     window.staticBurstDuration = 0;
   }
 
+  // Initialize pixelation glitch timer
+  if (!window.pixelGlitchTimer) {
+    window.pixelGlitchTimer = 0;
+    window.nextPixelGlitch = Math.random() * 400 + 150;
+    window.pixelGlitchActive = false;
+    window.pixelGlitchDuration = 0;
+  }
+
+  // Initialize horizontal displacement glitch timer
+  if (!window.displacementGlitchTimer) {
+    window.displacementGlitchTimer = 0;
+    window.nextDisplacementGlitch = Math.random() * 350 + 200;
+    window.displacementGlitchActive = false;
+    window.displacementGlitchDuration = 0;
+  }
+
   window.analogStaticTimer++;
+  window.pixelGlitchTimer++;
+  window.displacementGlitchTimer++;
 
   // Trigger static burst intermittently
   if (window.analogStaticTimer > window.nextStaticBurst && !window.staticBurstActive) {
@@ -4307,6 +4325,104 @@ function drawAnalogEffects() {
     window.staticBurstDuration = Math.random() * 15 + 5; // 5-20 frames
     window.analogStaticTimer = 0;
     window.nextStaticBurst = Math.random() * 300 + 100;
+  }
+
+  // Trigger pixelation glitch intermittently
+  if (window.pixelGlitchTimer > window.nextPixelGlitch && !window.pixelGlitchActive) {
+    window.pixelGlitchActive = true;
+    window.pixelGlitchDuration = Math.random() * 8 + 3; // 3-11 frames
+    window.pixelGlitchTimer = 0;
+    window.nextPixelGlitch = Math.random() * 400 + 150;
+  }
+
+  // Trigger horizontal displacement glitch intermittently
+  if (window.displacementGlitchTimer > window.nextDisplacementGlitch && !window.displacementGlitchActive) {
+    window.displacementGlitchActive = true;
+    window.displacementGlitchDuration = Math.random() * 6 + 2; // 2-8 frames
+    window.displacementGlitchTimer = 0;
+    window.nextDisplacementGlitch = Math.random() * 350 + 200;
+  }
+
+  // Apply pixelation glitch effect
+  if (window.pixelGlitchActive) {
+    // Capture current canvas content
+    const imageData = ctx.getImageData(0, 0, width, height);
+
+    // Pixelation block size
+    const blockSize = Math.floor(Math.random() * 8) + 6; // 6-14 pixels
+
+    // Create pixelated version by sampling and filling blocks
+    for (let y = 0; y < height; y += blockSize) {
+      for (let x = 0; x < width; x += blockSize) {
+        // Get color from center of this block
+        const sampleX = Math.min(x + Math.floor(blockSize / 2), width - 1);
+        const sampleY = Math.min(y + Math.floor(blockSize / 2), height - 1);
+        const pixelIndex = (sampleY * width + sampleX) * 4;
+        const r = imageData.data[pixelIndex];
+        const g = imageData.data[pixelIndex + 1];
+        const b = imageData.data[pixelIndex + 2];
+        const a = imageData.data[pixelIndex + 3];
+
+        // Fill the entire block with this color
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+        ctx.fillRect(x, y, blockSize, blockSize);
+      }
+    }
+
+    window.pixelGlitchDuration--;
+    if (window.pixelGlitchDuration <= 0) {
+      window.pixelGlitchActive = false;
+    }
+  }
+
+  // Apply horizontal displacement glitch (RGB shift / scan line offset)
+  if (window.displacementGlitchActive) {
+    // Random horizontal bands get displaced
+    const bandCount = Math.floor(Math.random() * 3) + 2; // 2-5 bands
+
+    for (let i = 0; i < bandCount; i++) {
+      const bandY = Math.floor(Math.random() * height);
+      const bandHeight = Math.floor(Math.random() * 40) + 10;
+      const displacement = Math.floor((Math.random() - 0.5) * 30); // -15 to +15 pixels
+
+      // Only process if band is within canvas
+      if (bandY + bandHeight <= height) {
+        try {
+          // Get the band
+          const bandData = ctx.getImageData(0, bandY, width, bandHeight);
+
+          // Clear the area
+          ctx.clearRect(0, bandY, width, bandHeight);
+
+          // Draw it displaced
+          ctx.putImageData(bandData, displacement, bandY);
+
+          // Add RGB chromatic aberration effect
+          if (Math.random() > 0.5) {
+            const aberrationData = ctx.getImageData(Math.max(0, displacement), bandY, Math.min(width, width - Math.abs(displacement)), bandHeight);
+
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.2;
+
+            // Red channel shift left
+            ctx.putImageData(aberrationData, Math.max(0, displacement - 3), bandY);
+
+            // Cyan channel shift right
+            ctx.putImageData(aberrationData, Math.min(width - aberrationData.width, displacement + 3), bandY);
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
+          }
+        } catch (e) {
+          // Skip if any issues with image data
+        }
+      }
+    }
+
+    window.displacementGlitchDuration--;
+    if (window.displacementGlitchDuration <= 0) {
+      window.displacementGlitchActive = false;
+    }
   }
 
   // Draw TV static burst
