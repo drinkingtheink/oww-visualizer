@@ -5224,9 +5224,9 @@ input[type="file"] {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  font-size: 28px;
-  width: 40px;
-  height: 40px;
+  font-size: 20px;
+  width: 25px;
+  height: 25px;
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
