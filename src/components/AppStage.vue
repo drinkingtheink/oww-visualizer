@@ -5219,8 +5219,8 @@ input[type="file"] {
 
 .modal-close {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 5px;
+  right: 10px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
