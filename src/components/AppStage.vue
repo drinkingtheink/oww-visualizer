@@ -83,8 +83,8 @@
     
     <div class="controls">
       <button class="arrow-btn" @click="cyclePreviousPattern" title="Previous pattern">←</button>
-      <button 
-        class="pattern-btn" 
+      <button
+        class="pattern-btn"
         :class="{ locked: patternLocked }"
         @click="togglePatternLock"
       >
@@ -93,6 +93,34 @@
       </button>
       <button class="arrow-btn" @click="cyclePattern" title="Next pattern">→</button>
       <button class="palette-btn" @click="cyclePalette">Palette: {{ currentPaletteName }}</button>
+    </div>
+
+    <!-- Streaming Links Modal -->
+    <div v-if="showStreamingModal" class="modal-overlay" @click="showStreamingModal = false">
+      <div class="modal-content" @click.stop>
+        <button class="modal-close" @click="showStreamingModal = false">×</button>
+        <h2>Listen to Let Slip on:</h2>
+        <div class="streaming-links">
+          <a href="https://open.spotify.com/album/YOUR_ALBUM_ID" target="_blank" rel="noopener noreferrer" class="streaming-link spotify">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+            </svg>
+            <span>Spotify</span>
+          </a>
+          <a href="https://music.apple.com/album/YOUR_ALBUM_ID" target="_blank" rel="noopener noreferrer" class="streaming-link apple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.997 6.124c0-.738-.065-1.47-.24-2.19-.317-1.31-1.062-2.31-2.18-3.043C21.003.517 20.373.285 19.7.164c-.517-.093-1.038-.135-1.564-.15-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.296-.81a5.087 5.087 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zM19.094 11.293c-.067 2.107 1.645 3.15 1.718 3.19-.015.05-.267.917-.883 1.816-.534.78-1.09 1.56-1.962 1.577-.857.017-1.134-.508-2.115-.508-.98 0-1.288.492-2.1.525-.843.034-1.478-.848-2.015-1.626-1.098-1.59-1.935-4.493-.81-6.452.558-.975 1.556-1.593 2.64-1.61.824-.017 1.603.555 2.107.555.503 0 1.446-.686 2.436-.585.415.017 1.58.168 2.327 1.266-.06.037-1.39.812-1.375 2.42l.032.432z"/>
+            </svg>
+            <span>Apple Music</span>
+          </a>
+          <a href="https://music.youtube.com/playlist?list=YOUR_PLAYLIST_ID" target="_blank" rel="noopener noreferrer" class="streaming-link youtube">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+            <span>YouTube Music</span>
+          </a>
+        </div>
+      </div>
     </div>
 
     <MusicPlayer
@@ -105,6 +133,14 @@
       @next="nextTrack"
       @previous="previousTrack"
     />
+
+    <!-- Streaming Button - positioned below music player -->
+    <button class="streaming-btn" @click="showStreamingModal = true" title="Streaming Links">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      </svg>
+      Stream Elsewhere
+    </button>
 
     <div class="visualizer-container">
       <canvas ref="canvas"></canvas>
@@ -137,6 +173,7 @@ const isPaused = ref(false);
 const patternLocked = ref(false);
 const typographyColorIndex = ref(0);
 const showPlayModal = ref(true);
+const showStreamingModal = ref(false);
 const lastFrameTime = ref(0);
 const fps = ref(60);
 const performanceMode = ref(false);
@@ -5083,6 +5120,174 @@ input[type="file"] {
   border-color: transparent;
 }
 
+.streaming-btn {
+  position: fixed;
+  top: 22px;
+  right: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 5px solid black;
+  border-radius: 20px;
+  color: white;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 250;
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.streaming-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.6);
+}
+
+.streaming-btn svg {
+  flex-shrink: 0;
+}
+
+/* Position streaming button below music player when it's collapsed */
+.music-player.collapsed ~ .streaming-btn {
+  top: calc(22px + 50px); /* Music player top + approximate collapsed height + gap */
+}
+
+/* Position streaming button below music player when it's expanded */
+.music-player:not(.collapsed) ~ .streaming-btn {
+  top: calc(22px + 469px); /* Music player top + approximate expanded height + gap */
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 5px solid black;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-content h2 {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 30px 0;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.streaming-links {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.streaming-link {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.streaming-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(5px);
+}
+
+.streaming-link svg {
+  flex-shrink: 0;
+}
+
+.streaming-link.spotify:hover {
+  border-color: #1DB954;
+  box-shadow: 0 0 20px rgba(29, 185, 84, 0.3);
+}
+
+.streaming-link.apple:hover {
+  border-color: #FA243C;
+  box-shadow: 0 0 20px rgba(250, 36, 60, 0.3);
+}
+
+.streaming-link.youtube:hover {
+  border-color: #FF0000;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+}
+
 .visualizer-container {
   flex: 1;
   position: absolute;
@@ -5310,6 +5515,20 @@ canvas {
 
   .info {
     display: none;
+  }
+
+  /* Adjust streaming button position on mobile */
+  .streaming-btn {
+    top: 10px;
+    right: 10px;
+  }
+
+  .music-player.collapsed ~ .streaming-btn {
+    top: calc(10px + 45px);
+  }
+
+  .music-player:not(.collapsed) ~ .streaming-btn {
+    top: calc(10px + 469px);
   }
 
   /* Hide triangle seraphim SVGs on mobile */
