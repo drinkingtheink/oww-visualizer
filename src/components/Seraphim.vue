@@ -190,28 +190,28 @@ const MYSTICAL_SYMBOLS = [
 function generateSymbolWord() {
     const symbolCount = Math.floor(Math.random() * 3) + 2; // 2-5 symbols
     let word = '';
-    
+
     for (let i = 0; i < symbolCount; i++) {
         const symbol = MYSTICAL_SYMBOLS[Math.floor(Math.random() * MYSTICAL_SYMBOLS.length)];
         word += symbol;
-        
+
         // Sometimes add a space for readability (20% chance)
         if (i < symbolCount - 1 && Math.random() > 0.8) {
             word += ' ';
         }
     }
-    
+
     return word;
 }
 
 function generateSymbolPhrase() {
     const wordCount = Math.floor(Math.random() * 2) + 1; // 1-2 words
     const words = [];
-    
+
     for (let i = 0; i < wordCount; i++) {
         words.push(generateSymbolWord());
     }
-    
+
     return words.join('  '); // Double space between symbol words
 }
 
@@ -273,14 +273,14 @@ export default {
         },
         startSpeaking() {
             const scheduleNextSpeech = () => {
-                const delay = (Math.random() * 40000) + 20000;
-                
+                const delay = (Math.random() * 40000) + 20000; // 20-60 seconds
+
                 this.speechIntervalId = setTimeout(() => {
                     this.speak();
                     scheduleNextSpeech();
                 }, delay);
             };
-            
+
             scheduleNextSpeech();
         },
         speak() {
@@ -288,15 +288,15 @@ export default {
             const bubble = {
                 id: this.bubbleIdCounter++,
                 text: phrase,
-                x: Math.random() * 60 - 30, // -30 to 30
+                x: 0, // Start centered
                 y: 0, // Changed: start at seraph level, will move down
                 createdAt: Date.now(),
                 // Random color tint
                 hue: Math.random() * 360
             };
-            
+
             this.speechBubbles.push(bubble);
-            
+
             // Remove bubble after 4 seconds
             setTimeout(() => {
                 const index = this.speechBubbles.findIndex(b => b.id === bubble.id);
@@ -308,16 +308,15 @@ export default {
         getBubbleStyle(bubble) {
             const age = Date.now() - bubble.createdAt;
             const progress = Math.min(age / 4000, 1); // 0 to 1 over 4 seconds
-            
-            // Float downward with slight drift
-            const xDrift = Math.sin(progress * Math.PI * 2) * 10;
+
+            // Float downward
             const yOffset = progress * 120; // Changed: positive for downward movement
-            
+
             // Fade out near the end
             const opacity = progress < 0.75 ? 1 : (1 - (progress - 0.75) / 0.25);
-            
+
             return {
-                transform: `translate(${bubble.x + xDrift}px, ${yOffset}px)`,
+                transform: `translateY(${yOffset}px)`,
                 opacity: opacity,
                 '--bubble-hue': bubble.hue
             };
@@ -767,7 +766,9 @@ export default {
 .speech-bubble {
     position: absolute;
     top: 70%;
-    left: 72px;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
     padding: 12px 10px;
     background: rgba(255, 255, 255, 0.95);
     color: #333;
@@ -778,12 +779,13 @@ export default {
     pointer-events: none;
     white-space: nowrap;
     z-index: 100;
-    box-shadow: 
+    box-shadow:
         0 4px 12px rgba(0, 0, 0, 0.15),
         0 0 30px rgba(255, 255, 255, 0.6);
     border: 2px solid black;
     transition: transform 0.1s ease-out, opacity 0.1s ease-out;
     opacity: 0;
+    width: fit-content;
 }
 
 /* Mystical glow effect with dynamic color */
