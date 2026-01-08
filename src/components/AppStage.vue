@@ -2485,308 +2485,89 @@ function drawNeuralWeb() {
 function drawAuroraWaves() {
   const width = canvas.value.width;
   const height = canvas.value.height;
-  
-  // Reduce wave count in performance mode
-  const baseWaveCount = audioLoaded.value && !isPaused.value ? 15 : 8;
-  const waveCount = performanceMode.value ? Math.floor(baseWaveCount * 0.6) : baseWaveCount;
-  
-  // Reduce segments in performance mode
-  const baseSegments = 80;
-  const segments = performanceMode.value ? 50 : baseSegments;
+
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Drastically reduced wave count for performance
+  const waveCount = isActive ? 6 : 4;
+
+  // Reduced segments for performance
+  const segments = 35;
 
   ctx.save();
-  
+
   for (let w = 0; w < waveCount; w++) {
     const waveOffset = (w / waveCount) * height;
     const dataOffset = Math.floor((w / waveCount) * bufferLength);
-    
-    // Create wave path points
-    const points = [];
-    for (let s = 0; s <= segments; s++) {
-      const t = s / segments;
-      const x = t * width;
-      const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
-      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
-      
-      // Create multiple sine waves layered together for aurora effect
-      const wave1 = Math.sin(t * Math.PI * 3 + rotationAngle * 1.5 + w * 0.4) * 60;
-      const wave2 = Math.sin(t * Math.PI * 5 + rotationAngle * 0.8 + w * 0.6) * 30;
-      const wave3 = Math.sin(t * Math.PI * 7 + rotationAngle * 0.5 + w * 0.2) * 15;
-      const audioWave = (value - 0.5) * 140;
-      
-      const y = waveOffset + wave1 + wave2 + wave3 + audioWave;
-      
-      points.push({ x, y, value });
-    }
-    
-    // Only draw filled layers when audio is playing
-    if (audioLoaded.value && !isPaused.value) {
-      // Reduce layers in performance mode
-      const baseLayers = 7;
-      const layers = performanceMode.value ? 4 : baseLayers;
-      
-      for (let layer = layers - 1; layer >= 0; layer--) {
-        const layerOffset = (layer - layers / 2) * 6;
-        const layerAlpha = (layers - layer) / layers * 0.5;
-        
-        // Create gradient for aurora colors
-        const gradient = ctx.createLinearGradient(0, 0, width, 0);
-        const colorShift = w * 50 + layer * 30;
-        
-        // Reduce gradient stops in performance mode
-        const gradientStops = performanceMode.value ? 3 : 5;
-        for (let g = 0; g <= gradientStops; g++) {
-          const stop = g / gradientStops;
-          const colorIdx = Math.floor((stop * 1000 + colorShift + rotationAngle * 100) % 1000);
-          gradient.addColorStop(stop, getColor(colorIdx, 1000, 0.05 * layerAlpha));
+
+    // Simplified: only 2 layers per wave
+    const layers = 2;
+
+    for (let layer = 0; layer < layers; layer++) {
+      const layerOffset = (layer - 0.5) * 8;
+      const layerAlpha = (layers - layer) / layers;
+
+      // Single color instead of gradient for performance
+      const colorIdx = w * 150 + layer * 60 + Math.floor(rotationAngle * 50);
+      const waveColor = getColor(colorIdx, 1000, isActive ? 0.15 * layerAlpha : 0.08 * layerAlpha);
+
+      ctx.fillStyle = waveColor;
+
+      // Draw filled wave shape with simple lineTo (no curves)
+      ctx.beginPath();
+
+      for (let s = 0; s <= segments; s++) {
+        const t = s / segments;
+        const x = t * width;
+        const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
+        const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
+
+        // Simplified wave calculation - single sine wave
+        const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+        const audioWave = isActive ? (value - 0.5) * 80 : 0;
+
+        const y = waveOffset + wave + audioWave + layerOffset;
+
+        if (s === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
-        
-        ctx.fillStyle = gradient;
-        
-        // Draw filled wave shape
+      }
+
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw simple edge line on top layer only
+      if (layer === 0) {
+        ctx.strokeStyle = getColor(w * 150, waveCount * 150, isActive ? 0.3 : 0.15);
+        ctx.lineWidth = isActive ? 2 : 1;
+
         ctx.beginPath();
-        points.forEach((point, idx) => {
-          const x = point.x;
-          const y = point.y + layerOffset;
-          
-          if (idx === 0) {
+        for (let s = 0; s <= segments; s++) {
+          const t = s / segments;
+          const x = t * width;
+          const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
+          const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
+
+          const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+          const audioWave = isActive ? (value - 0.5) * 80 : 0;
+
+          const y = waveOffset + wave + audioWave + layerOffset;
+
+          if (s === 0) {
             ctx.moveTo(x, y);
           } else {
-            const prevPoint = points[idx - 1];
-            const cpx = (prevPoint.x + x) / 2;
-            const cpy = (prevPoint.y + y) / 2 + layerOffset;
-            ctx.quadraticCurveTo(prevPoint.x, prevPoint.y + layerOffset, cpx, cpy);
+            ctx.lineTo(x, y);
           }
-        });
-        
-        ctx.lineTo(width, height);
-        ctx.lineTo(0, height);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Draw glowing edge ONLY on first layer in performance mode
-        if ((layer === 0 || layer === 3) && !performanceMode.value || (layer === 0 && performanceMode.value)) {
-          ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.3);
-          ctx.lineWidth = 1;
-          
-          // Skip shadows in performance mode
-          if (!performanceMode.value) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = getColor(w * 50, waveCount * 50, 0.4);
-          }
-          
-          ctx.beginPath();
-          points.forEach((point, idx) => {
-            if (idx === 0) {
-              ctx.moveTo(point.x, point.y);
-            } else {
-              const prevPoint = points[idx - 1];
-              const cpx = (prevPoint.x + point.x) / 2;
-              const cpy = (prevPoint.y + point.y) / 2;
-              ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, cpx, cpy);
-            }
-          });
-          ctx.stroke();
-          ctx.shadowBlur = 0;
         }
+        ctx.stroke();
       }
-    } else {
-      // Minimal mode - just draw a single subtle wave line
-      ctx.strokeStyle = getColor(w * 50, waveCount * 50, 0.2);
-      ctx.lineWidth = 1;
-      ctx.shadowBlur = 0;
-      
-      ctx.beginPath();
-      points.forEach((point, idx) => {
-        if (idx === 0) {
-          ctx.moveTo(point.x, point.y);
-        } else {
-          const prevPoint = points[idx - 1];
-          const cpx = (prevPoint.x + point.x) / 2;
-          const cpy = (prevPoint.y + point.y) / 2;
-          ctx.quadraticCurveTo(prevPoint.x, prevPoint.y, cpx, cpy);
-        }
-      });
-      ctx.stroke();
-    }
-    
-    if (audioLoaded.value && !isPaused.value) {
-      // HEAVILY optimized particle/star effects
-      
-      // Reduce particle spawn rate in performance mode
-      const particleThreshold = performanceMode.value ? 0.85 : 0.65;
-      const particleSkip = performanceMode.value ? 6 : 3;
-      
-      points.forEach((point, idx) => {
-        // Shimmering light particles - less frequent
-        if (point.value > particleThreshold && idx % particleSkip === 0 && Math.random() > 0.75) {
-          createParticles(point.x, point.y, point.value, w * segments + idx, waveCount * segments, performanceMode.value ? 1 : 2);
-        }
-        
-        // Stars - reduced in performance mode
-        const starSkip = performanceMode.value ? 4 : 2;
-        if (point.value > 0.6 && idx % starSkip === 0 && (!performanceMode.value || idx % 8 === 0)) {
-          const starSize = 1.5 + point.value * 3;
-          
-          // Skip star glow in performance mode
-          if (!performanceMode.value) {
-            const starGradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, starSize * 4);
-            starGradient.addColorStop(0, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.9));
-            starGradient.addColorStop(0.3, getColor(w * 50 + idx * 5, waveCount * segments, point.value * 0.5));
-            starGradient.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = starGradient;
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, starSize * 4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          
-          // Bright center dot
-          ctx.fillStyle = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 1);
-          
-          // Skip shadows in performance mode
-          if (!performanceMode.value) {
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.8);
-          }
-          
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, starSize, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          
-          // Star rays - only in high-performance mode
-          if (point.value > 0.75 && !performanceMode.value) {
-            for (let ray = 0; ray < 4; ray++) {
-              const angle = (ray / 4) * Math.PI * 2 + rotationAngle * 2;
-              const rayLength = starSize * 3;
-              
-              ctx.strokeStyle = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.9);
-              ctx.lineWidth = 2;
-              ctx.shadowBlur = 10;
-              ctx.shadowColor = getColor(w * 50 + idx * 5 + 100, waveCount * segments, 0.7);
-              ctx.beginPath();
-              ctx.moveTo(point.x, point.y);
-              ctx.lineTo(
-                point.x + Math.cos(angle) * rayLength,
-                point.y + Math.sin(angle) * rayLength
-              );
-              ctx.stroke();
-              ctx.shadowBlur = 0;
-            }
-          }
-        }
-        
-        // Ambient dots - much less frequent in performance mode
-        if (idx % 5 === 0 && Math.random() > (performanceMode.value ? 0.85 : 0.6)) {
-          const dotSize = 0.5 + Math.random() * 1.5;
-          ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.6);
-          
-          if (!performanceMode.value) {
-            ctx.shadowBlur = 6;
-            ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
-          }
-          
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-      });
-      
-      // Skip ALL connection effects in performance mode
-      if (!performanceMode.value) {
-        // Flowing light streaks/connections
-        for (let i = 0; i < points.length - 1; i++) {
-          const p1 = points[i];
-          const p2 = points[i + 1];
-          
-          if (p1.value > 0.55 && p2.value > 0.55 && Math.random() > 0.7) {
-            const avgValue = (p1.value + p2.value) / 2;
-            
-            ctx.strokeStyle = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.5);
-            ctx.lineWidth = 1 + avgValue * 2;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, avgValue * 0.4);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-          }
-          
-          // Vertical beams - less frequent
-          if (p1.value > 0.7 && Math.random() > 0.75) {
-            const beamHeight = 80 + p1.value * 120;
-            
-            const beamGradient = ctx.createLinearGradient(p1.x, p1.y, p1.x, p1.y + beamHeight);
-            beamGradient.addColorStop(0, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.7));
-            beamGradient.addColorStop(0.5, getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.3));
-            beamGradient.addColorStop(1, 'rgba(0,0,0,0)');
-            
-            ctx.strokeStyle = beamGradient;
-            ctx.lineWidth = 2 + p1.value * 3;
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = getColor(w * 50 + i * 10, waveCount * segments, p1.value * 0.5);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p1.x, p1.y + beamHeight);
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-          }
-        }
-        
-        // Cross-wave connections - less frequent
-        if (w > 0 && Math.random() > 0.85) {
-          const connectionPoints = 3;
-          for (let c = 0; c < connectionPoints; c++) {
-            const pointIdx = Math.floor(Math.random() * points.length);
-            const point = points[pointIdx];
-            
-            if (point.value > 0.7) {
-              const targetY = point.y - (height / waveCount);
-              
-              ctx.strokeStyle = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.4);
-              ctx.lineWidth = 1;
-              ctx.shadowBlur = 8;
-              ctx.shadowColor = getColor(w * 50 + pointIdx * 5, waveCount * segments, point.value * 0.3);
-              ctx.setLineDash([4, 6]);
-              ctx.beginPath();
-              ctx.moveTo(point.x, point.y);
-              ctx.lineTo(point.x + (Math.random() - 0.5) * 40, targetY);
-              ctx.stroke();
-              ctx.setLineDash([]);
-              ctx.shadowBlur = 0;
-            }
-          }
-        }
-      }
-    } else {
-      // Minimal mode - occasional dots
-      points.forEach((point, idx) => {
-        if (idx % 8 === 0 && Math.random() > 0.65) {
-          const dotSize = 1;
-          ctx.fillStyle = getColor(w * 50 + idx * 3, waveCount * segments, 0.4);
-          ctx.shadowBlur = 4;
-          ctx.shadowColor = getColor(w * 50 + idx * 3, waveCount * segments, 0.2);
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-      });
     }
   }
-  
-  // Mist effect - skip in performance mode
-  if (audioLoaded.value && !isPaused.value && !performanceMode.value) {
-    const mistGradient = ctx.createLinearGradient(0, height - 200, 0, height);
-    mistGradient.addColorStop(0, 'rgba(0,0,0,0)');
-    mistGradient.addColorStop(0.5, getColor(500, 1000, 0.05));
-    mistGradient.addColorStop(1, getColor(700, 1000, 0.08));
-    ctx.fillStyle = mistGradient;
-    ctx.fillRect(0, height - 200, width, 200);
-  }
-  
+
   ctx.restore();
 }
 
