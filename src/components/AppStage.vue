@@ -1623,7 +1623,23 @@ function drawCosmicSphere() {
   const sphereRotation = rotationAngle * (isActive ? 0.8 : 0.3);
 
   // Draw subtle atmosphere glow around sphere
-  ctx.translate(centerX, centerY);
+  // Apply mouse warp distortion offset to center
+  let warpOffsetX = 0;
+  let warpOffsetY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = Math.min(width, height) * 0.5;
+
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity * 30;
+      warpOffsetX = (dx / distance) * strength;
+      warpOffsetY = (dy / distance) * strength;
+    }
+  }
+
+  ctx.translate(centerX + warpOffsetX, centerY + warpOffsetY);
 
   const atmosphereGradient = ctx.createRadialGradient(0, 0, sphereRadius * 0.85, 0, 0, sphereRadius * 1.3);
   atmosphereGradient.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1996,7 +2012,24 @@ function drawKaleidoscope() {
   }
 
   ctx.save();
-  ctx.translate(centerX, centerY);
+
+  // Apply mouse warp distortion offset to center
+  let warpOffsetX = 0;
+  let warpOffsetY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = Math.min(width, height) * 0.5;
+
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity * 30;
+      warpOffsetX = (dx / distance) * strength;
+      warpOffsetY = (dy / distance) * strength;
+    }
+  }
+
+  ctx.translate(centerX + warpOffsetX, centerY + warpOffsetY);
 
   // Background radial gradient with multiple palette colors
   const bgGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(width, height) / 2);
@@ -2268,7 +2301,24 @@ function drawNeuralWeb() {
   const layerCount = isActive ? 20 : 12;
 
   ctx.save();
-  ctx.translate(centerX, centerY);
+
+  // Apply mouse warp distortion offset to center
+  let warpOffsetX = 0;
+  let warpOffsetY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = Math.min(width, height) * 0.5;
+
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity * 30;
+      warpOffsetX = (dx / distance) * strength;
+      warpOffsetY = (dy / distance) * strength;
+    }
+  }
+
+  ctx.translate(centerX + warpOffsetX, centerY + warpOffsetY);
 
   // Draw concentric rotating geometric shapes creating tunnel effect
   for (let layer = layerCount - 1; layer >= 0; layer--) {

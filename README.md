@@ -1,4 +1,4 @@
-# oww-viewer
+# One Wax Wing Music Visualizer
 
 ## Project setup
 ```
