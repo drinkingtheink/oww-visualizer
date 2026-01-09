@@ -2526,7 +2526,20 @@ function drawAuroraWaves() {
         const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
         const audioWave = isActive ? (value - 0.5) * 80 : 0;
 
-        const y = waveOffset + wave + audioWave + layerOffset;
+        let y = waveOffset + wave + audioWave + layerOffset;
+
+        // Apply mouse warp distortion
+        if (mouseX && mouseY && warpIntensity > 0.01) {
+          const dx = mouseX - x;
+          const dy = mouseY - y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const maxDistance = Math.min(width, height) * 0.4;
+
+          if (distance < maxDistance) {
+            const strength = (1 - distance / maxDistance) * warpIntensity * 50;
+            y += (dy / distance) * strength;
+          }
+        }
 
         if (s === 0) {
           ctx.moveTo(x, y);
@@ -2555,7 +2568,20 @@ function drawAuroraWaves() {
           const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
           const audioWave = isActive ? (value - 0.5) * 80 : 0;
 
-          const y = waveOffset + wave + audioWave + layerOffset;
+          let y = waveOffset + wave + audioWave + layerOffset;
+
+          // Apply mouse warp distortion
+          if (mouseX && mouseY && warpIntensity > 0.01) {
+            const dx = mouseX - x;
+            const dy = mouseY - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxDistance = Math.min(width, height) * 0.4;
+
+            if (distance < maxDistance) {
+              const strength = (1 - distance / maxDistance) * warpIntensity * 50;
+              y += (dy / distance) * strength;
+            }
+          }
 
           if (s === 0) {
             ctx.moveTo(x, y);
