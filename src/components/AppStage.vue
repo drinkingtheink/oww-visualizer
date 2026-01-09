@@ -589,6 +589,7 @@ const patterns = [
   { name: 'Spkrwall', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
+  { name: 'Helix', draw: drawHelixRibbons },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Meadow', draw: drawHexFlowers },
   { name: 'Wavepools', draw: drawConcentricWaves },
@@ -2974,6 +2975,467 @@ function drawSpiralGalaxy() {
       ctx.lineTo(Math.cos(lineAngle) * lineLength, Math.sin(lineAngle) * lineLength);
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+function drawHelixRibbons() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Number of helix strands
+  const strandCount = 6;
+  // Segments per strand
+  const segments = 80;
+  // Helix dimensions
+  const helixHeight = Math.min(width, height) * 0.8;
+  const helixRadius = Math.min(width, height) * 0.18;
+
+  ctx.save();
+
+  // Apply mouse warp distortion
+  let warpOffsetX = 0;
+  let warpOffsetY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = Math.min(width, height) * 0.5;
+
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity * 40;
+      warpOffsetX = (dx / distance) * strength;
+      warpOffsetY = (dy / distance) * strength;
+    }
+  }
+
+  ctx.translate(centerX + warpOffsetX, centerY + warpOffsetY);
+
+  // Draw pulsing energy rings along the axis
+  if (isActive) {
+    const ringCount = 8;
+    for (let r = 0; r < ringCount; r++) {
+      const ringY = -helixHeight / 2 + (r / (ringCount - 1)) * helixHeight;
+      const dataIndex = Math.floor((r / ringCount) * bufferLength);
+      const ringValue = dataArray[dataIndex] / 255;
+
+      if (ringValue > 0.4) {
+        const ringRadius = helixRadius * 0.6 + ringValue * helixRadius * 0.8;
+
+        // Outer glow
+        const outerGradient = ctx.createRadialGradient(0, ringY, ringRadius * 0.5, 0, ringY, ringRadius);
+        outerGradient.addColorStop(0, getColor(r * 100, 800, ringValue * 0.3));
+        outerGradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = outerGradient;
+        ctx.beginPath();
+        ctx.arc(0, ringY, ringRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ring edge
+        ctx.strokeStyle = getColor(r * 100, 800, ringValue * 0.6);
+        ctx.lineWidth = 1 + ringValue * 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = getColor(r * 100, 800, ringValue * 0.4);
+        ctx.beginPath();
+        ctx.arc(0, ringY, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  // Draw each helix strand
+  for (let strand = 0; strand < strandCount; strand++) {
+    const strandOffset = (strand / strandCount) * Math.PI * 2;
+    const dataOffset = Math.floor((strand / strandCount) * bufferLength);
+
+    // Vary rotation speed per strand
+    const rotationSpeed = 1 + (strand % 2) * 0.5;
+
+    // Store points for ribbon
+    const points = [];
+
+    for (let i = 0; i < segments; i++) {
+      const t = i / segments;
+
+      // Vertical position along helix
+      const y = -helixHeight / 2 + t * helixHeight;
+
+      // Helix rotation
+      const angle = strandOffset + t * Math.PI * 4 + rotationAngle * rotationSpeed;
+
+      // Get audio value for this segment
+      const segmentDataIndex = (dataOffset + Math.floor(t * bufferLength / strandCount)) % bufferLength;
+      const segmentAudioValue = isActive ? dataArray[segmentDataIndex] / 255 : 0.5;
+
+      // Audio-reactive radius variation
+      const radiusVariation = isActive ? segmentAudioValue * 0.3 : 0;
+      const radius = helixRadius * (1 + radiusVariation);
+
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius; // Z-depth for 3D effect
+
+      points.push({ x, y, z, audio: segmentAudioValue });
+    }
+
+    // Draw ribbon with gradient based on depth
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+
+      // Calculate ribbon width based on audio and depth
+      const ribbonWidth = isActive ? 10 + p1.audio * 15 : 8;
+
+      // Color based on position and audio
+      const colorOffset = strand * 250 + i * 5 + Math.floor(rotationAngle * 100);
+      const depthAlpha = (p1.z + helixRadius) / (helixRadius * 2); // 0 to 1 based on depth
+      const alpha = isActive ? (0.4 + p1.audio * 0.5) * (0.6 + depthAlpha * 0.4) : 0.25 * (0.6 + depthAlpha * 0.4);
+
+      // Perpendicular offset for ribbon width
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const perpX = (-dy / len) * ribbonWidth * 0.5;
+      const perpY = (dx / len) * ribbonWidth * 0.5;
+
+      // Draw multi-layer ribbon for depth
+      // Layer 1: Background glow
+      if (isActive && p1.audio > 0.4) {
+        const glowGradient = ctx.createLinearGradient(
+          p1.x - perpX * 1.5, p1.y - perpY * 1.5,
+          p1.x + perpX * 1.5, p1.y + perpY * 1.5
+        );
+        glowGradient.addColorStop(0, 'rgba(0,0,0,0)');
+        glowGradient.addColorStop(0.5, getColor(colorOffset, strandCount * 250, p1.audio * 0.3));
+        glowGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.moveTo(p1.x - perpX * 1.5, p1.y - perpY * 1.5);
+        ctx.lineTo(p1.x + perpX * 1.5, p1.y + perpY * 1.5);
+        ctx.lineTo(p2.x + perpX * 1.5, p2.y + perpY * 1.5);
+        ctx.lineTo(p2.x - perpX * 1.5, p2.y - perpY * 1.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Layer 2: Main ribbon with gradient
+      const gradient = ctx.createLinearGradient(
+        p1.x - perpX, p1.y - perpY,
+        p1.x + perpX, p1.y + perpY
+      );
+      gradient.addColorStop(0, getColor(colorOffset, strandCount * 250, alpha * 0.4));
+      gradient.addColorStop(0.3, getColor(colorOffset + 30, strandCount * 250, alpha * 0.8));
+      gradient.addColorStop(0.5, getColor(colorOffset + 50, strandCount * 250, alpha));
+      gradient.addColorStop(0.7, getColor(colorOffset + 30, strandCount * 250, alpha * 0.8));
+      gradient.addColorStop(1, getColor(colorOffset, strandCount * 250, alpha * 0.4));
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(p1.x - perpX, p1.y - perpY);
+      ctx.lineTo(p1.x + perpX, p1.y + perpY);
+      ctx.lineTo(p2.x + perpX, p2.y + perpY);
+      ctx.lineTo(p2.x - perpX, p2.y - perpY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Layer 3: Center highlight line
+      if (i % 2 === 0) {
+        ctx.strokeStyle = getColor(colorOffset + 100, strandCount * 250, alpha * 1.5);
+        ctx.lineWidth = isActive ? 0.5 + p1.audio * 0.5 : 0.5;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+      // Layer 4: Edge lines for definition
+      ctx.strokeStyle = getColor(colorOffset + 80, strandCount * 250, alpha * 1.3);
+      ctx.lineWidth = isActive ? 1.5 + p1.audio * 1.5 : 1.2;
+
+      // Add glow on high audio
+      if (isActive && p1.audio > 0.55) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = getColor(colorOffset + 80, strandCount * 250, p1.audio * 0.6);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x - perpX, p1.y - perpY);
+      ctx.lineTo(p2.x - perpX, p2.y - perpY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x + perpX, p1.y + perpY);
+      ctx.lineTo(p2.x + perpX, p2.y + perpY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Add glowing nodes at high-intensity points
+    if (isActive) {
+      for (let i = 0; i < points.length; i += 5) {
+        const p = points[i];
+
+        if (p.audio > 0.55) {
+          const nodeSize = 2.5 + p.audio * 5;
+          const colorOffset = strand * 250 + i * 5;
+
+          // Outer glow ring
+          const outerGlow = ctx.createRadialGradient(p.x, p.y, nodeSize, p.x, p.y, nodeSize * 5);
+          outerGlow.addColorStop(0, getColor(colorOffset, strandCount * 250, p.audio * 0.6));
+          outerGlow.addColorStop(0.5, getColor(colorOffset + 50, strandCount * 250, p.audio * 0.3));
+          outerGlow.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = outerGlow;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, nodeSize * 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Inner glow
+          const nodeGradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, nodeSize * 2);
+          nodeGradient.addColorStop(0, getColor(colorOffset + 100, strandCount * 250, 1));
+          nodeGradient.addColorStop(0.5, getColor(colorOffset + 50, strandCount * 250, p.audio * 0.9));
+          nodeGradient.addColorStop(1, getColor(colorOffset, strandCount * 250, p.audio * 0.5));
+          ctx.fillStyle = nodeGradient;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, nodeSize * 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bright center core
+          ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.8 + p.audio * 0.2) + ')';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, nodeSize, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Pulse rings on very high audio
+          if (p.audio > 0.7) {
+            const pulsePhase = (breathePhase + i * 0.1) % (Math.PI * 2);
+            const pulseRadius = nodeSize * (2 + Math.sin(pulsePhase) * 1.5);
+            const pulseAlpha = (1 - pulsePhase / (Math.PI * 2)) * p.audio * 0.5;
+
+            ctx.strokeStyle = getColor(colorOffset + 150, strandCount * 250, pulseAlpha);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, pulseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // Add flowing particles along the strand
+    if (isActive) {
+      const particleCount = 15;
+      for (let p = 0; p < particleCount; p++) {
+        // Particle position travels along strand
+        const particleProgress = (p / particleCount + breathePhase * 0.15 + strand * 0.1) % 1;
+        const particleIndex = Math.floor(particleProgress * (points.length - 1));
+        const particlePoint = points[particleIndex];
+
+        const pDataIndex = (dataOffset + Math.floor(particleProgress * bufferLength / strandCount)) % bufferLength;
+        const pValue = dataArray[pDataIndex] / 255;
+
+        if (pValue > 0.45) {
+          const pSize = 1.5 + pValue * 3;
+          const colorOffset = strand * 250 + p * 20;
+
+          // Trailing glow
+          const trailGradient = ctx.createRadialGradient(
+            particlePoint.x, particlePoint.y, 0,
+            particlePoint.x, particlePoint.y, pSize * 6
+          );
+          trailGradient.addColorStop(0, getColor(colorOffset, strandCount * 250, pValue * 0.8));
+          trailGradient.addColorStop(0.4, getColor(colorOffset + 50, strandCount * 250, pValue * 0.5));
+          trailGradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = trailGradient;
+          ctx.beginPath();
+          ctx.arc(particlePoint.x, particlePoint.y, pSize * 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bright particle
+          ctx.fillStyle = getColor(colorOffset + 150, strandCount * 250, 1);
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getColor(colorOffset + 100, strandCount * 250, pValue);
+          ctx.beginPath();
+          ctx.arc(particlePoint.x, particlePoint.y, pSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+  }
+
+  // Draw connecting bridges between strands with energy pulses
+  if (isActive) {
+    for (let i = 10; i < segments - 10; i += 6) {
+      const t = i / segments;
+
+      for (let s = 0; s < strandCount; s++) {
+        const nextStrand = (s + 1) % strandCount;
+
+        const angle1 = (s / strandCount) * Math.PI * 2 + t * Math.PI * 4 + rotationAngle * (1 + (s % 2) * 0.5);
+        const angle2 = (nextStrand / strandCount) * Math.PI * 2 + t * Math.PI * 4 + rotationAngle * (1 + (nextStrand % 2) * 0.5);
+
+        const dataIndex1 = Math.floor((s / strandCount + t) * bufferLength) % bufferLength;
+        const dataIndex2 = Math.floor((nextStrand / strandCount + t) * bufferLength) % bufferLength;
+        const audio1 = dataArray[dataIndex1] / 255;
+        const audio2 = dataArray[dataIndex2] / 255;
+
+        if (audio1 > 0.5 && audio2 > 0.5) {
+          const radiusVariation1 = helixRadius * (1 + audio1 * 0.3);
+          const radiusVariation2 = helixRadius * (1 + audio2 * 0.3);
+
+          const y = -helixHeight / 2 + t * helixHeight;
+          const x1 = Math.cos(angle1) * radiusVariation1;
+          const x2 = Math.cos(angle2) * radiusVariation2;
+
+          const avgAudio = (audio1 + audio2) / 2;
+
+          // Draw gradient bridge
+          const bridgeGradient = ctx.createLinearGradient(x1, y, x2, y);
+          bridgeGradient.addColorStop(0, getColor(s * 250 + i * 10, strandCount * 250, audio1 * 0.5));
+          bridgeGradient.addColorStop(0.5, getColor(s * 250 + i * 10 + 50, strandCount * 250, avgAudio * 0.6));
+          bridgeGradient.addColorStop(1, getColor(nextStrand * 250 + i * 10, strandCount * 250, audio2 * 0.5));
+
+          ctx.strokeStyle = bridgeGradient;
+          ctx.lineWidth = 1 + avgAudio * 2;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getColor(s * 250 + i * 10, strandCount * 250, avgAudio * 0.4);
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x1, y);
+          ctx.lineTo(x2, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.shadowBlur = 0;
+
+          // Add energy pulse traveling along bridge
+          if (avgAudio > 0.65) {
+            const pulseProgress = (breathePhase * 0.3 + i * 0.2) % 1;
+            const pulsex = x1 + (x2 - x1) * pulseProgress;
+
+            const pulseGradient = ctx.createRadialGradient(pulsex, y, 0, pulsex, y, 8);
+            pulseGradient.addColorStop(0, getColor(s * 250 + i * 10 + 100, strandCount * 250, avgAudio * 0.9));
+            pulseGradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = pulseGradient;
+            ctx.beginPath();
+            ctx.arc(pulsex, y, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, ' + (avgAudio * 0.8) + ')';
+            ctx.beginPath();
+            ctx.arc(pulsex, y, 2 + avgAudio * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+  }
+
+  // Draw central axis with multiple layers
+  const axisValue = isActive ? dataArray[0] / 255 : 0.3;
+
+  // Outer glow cylinder
+  const outerGlowGradient = ctx.createLinearGradient(-15, 0, 15, 0);
+  outerGlowGradient.addColorStop(0, 'rgba(0,0,0,0)');
+  outerGlowGradient.addColorStop(0.5, getColor(100, 1000, isActive ? axisValue * 0.2 : 0.08));
+  outerGlowGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.fillStyle = outerGlowGradient;
+  ctx.fillRect(-15, -helixHeight / 2, 30, helixHeight);
+
+  // Main axis with gradient
+  const axisGradient = ctx.createLinearGradient(0, -helixHeight / 2, 0, helixHeight / 2);
+  axisGradient.addColorStop(0, 'rgba(0,0,0,0)');
+  axisGradient.addColorStop(0.15, getColor(0, 1000, isActive ? axisValue * 0.4 : 0.15));
+  axisGradient.addColorStop(0.5, getColor(100, 1000, isActive ? axisValue * 0.7 : 0.3));
+  axisGradient.addColorStop(0.85, getColor(0, 1000, isActive ? axisValue * 0.4 : 0.15));
+  axisGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.strokeStyle = axisGradient;
+  ctx.lineWidth = isActive ? 3 + axisValue * 3 : 3;
+
+  if (isActive) {
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = getColor(100, 1000, axisValue * 0.6);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(0, -helixHeight / 2);
+  ctx.lineTo(0, helixHeight / 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Core highlight line
+  ctx.strokeStyle = getColor(200, 1000, isActive ? axisValue * 0.9 : 0.4);
+  ctx.lineWidth = isActive ? 1 + axisValue : 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -helixHeight / 2);
+  ctx.lineTo(0, helixHeight / 2);
+  ctx.stroke();
+
+  // Traveling energy pulses along axis
+  if (isActive) {
+    const axisPulseCount = 5;
+    for (let ap = 0; ap < axisPulseCount; ap++) {
+      const pulseProgress = (ap / axisPulseCount + breathePhase * 0.2) % 1;
+      const pulseY = -helixHeight / 2 + pulseProgress * helixHeight;
+
+      const pDataIndex = Math.floor(pulseProgress * bufferLength);
+      const pValue = dataArray[pDataIndex] / 255;
+
+      if (pValue > 0.5) {
+        const pulseSize = 4 + pValue * 8;
+
+        // Glow
+        const axisPulseGradient = ctx.createRadialGradient(0, pulseY, 0, 0, pulseY, pulseSize * 2);
+        axisPulseGradient.addColorStop(0, getColor(ap * 50, 250, pValue * 0.9));
+        axisPulseGradient.addColorStop(0.5, getColor(ap * 50 + 50, 250, pValue * 0.5));
+        axisPulseGradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = axisPulseGradient;
+        ctx.beginPath();
+        ctx.arc(0, pulseY, pulseSize * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright center
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + pValue + ')';
+        ctx.beginPath();
+        ctx.arc(0, pulseY, pulseSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Top and bottom caps
+  const capSize = isActive ? 15 + axisValue * 10 : 12;
+
+  for (let cap = 0; cap < 2; cap++) {
+    const capY = cap === 0 ? -helixHeight / 2 : helixHeight / 2;
+
+    // Cap glow
+    const capGradient = ctx.createRadialGradient(0, capY, 0, 0, capY, capSize * 2);
+    capGradient.addColorStop(0, getColor(cap * 100, 200, isActive ? axisValue * 0.8 : 0.4));
+    capGradient.addColorStop(0.5, getColor(cap * 100 + 50, 200, isActive ? axisValue * 0.5 : 0.2));
+    capGradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = capGradient;
+    ctx.beginPath();
+    ctx.arc(0, capY, capSize * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cap core
+    if (isActive) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = getColor(cap * 100, 200, axisValue * 0.7);
+    }
+    ctx.fillStyle = getColor(cap * 100 + 100, 200, 1);
+    ctx.beginPath();
+    ctx.arc(0, capY, capSize * 0.5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.shadowBlur = 0;
   }
 
