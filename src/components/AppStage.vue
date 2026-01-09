@@ -2488,11 +2488,11 @@ function drawAuroraWaves() {
 
   const isActive = audioLoaded.value && !isPaused.value;
 
-  // Drastically reduced wave count for performance
-  const waveCount = isActive ? 6 : 4;
+  // Balanced wave count for visual richness and performance
+  const waveCount = isActive ? 9 : 6;
 
-  // Reduced segments for performance
-  const segments = 35;
+  // Increased segments for smoother waves
+  const segments = 55;
 
   ctx.save();
 
@@ -2500,18 +2500,23 @@ function drawAuroraWaves() {
     const waveOffset = (w / waveCount) * height;
     const dataOffset = Math.floor((w / waveCount) * bufferLength);
 
-    // Simplified: only 2 layers per wave
-    const layers = 2;
+    // 3 layers per wave for more depth
+    const layers = 3;
 
     for (let layer = 0; layer < layers; layer++) {
-      const layerOffset = (layer - 0.5) * 8;
+      const layerOffset = (layer - 1) * 12;
       const layerAlpha = (layers - layer) / layers;
 
-      // Single color instead of gradient for performance
+      // Create subtle vertical gradient for each wave
       const colorIdx = w * 150 + layer * 60 + Math.floor(rotationAngle * 50);
-      const waveColor = getColor(colorIdx, 1000, isActive ? 0.15 * layerAlpha : 0.08 * layerAlpha);
+      const baseAlpha = isActive ? 0.15 * layerAlpha : 0.08 * layerAlpha;
 
-      ctx.fillStyle = waveColor;
+      const waveGradient = ctx.createLinearGradient(0, waveOffset - 50, 0, waveOffset + 100);
+      waveGradient.addColorStop(0, getColor(colorIdx, 1000, baseAlpha * 0.3));
+      waveGradient.addColorStop(0.5, getColor(colorIdx, 1000, baseAlpha));
+      waveGradient.addColorStop(1, getColor(colorIdx + 50, 1000, baseAlpha * 0.6));
+
+      ctx.fillStyle = waveGradient;
 
       // Draw filled wave shape with simple lineTo (no curves)
       ctx.beginPath();
@@ -2522,8 +2527,10 @@ function drawAuroraWaves() {
         const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
         const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
 
-        // Simplified wave calculation - single sine wave
-        const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+        // Dual sine wave calculation for more complex motion
+        const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+        const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
+        const wave = wave1 + wave2;
         const audioWave = isActive ? (value - 0.5) * 80 : 0;
 
         let y = waveOffset + wave + audioWave + layerOffset;
@@ -2553,10 +2560,16 @@ function drawAuroraWaves() {
       ctx.closePath();
       ctx.fill();
 
-      // Draw simple edge line on top layer only
+      // Draw edge line with subtle glow on top layer only
       if (layer === 0) {
-        ctx.strokeStyle = getColor(w * 150, waveCount * 150, isActive ? 0.3 : 0.15);
+        ctx.strokeStyle = getColor(w * 150, waveCount * 150, isActive ? 0.4 : 0.2);
         ctx.lineWidth = isActive ? 2 : 1;
+
+        // Add subtle glow to edge line
+        if (isActive) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getColor(w * 150, waveCount * 150, 0.3);
+        }
 
         ctx.beginPath();
         for (let s = 0; s <= segments; s++) {
@@ -2565,7 +2578,10 @@ function drawAuroraWaves() {
           const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
           const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
 
-          const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+          // Dual sine wave calculation for more complex motion
+          const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+          const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
+          const wave = wave1 + wave2;
           const audioWave = isActive ? (value - 0.5) * 80 : 0;
 
           let y = waveOffset + wave + audioWave + layerOffset;
@@ -2590,6 +2606,60 @@ function drawAuroraWaves() {
           }
         }
         ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Add sparkle points along high-intensity sections
+        if (isActive) {
+          for (let s = 0; s <= segments; s++) {
+            if (s % 4 !== 0) continue; // Only check every 4th segment
+
+            const t = s / segments;
+            const x = t * width;
+            const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
+            const value = dataArray[dataIndex] / 255;
+
+            // Only add sparkles on high audio values
+            if (value > 0.65 && Math.random() > 0.5) {
+              const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
+              const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
+              const wave = wave1 + wave2;
+              const audioWave = (value - 0.5) * 80;
+
+              let y = waveOffset + wave + audioWave + layerOffset;
+
+              // Apply mouse warp to sparkles too
+              if (mouseX && mouseY && warpIntensity > 0.01) {
+                const dx = mouseX - x;
+                const dy = mouseY - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const maxDistance = Math.min(width, height) * 0.4;
+
+                if (distance < maxDistance) {
+                  const strength = (1 - distance / maxDistance) * warpIntensity * 50;
+                  y += (dy / distance) * strength;
+                }
+              }
+
+              const sparkleSize = 1 + value * 2;
+
+              // Glow around sparkle
+              const sparkleGradient = ctx.createRadialGradient(x, y, 0, x, y, sparkleSize * 3);
+              sparkleGradient.addColorStop(0, getColor(w * 150 + s * 5, waveCount * segments, value * 0.8));
+              sparkleGradient.addColorStop(0.5, getColor(w * 150 + s * 5, waveCount * segments, value * 0.4));
+              sparkleGradient.addColorStop(1, 'rgba(0,0,0,0)');
+              ctx.fillStyle = sparkleGradient;
+              ctx.beginPath();
+              ctx.arc(x, y, sparkleSize * 3, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Bright center
+              ctx.fillStyle = getColor(w * 150 + s * 5 + 100, waveCount * segments, 1);
+              ctx.beginPath();
+              ctx.arc(x, y, sparkleSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
       }
     }
   }
