@@ -588,6 +588,7 @@ const patterns = [
   { name: 'Swarm', draw: drawParticleSwarm },
   { name: 'Spkrwall', draw: drawPlasmaStorm },
   { name: 'Aurora Waves', draw: drawAuroraWaves },
+  { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
   { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Meadow', draw: drawHexFlowers },
   { name: 'Wavepools', draw: drawConcentricWaves },
@@ -2667,7 +2668,319 @@ function drawAuroraWaves() {
   ctx.restore();
 }
 
-    
+function drawSpiralGalaxy() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Number of spiral arms
+  const armCount = 5;
+  // Points per arm
+  const pointsPerArm = 80;
+  // Maximum radius
+  const maxRadius = Math.min(width, height) * 0.45;
+
+  ctx.save();
+
+  // Apply mouse warp distortion offset to center
+  let warpOffsetX = 0;
+  let warpOffsetY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = Math.min(width, height) * 0.5;
+
+    if (distance < maxDistance) {
+      const strength = (1 - distance / maxDistance) * warpIntensity * 30;
+      warpOffsetX = (dx / distance) * strength;
+      warpOffsetY = (dy / distance) * strength;
+    }
+  }
+
+  ctx.translate(centerX + warpOffsetX, centerY + warpOffsetY);
+
+  // Draw background star field for depth
+  for (let i = 0; i < 80; i++) {
+    const angle = (i / 80) * Math.PI * 2 + breathePhase * 0.1;
+    const radius = (20 + (i % 5) * 80) + Math.sin(breathePhase + i * 0.5) * 10;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+
+    const starSize = 0.5 + Math.random() * 1.5;
+    const brightness = 0.2 + Math.random() * 0.3;
+
+    ctx.fillStyle = getColor(i * 50, 4000, brightness);
+    ctx.beginPath();
+    ctx.arc(x, y, starSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw dust/nebula clouds
+  if (isActive) {
+    const dustParticles = 40;
+    for (let i = 0; i < dustParticles; i++) {
+      const angle = (i / dustParticles) * Math.PI * 2 + rotationAngle * 0.3;
+      const radius = maxRadius * (0.4 + (i % 3) * 0.2);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+
+      const dataIndex = Math.floor((i / dustParticles) * bufferLength);
+      const dustValue = dataArray[dataIndex] / 255;
+
+      if (dustValue > 0.3) {
+        const dustSize = 20 + dustValue * 40;
+        const dustGradient = ctx.createRadialGradient(x, y, 0, x, y, dustSize);
+        dustGradient.addColorStop(0, getColor(i * 30, 1200, dustValue * 0.15));
+        dustGradient.addColorStop(0.5, getColor(i * 30 + 50, 1200, dustValue * 0.08));
+        dustGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = dustGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, dustSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Draw each spiral arm with variation
+  for (let arm = 0; arm < armCount; arm++) {
+    const armAngle = (arm / armCount) * Math.PI * 2;
+    const dataOffset = Math.floor((arm / armCount) * bufferLength);
+
+    // Get audio value for this arm
+    const dataIndex = dataOffset % bufferLength;
+    const audioValue = isActive ? dataArray[dataIndex] / 255 : 0.5;
+
+    // Vary spiral characteristics per arm for visual interest
+    const spiralTightness = 2.5 + (arm % 3) * 0.5; // Varied rotations: 2.5, 3.0, 3.5
+    const rotationSpeed = 0.5 + (arm % 2) * 0.2; // Varied speeds
+    const armThickness = 1 + (arm % 2); // Some arms thicker than others
+
+    // Create gradient along the spiral
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, maxRadius);
+    const colorOffset = arm * 200 + Math.floor(rotationAngle * 100);
+    gradient.addColorStop(0, getColor(colorOffset, armCount * 200, isActive ? 0.4 * audioValue : 0.2));
+    gradient.addColorStop(0.5, getColor(colorOffset + 100, armCount * 200, isActive ? 0.3 * audioValue : 0.15));
+    gradient.addColorStop(1, getColor(colorOffset + 200, armCount * 200, 0));
+
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = isActive ? (2 + audioValue * 3) * armThickness : 2 * armThickness;
+
+    // Add glow to spiral arms with variation
+    if (isActive) {
+      ctx.shadowBlur = 10 + audioValue * 10;
+      ctx.shadowColor = getColor(colorOffset, armCount * 200, audioValue * 0.5);
+    }
+
+    ctx.beginPath();
+    for (let i = 0; i < pointsPerArm; i++) {
+      const t = i / pointsPerArm;
+
+      // Logarithmic spiral equation with varied rotation speed
+      const angle = armAngle + t * spiralTightness * Math.PI * 2 + rotationAngle * rotationSpeed;
+      const radius = t * maxRadius * (0.3 + audioValue * 0.7);
+
+      // Add subtle wave motion along spiral
+      const waveMotion = Math.sin(t * Math.PI * 8 + breathePhase) * 5;
+
+      const x = Math.cos(angle) * (radius + waveMotion);
+      const y = Math.sin(angle) * (radius + waveMotion);
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Add glowing particles along the spiral with varied density
+    if (isActive) {
+      const particleInterval = arm % 2 === 0 ? 6 : 10; // Vary particle density per arm
+
+      for (let i = 0; i < pointsPerArm; i++) {
+        // Only draw particles at intervals
+        if (i % particleInterval !== 0) continue;
+
+        const t = i / pointsPerArm;
+        const angle = armAngle + t * spiralTightness * Math.PI * 2 + rotationAngle * rotationSpeed;
+        const radius = t * maxRadius * (0.3 + audioValue * 0.7);
+
+        const waveMotion = Math.sin(t * Math.PI * 8 + breathePhase) * 5;
+
+        const x = Math.cos(angle) * (radius + waveMotion);
+        const y = Math.sin(angle) * (radius + waveMotion);
+
+        // Get local audio value for this point
+        const localDataIndex = (dataOffset + Math.floor(t * bufferLength / armCount)) % bufferLength;
+        const localValue = dataArray[localDataIndex] / 255;
+
+        // Only draw bright particles on high values
+        if (localValue > 0.55) {
+          const particleSize = 1.5 + localValue * 2.5;
+
+          // Glow around particle
+          const particleGradient = ctx.createRadialGradient(x, y, 0, x, y, particleSize * 4);
+          particleGradient.addColorStop(0, getColor(colorOffset + i * 3, armCount * 200, localValue * 0.8));
+          particleGradient.addColorStop(0.5, getColor(colorOffset + i * 3, armCount * 200, localValue * 0.4));
+          particleGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+          ctx.fillStyle = particleGradient;
+          ctx.beginPath();
+          ctx.arc(x, y, particleSize * 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bright center
+          ctx.fillStyle = getColor(colorOffset + i * 3 + 50, armCount * 200, 1);
+          ctx.beginPath();
+          ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Draw connecting arcs between arms for extra detail
+    if (arm < armCount - 1 && isActive && audioValue > 0.55) {
+      const nextArmAngle = ((arm + 1) / armCount) * Math.PI * 2;
+      const nextArmTightness = 2.5 + ((arm + 1) % 3) * 0.5;
+      const nextRotationSpeed = 0.5 + ((arm + 1) % 2) * 0.2;
+
+      for (let i = 20; i < pointsPerArm; i += 15) {
+        const t = i / pointsPerArm;
+
+        const angle1 = armAngle + t * spiralTightness * Math.PI * 2 + rotationAngle * rotationSpeed;
+        const angle2 = nextArmAngle + t * nextArmTightness * Math.PI * 2 + rotationAngle * nextRotationSpeed;
+        const radius = t * maxRadius * (0.3 + audioValue * 0.7);
+
+        const x1 = Math.cos(angle1) * radius;
+        const y1 = Math.sin(angle1) * radius;
+        const x2 = Math.cos(angle2) * radius;
+        const y2 = Math.sin(angle2) * radius;
+
+        ctx.strokeStyle = getColor(colorOffset + i * 2, armCount * 200, audioValue * 0.25);
+        ctx.lineWidth = 0.5 + audioValue;
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  // Draw energy pulse rings emanating from center
+  if (isActive) {
+    const ringCount = 3;
+    for (let r = 0; r < ringCount; r++) {
+      const phase = (breathePhase + r * Math.PI * 0.66) % (Math.PI * 2);
+      const pulseRadius = (phase / (Math.PI * 2)) * maxRadius * 0.8;
+
+      // Only draw rings in first half of their pulse cycle
+      if (phase < Math.PI) {
+        const coreValue = dataArray[0] / 255;
+        const ringAlpha = (1 - phase / Math.PI) * coreValue * 0.4;
+
+        ctx.strokeStyle = getColor(r * 100, 300, ringAlpha);
+        ctx.lineWidth = 2 + coreValue * 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = getColor(r * 100, 300, ringAlpha * 0.8);
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  // Draw small orbiting objects for depth
+  if (isActive) {
+    const orbitCount = 12;
+    for (let o = 0; o < orbitCount; o++) {
+      const orbitAngle = (o / orbitCount) * Math.PI * 2 + rotationAngle * 1.5;
+      const orbitRadius = 80 + (o % 3) * 40;
+      const ox = Math.cos(orbitAngle) * orbitRadius;
+      const oy = Math.sin(orbitAngle) * orbitRadius;
+
+      const orbitDataIndex = Math.floor((o / orbitCount) * bufferLength);
+      const orbitValue = dataArray[orbitDataIndex] / 255;
+
+      if (orbitValue > 0.5) {
+        const orbitSize = 2 + orbitValue * 3;
+
+        // Trailing glow
+        const orbitGradient = ctx.createRadialGradient(ox, oy, 0, ox, oy, orbitSize * 3);
+        orbitGradient.addColorStop(0, getColor(o * 80, 960, orbitValue * 0.6));
+        orbitGradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = orbitGradient;
+        ctx.beginPath();
+        ctx.arc(ox, oy, orbitSize * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright dot
+        ctx.fillStyle = getColor(o * 80 + 50, 960, 1);
+        ctx.beginPath();
+        ctx.arc(ox, oy, orbitSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Draw bright center core with layered gradients
+  const coreAudioValue = isActive ? dataArray[0] / 255 : 0.5;
+  const coreSize = 50 + coreAudioValue * 30;
+
+  const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coreSize);
+  coreGradient.addColorStop(0, getColor(0, 1000, isActive ? coreAudioValue * 0.9 : 0.5));
+  coreGradient.addColorStop(0.2, getColor(50, 1000, isActive ? coreAudioValue * 0.7 : 0.4));
+  coreGradient.addColorStop(0.5, getColor(100, 1000, isActive ? coreAudioValue * 0.4 : 0.2));
+  coreGradient.addColorStop(0.8, getColor(150, 1000, isActive ? coreAudioValue * 0.2 : 0.1));
+  coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.fillStyle = coreGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bright center dot with intense glow
+  if (isActive) {
+    ctx.shadowBlur = 25 + coreAudioValue * 15;
+    ctx.shadowColor = getColor(0, 1000, coreAudioValue);
+  }
+  ctx.fillStyle = getColor(0, 1000, 1);
+  ctx.beginPath();
+  ctx.arc(0, 0, 6 + coreAudioValue * 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Add rotating cross-hatch pattern in core
+  if (isActive && coreAudioValue > 0.6) {
+    ctx.strokeStyle = getColor(200, 1000, coreAudioValue * 0.5);
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = getColor(200, 1000, coreAudioValue * 0.4);
+
+    for (let line = 0; line < 4; line++) {
+      const lineAngle = (line / 4) * Math.PI * 2 + rotationAngle * 2;
+      const lineLength = 15 + coreAudioValue * 20;
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(lineAngle) * lineLength, Math.sin(lineAngle) * lineLength);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+
 function drawPlasmaStorm() {
   const width = canvas.value.width;
   const height = canvas.value.height;
