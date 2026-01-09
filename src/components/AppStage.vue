@@ -38,7 +38,7 @@
           </g>
         </svg>
         <div class="modal-subtitle">Debut Album - "Let Slip" - Available Everywhere</div>
-        <button class="play-modal-btn" @click="startPlayback">
+        <button class="play-modal-btn" autofocus @click="startPlayback">
           {{ playButtonText }}
         </button>
       </div>
