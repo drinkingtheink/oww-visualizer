@@ -742,25 +742,6 @@ function loadTrack(index) {
   });
 }
 
-// function loadAudio(event) {
-//   const file = event.target.files[0];
-//   if (!file) return;
-
-//   fileName.value = file.name;
-//   audioElement = new Audio();
-//   const reader = new FileReader();
-
-//   reader.onload = (e) => {
-//     audioElement.src = e.target.result;
-//     audioElement.play();
-//     setupAudioContext(audioElement);
-//     audioLoaded.value = true;
-//     isPaused.value = false;
-//   };
-
-//   reader.readAsDataURL(file);
-// }
-
 function setupAudioContext(audio) {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioContext.createAnalyser();
