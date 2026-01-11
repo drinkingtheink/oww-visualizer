@@ -226,6 +226,7 @@ let rotationAngle = 0;
 let breathePhase = 0;
 let audioElement = null;
 let particles = [];
+let mediaSource = null;
 
 // Mouse/Touch interaction state
 let mouseX = null;
@@ -705,23 +706,26 @@ function previousTrack() {
 
 function loadTrack(index) {
   if (!useMusicPlayer.value) return;
-  
+
   const track = tracks.value[index];
   fileName.value = track.name;
-  
-  // Stop current audio if playing
+
+  // Stop and clean up current audio if playing
   if (audioElement) {
     audioElement.pause();
+    audioElement.removeEventListener('ended', nextTrack);
     audioElement = null;
   }
-  
+
   // Create new audio element
   audioElement = new Audio(track.url);
   audioElement.crossOrigin = "anonymous";
-  
+
+  // Set up audio context FIRST (before playing) - iOS requirement
+  setupAudioContext(audioElement);
+
   // Auto-play the track
   audioElement.play().then(() => {
-    setupAudioContext(audioElement);
     audioLoaded.value = true;
     isPaused.value = false;
     updateDocumentTitle();
@@ -729,13 +733,12 @@ function loadTrack(index) {
   }).catch(err => {
     console.error('Error playing track:', err);
     // If auto-play fails, just load it ready to play
-    setupAudioContext(audioElement);
     audioLoaded.value = true;
     isPaused.value = true;
     updateDocumentTitle();
     updateMediaSession();
   });
-  
+
   // Handle track end - auto-advance to next track
   audioElement.addEventListener('ended', () => {
     nextTrack();
@@ -743,16 +746,40 @@ function loadTrack(index) {
 }
 
 function setupAudioContext(audio) {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512;
-  
-  const source = audioContext.createMediaElementSource(audio);
-  source.connect(analyser);
-  analyser.connect(audioContext.destination);
+  // Only create AudioContext once (iOS requirement)
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.connect(audioContext.destination);
 
-  bufferLength = analyser.frequencyBinCount;
-  dataArray = new Uint8Array(bufferLength);
+    bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+  }
+
+  // Resume AudioContext if suspended (iOS requirement)
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  // Disconnect old source if it exists
+  if (mediaSource) {
+    try {
+      mediaSource.disconnect();
+    } catch (e) {
+      // Ignore errors if already disconnected
+    }
+  }
+
+  // Create new media source for this audio element
+  // Note: createMediaElementSource can only be called once per audio element
+  try {
+    mediaSource = audioContext.createMediaElementSource(audio);
+    mediaSource.connect(analyser);
+  } catch (e) {
+    console.error('Error creating media source:', e);
+    // If already created for this element, just continue
+  }
 }
 
 function getColor(index, total, intensity) {
