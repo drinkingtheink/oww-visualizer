@@ -5892,7 +5892,7 @@ input[type="file"] {
 
 /* Position streaming button below music player when it's expanded */
 .music-player:not(.collapsed) ~ .streaming-btn {
-  top: calc(22px + 469px); /* Music player top + approximate expanded height + gap */
+  top: calc(22px + 500px); /* Music player top + approximate expanded height + gap */
 }
 
 /* Modal Styles */
