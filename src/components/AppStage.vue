@@ -608,6 +608,7 @@ const patterns = [
   { name: 'Toroid', draw: drawCosmicSphere },
   { name: 'Kaleido', draw: drawKaleidoscope },
   { name: 'Synaptic', draw: drawNeuralWeb },
+  { name: 'Cylindrical', draw: drawWMPBars },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5056,6 +5057,200 @@ function drawBoombox() {
     }
   });
   
+  ctx.restore();
+}
+
+// Windows Media Player inspired visualization
+function drawWMPBars() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  ctx.save();
+
+  // Number of frequency bars
+  const barCount = 64;
+  const barWidth = Math.min(width / barCount * 0.7, 12);
+  const barGap = barWidth * 0.4;
+  const totalBarWidth = barCount * (barWidth + barGap);
+  const startX = centerX - totalBarWidth / 2;
+  const maxBarHeight = height * 0.35;
+
+  // Initialize peak holders for smooth decay
+  if (!window.wmpPeaks) {
+    window.wmpPeaks = new Array(barCount).fill(0);
+  }
+  if (!window.wmpPeakVelocity) {
+    window.wmpPeakVelocity = new Array(barCount).fill(0);
+  }
+
+  // Draw orbiting rings in background
+  const ringCount = 3;
+  for (let r = 0; r < ringCount; r++) {
+    const ringRadius = Math.min(width, height) * (0.25 + r * 0.12);
+    const ringSpeed = (r % 2 === 0 ? 1 : -1) * (0.3 + r * 0.15);
+    const ringAngle = rotationAngle * ringSpeed + (r * Math.PI * 2 / 3);
+
+    // Audio reactive ring size
+    const audioMod = isActive ? dataArray[Math.floor(r * bufferLength / ringCount)] / 255 :
+                     Math.sin(breathePhase + r) * 0.3 + 0.5;
+    const pulseRadius = ringRadius * (1 + audioMod * 0.15);
+
+    ctx.strokeStyle = getColor(r * 300 + Math.floor(rotationAngle * 50), 1000, isActive ? 0.15 : 0.08);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Draw orbiting dots on rings
+    const dotCount = 8 + r * 4;
+    for (let d = 0; d < dotCount; d++) {
+      const dotAngle = ringAngle + (d / dotCount) * Math.PI * 2;
+      const dotX = centerX + Math.cos(dotAngle) * pulseRadius;
+      const dotY = centerY + Math.sin(dotAngle) * pulseRadius;
+      const dotSize = 3 + audioMod * 4;
+
+      ctx.fillStyle = getColor(d * 100 + r * 200, 1000, isActive ? 0.4 : 0.2);
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Draw frequency bars
+  for (let i = 0; i < barCount; i++) {
+    const dataIndex = Math.floor((i / barCount) * bufferLength * 0.8);
+    const rawValue = isActive ? dataArray[dataIndex] / 255 :
+                     Math.sin(breathePhase * 2 + i * 0.2) * 0.3 + 0.3;
+
+    // Apply smoothing
+    const value = rawValue * 0.7 + (i > 0 ? dataArray[Math.max(0, dataIndex - 1)] / 255 * 0.3 : rawValue * 0.3);
+
+    const barHeight = value * maxBarHeight;
+    const x = startX + i * (barWidth + barGap);
+    const barY = centerY - barHeight / 2;
+
+    // Update peak with gravity
+    if (barHeight > window.wmpPeaks[i]) {
+      window.wmpPeaks[i] = barHeight;
+      window.wmpPeakVelocity[i] = 0;
+    } else {
+      window.wmpPeakVelocity[i] += 0.5; // gravity
+      window.wmpPeaks[i] -= window.wmpPeakVelocity[i];
+      if (window.wmpPeaks[i] < 0) window.wmpPeaks[i] = 0;
+    }
+
+    // Create gradient for bar
+    const gradient = ctx.createLinearGradient(x, barY, x, barY + barHeight);
+
+    if (isActive) {
+      gradient.addColorStop(0, getColor(i * 50 + Math.floor(rotationAngle * 30), barCount * 50, 0.9));
+      gradient.addColorStop(0.5, getColor(i * 50 + 100 + Math.floor(rotationAngle * 30), barCount * 50, 0.7));
+      gradient.addColorStop(1, getColor(i * 50 + 200 + Math.floor(rotationAngle * 30), barCount * 50, 0.4));
+    } else {
+      gradient.addColorStop(0, getColor(i * 50, barCount * 50, 0.4));
+      gradient.addColorStop(1, getColor(i * 50 + 100, barCount * 50, 0.2));
+    }
+
+    // Draw main bar with glow
+    ctx.fillStyle = gradient;
+    if (isActive && value > 0.5) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = getColor(i * 50, barCount * 50, 0.5);
+    }
+
+    // Rounded rect for bar
+    const radius = barWidth / 2;
+    ctx.beginPath();
+    ctx.roundRect(x, barY, barWidth, barHeight, radius);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Draw peak indicator
+    if (window.wmpPeaks[i] > 5) {
+      const peakY = centerY - window.wmpPeaks[i] / 2 - 4;
+      ctx.fillStyle = getColor(i * 50, barCount * 50, isActive ? 1 : 0.5);
+      ctx.fillRect(x, peakY, barWidth, 3);
+    }
+
+    // Draw reflection (mirrored below)
+    const reflectionGradient = ctx.createLinearGradient(x, centerY + barHeight / 2, x, centerY + barHeight / 2 + barHeight * 0.6);
+    reflectionGradient.addColorStop(0, getColor(i * 50, barCount * 50, isActive ? 0.3 : 0.15));
+    reflectionGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = reflectionGradient;
+    ctx.beginPath();
+    ctx.roundRect(x, centerY + barHeight / 2 + 5, barWidth, barHeight * 0.6, radius);
+    ctx.fill();
+  }
+
+  // Draw center waveform overlay
+  ctx.strokeStyle = getColor(Math.floor(rotationAngle * 50), 1000, isActive ? 0.4 : 0.2);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  const waveSegments = 100;
+  for (let s = 0; s <= waveSegments; s++) {
+    const t = s / waveSegments;
+    const x = startX - 20 + t * (totalBarWidth + 40);
+    const dataIndex = Math.floor(t * bufferLength);
+    const waveValue = isActive ? (dataArray[dataIndex] / 255 - 0.5) * 30 :
+                      Math.sin(breathePhase + t * Math.PI * 4) * 10;
+    const y = centerY + waveValue;
+
+    if (s === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Draw corner geometric accents
+  const cornerSize = Math.min(width, height) * 0.08;
+  const corners = [
+    { x: cornerSize, y: cornerSize, angle: 0 },
+    { x: width - cornerSize, y: cornerSize, angle: Math.PI / 2 },
+    { x: width - cornerSize, y: height - cornerSize, angle: Math.PI },
+    { x: cornerSize, y: height - cornerSize, angle: -Math.PI / 2 }
+  ];
+
+  corners.forEach((corner, idx) => {
+    const pulseAmount = isActive ? dataArray[idx * Math.floor(bufferLength / 4)] / 255 :
+                        Math.sin(breathePhase + idx) * 0.3 + 0.5;
+    const size = cornerSize * (0.5 + pulseAmount * 0.5);
+
+    ctx.save();
+    ctx.translate(corner.x, corner.y);
+    ctx.rotate(corner.angle + rotationAngle * 0.5);
+
+    // Draw rotating square
+    ctx.strokeStyle = getColor(idx * 250, 1000, isActive ? 0.4 : 0.2);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.rect(-size / 2, -size / 2, size, size);
+    ctx.stroke();
+
+    // Draw inner diamond
+    ctx.rotate(Math.PI / 4);
+    ctx.strokeStyle = getColor(idx * 250 + 100, 1000, isActive ? 0.3 : 0.15);
+    ctx.beginPath();
+    ctx.rect(-size / 3, -size / 3, size * 2 / 3, size * 2 / 3);
+    ctx.stroke();
+
+    ctx.restore();
+  });
+
+  // Spawn particles on beat
+  if (isActive) {
+    const avgBass = (dataArray[0] + dataArray[1] + dataArray[2]) / 3 / 255;
+    if (avgBass > 0.7 && Math.random() > 0.8) {
+      const spawnX = centerX + (Math.random() - 0.5) * totalBarWidth;
+      const spawnY = centerY - maxBarHeight * avgBass;
+      createParticles(spawnX, spawnY, avgBass, 0, 1, 2);
+    }
+  }
+
   ctx.restore();
 }
 
