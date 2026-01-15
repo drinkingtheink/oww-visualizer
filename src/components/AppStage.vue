@@ -128,10 +128,13 @@
       :tracks="tracks"
       :current-track-index="currentTrackIndex"
       :is-playing="!isPaused && audioLoaded"
+      :current-time="currentTime"
+      :duration="duration"
       @track-change="handleTrackChange"
       @play-pause="togglePause"
       @next="nextTrack"
       @previous="previousTrack"
+      @seek="seekTo"
     />
 
     <!-- Streaming Button - positioned below music player -->
@@ -215,6 +218,8 @@ const tracks = ref([
     url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-down-and-out-in-sidereal-time-FINAL-MASTER-Balanced-Low.wav' 
   }
 ]);
+const currentTime = ref(0);
+const duration = ref(0);
 const patternRotateInterval = ref(15000); // 15 seconds per pattern
 const paletteRotateInterval = ref(8000); // 8 seconds per palette
 let patternTimer = null;
@@ -710,6 +715,10 @@ function loadTrack(index) {
   const track = tracks.value[index];
   fileName.value = track.name;
 
+  // Reset time tracking
+  currentTime.value = 0;
+  duration.value = 0;
+
   // Stop and clean up current audio if playing
   if (audioElement) {
     audioElement.pause();
@@ -743,6 +752,22 @@ function loadTrack(index) {
   audioElement.addEventListener('ended', () => {
     nextTrack();
   });
+
+  // Track time updates for progress bar
+  audioElement.addEventListener('timeupdate', () => {
+    currentTime.value = audioElement.currentTime;
+  });
+
+  audioElement.addEventListener('loadedmetadata', () => {
+    duration.value = audioElement.duration;
+  });
+}
+
+function seekTo(time) {
+  if (audioElement) {
+    audioElement.currentTime = time;
+    currentTime.value = time;
+  }
 }
 
 function setupAudioContext(audio) {

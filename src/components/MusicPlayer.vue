@@ -2,11 +2,12 @@
   <div class="music-player" :class="{ collapsed: isCollapsed }">
     <!-- Collapsed State -->
     <div v-if="isCollapsed" class="collapsed-view">
-      <div class="track-info">
-        <div class="track-number">{{ currentTrackIndex + 1 }}</div>
-        <div class="track-name">{{ tracks[currentTrackIndex].name }}</div>
-      </div>
-      <div class="mini-controls">
+      <div class="collapsed-top">
+        <div class="track-info">
+          <div class="track-number">{{ currentTrackIndex + 1 }}</div>
+          <div class="track-name">{{ tracks[currentTrackIndex].name }}</div>
+        </div>
+        <div class="mini-controls">
         <button @click="previousTrack" class="control-btn" title="Previous">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
@@ -25,12 +26,22 @@
             <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
           </svg>
         </button>
+        </div>
+        <button @click="toggleCollapse" class="expand-btn" title="Expand">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 17l5-5-5-5v10z"/>
+          </svg>
+        </button>
       </div>
-      <button @click="toggleCollapse" class="expand-btn" title="Expand">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M10 17l5-5-5-5v10z"/>
-        </svg>
-      </button>
+      <!-- Progress Bar -->
+      <div
+        class="progress-bar mini-progress"
+        @click="handleProgressClick"
+        @touchstart.prevent="handleProgressTouch"
+        @touchmove.prevent="handleProgressTouch"
+      >
+        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      </div>
     </div>
 
     <!-- Expanded State -->
@@ -62,6 +73,20 @@
         </div>
       </div>
 
+      <!-- Progress Bar with Time -->
+      <div class="progress-container">
+        <span class="time-display">{{ formatTime(currentTime) }}</span>
+        <div
+          class="progress-bar"
+          @click="handleProgressClick"
+          @touchstart.prevent="handleProgressTouch"
+          @touchmove.prevent="handleProgressTouch"
+        >
+          <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+        </div>
+        <span class="time-display">{{ formatTime(duration) }}</span>
+      </div>
+
       <div class="controls">
         <button @click="previousTrack" class="control-btn" title="Previous">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -87,9 +112,9 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue';
+import { ref, computed, defineProps, defineEmits } from 'vue';
 
-defineProps({
+const props = defineProps({
   tracks: {
     type: Array,
     required: true
@@ -101,10 +126,18 @@ defineProps({
   isPlaying: {
     type: Boolean,
     default: false
+  },
+  currentTime: {
+    type: Number,
+    default: 0
+  },
+  duration: {
+    type: Number,
+    default: 0
   }
 });
 
-const emit = defineEmits(['track-change', 'play-pause', 'next', 'previous']);
+const emit = defineEmits(['track-change', 'play-pause', 'next', 'previous', 'seek']);
 
 const isCollapsed = ref(false);
 
@@ -126,6 +159,38 @@ function nextTrack() {
 
 function previousTrack() {
   emit('previous');
+}
+
+// Progress bar functionality
+const progressPercent = computed(() => {
+  if (props.duration <= 0) return 0;
+  return (props.currentTime / props.duration) * 100;
+});
+
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function handleProgressClick(event) {
+  const bar = event.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const percent = clickX / rect.width;
+  const newTime = percent * props.duration;
+  emit('seek', newTime);
+}
+
+function handleProgressTouch(event) {
+  const bar = event.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const touch = event.touches[0];
+  const touchX = touch.clientX - rect.left;
+  const percent = Math.max(0, Math.min(1, touchX / rect.width));
+  const newTime = percent * props.duration;
+  emit('seek', newTime);
 }
 </script>
 
@@ -151,9 +216,7 @@ function previousTrack() {
 
 .collapsed-view {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  flex-direction: column;
 }
 
 .collapsed-view .track-info {
@@ -346,6 +409,74 @@ function previousTrack() {
   50% {
     height: 12px;
   }
+}
+
+/* Progress Bar Styles */
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 4px;
+}
+
+.time-display {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+}
+
+.time-display:first-child {
+  text-align: right;
+}
+
+.time-display:last-child {
+  text-align: left;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: height 0.15s ease;
+}
+
+.progress-bar:hover {
+  height: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+/* Mini progress bar for collapsed view */
+.mini-progress {
+  height: 3px;
+  margin: 0 12px 8px 12px;
+  border-radius: 2px;
+}
+
+.mini-progress:hover {
+  height: 5px;
+}
+
+.mini-progress .progress-fill {
+  border-radius: 2px;
+}
+
+.collapsed-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px 12px;
 }
 
 .controls {
