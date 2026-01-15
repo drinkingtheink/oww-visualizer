@@ -6263,7 +6263,7 @@ canvas {
   }
 
   .music-player:not(.collapsed) ~ .streaming-btn {
-    top: calc(10px + 469px);
+    top: calc(10px + 500px);
   }
 
   /* Hide triangle seraphim SVGs on mobile */
