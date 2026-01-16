@@ -338,9 +338,11 @@ export default {
             return mid / 20 / 255;
         },
         highEnergy() {
-            // High frequencies
+            // High frequencies - boosted for more expressive visuals
             const high = Array.from(this.audioData.slice(30, 60)).reduce((a, b) => a + b, 0);
-            return high / 30 / 255;
+            const normalizedHigh = high / 30 / 255;
+            // Apply 2x boost and ensure we stay in 0-1 range
+            return Math.min(1, normalizedHigh * 2.0);
         },
         audioIntensity() {
             if (!this.audioData) return 0;
@@ -525,7 +527,7 @@ export default {
 }
 
 .animate #main-iris-3 {
-    fill: #00FFFF;
+    fill: v-bind('`hsl(${180 + highEnergy * 90}, 100%, ${50 + highEnergy * 30}%)`');
 }
 
 .seraphim-wrapper:hover #main-iris-3 {

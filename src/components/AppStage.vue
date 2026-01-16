@@ -5483,6 +5483,16 @@ function animate() {
   if (audioLoaded.value && !isPaused.value) {
     if (now - lastEnergyCalcTime.value > 33) { // ~30fps for energy calc
       analyser.getByteFrequencyData(dataArray);
+
+      // Boost high frequencies for more expressive visuals
+      // Higher frequencies (upper half of spectrum) get progressively boosted
+      for (let i = Math.floor(bufferLength * 0.3); i < bufferLength; i++) {
+        // Calculate boost factor: starts at 1.0 at 30% of spectrum, increases to 2.5 at top
+        const normalizedPos = (i - bufferLength * 0.3) / (bufferLength * 0.7);
+        const boostFactor = 1.0 + normalizedPos * 1.5; // 1.0 to 2.5 boost
+        dataArray[i] = Math.min(255, Math.floor(dataArray[i] * boostFactor));
+      }
+
       avgEnergy = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255;
       cachedAvgEnergy.value = avgEnergy;
       lastEnergyCalcTime.value = now;
