@@ -608,7 +608,7 @@ const patterns = [
   { name: 'Toroid', draw: drawCosmicSphere },
   { name: 'Kaleido', draw: drawKaleidoscope },
   { name: 'Synaptic', draw: drawNeuralWeb },
-  { name: 'Cylindric', draw: drawWMPBars },
+  { name: 'Cylindric', draw: drawCylinders },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5061,7 +5061,7 @@ function drawBoombox() {
 }
 
 // Windows Media Player inspired visualization
-function drawWMPBars() {
+function drawCylinders() {
   const width = canvas.value.width;
   const height = canvas.value.height;
   const centerX = width / 2;
