@@ -3028,8 +3028,8 @@ function drawHelixRibbons() {
   // Segments per strand
   const segments = 80;
   // Helix dimensions
-  const helixHeight = Math.min(width, height) * 0.8;
-  const helixRadius = Math.min(width, height) * 0.18;
+  const helixHeight = Math.min(width, height) * 2;
+  const helixRadius = Math.min(width, height) * 0.2;
 
   ctx.save();
 
