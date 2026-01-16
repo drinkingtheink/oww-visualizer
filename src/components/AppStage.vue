@@ -2056,7 +2056,7 @@ function drawKaleidoscope() {
     const dx = mouseX - centerX;
     const dy = mouseY - centerY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxDistance = Math.min(width, height) * 0.5;
+    const maxDistance = Math.min(width, height) * 1.5;
 
     if (distance < maxDistance) {
       const strength = (1 - distance / maxDistance) * warpIntensity * 30;
