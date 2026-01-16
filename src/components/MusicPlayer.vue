@@ -542,7 +542,6 @@ function handleProgressTouch(event) {
   }
 
   .collapsed-view {
-    padding: 6px 10px;
     gap: 6px;
     max-width: 100%;
   }
