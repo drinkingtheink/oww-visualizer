@@ -608,7 +608,7 @@ const patterns = [
   { name: 'Toroid', draw: drawCosmicSphere },
   { name: 'Kaleido', draw: drawKaleidoscope },
   { name: 'Synaptic', draw: drawNeuralWeb },
-  { name: 'Cylindrical', draw: drawWMPBars },
+  { name: 'Cylindric', draw: drawWMPBars },
 ];
 
 const currentPatternName = ref(patterns[0].name);
