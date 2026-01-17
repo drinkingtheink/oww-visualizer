@@ -5267,12 +5267,14 @@ function drawPipes() {
   if (!window.pipesState) {
     window.pipesState = {
       pipes: [],
-      maxPipes: 6,
       spawnTimer: 0
     };
   }
 
   const state = window.pipesState;
+
+  // Fewer pipes in idle mode for minimal look
+  const maxPipes = isActive ? 6 : 2;
 
   // Pipe class definition
   class Pipe {
@@ -5301,12 +5303,15 @@ function drawPipes() {
 
       this.segments = [{ x: this.x, y: this.y, direction: this.direction }];
       this.segmentLength = 0;
-      this.maxSegmentLength = 60 + Math.random() * 100;
+      this.maxSegmentLength = isActive ? 60 + Math.random() * 100 : 80 + Math.random() * 120;
       this.colorIndex = colorIndex;
-      this.thickness = 12 + Math.random() * 8;
+      // Thinner pipes in idle mode
+      this.thickness = isActive ? 12 + Math.random() * 8 : 6 + Math.random() * 4;
       this.age = 0;
-      this.maxAge = 800 + Math.random() * 400;
-      this.speed = 2 + Math.random() * 2;
+      // Longer lifespan in idle mode (fewer pipes, so they last longer)
+      this.maxAge = isActive ? 800 + Math.random() * 400 : 1200 + Math.random() * 600;
+      // Slower movement in idle mode
+      this.speed = isActive ? 2 + Math.random() * 2 : 0.8 + Math.random() * 0.8;
     }
 
     update(audioValue) {
@@ -5358,7 +5363,9 @@ function drawPipes() {
     }
 
     draw(ctx, audioValue) {
-      const alpha = Math.min(1, (this.maxAge - this.age) / 100);
+      // Lower base alpha in idle mode for minimal look
+      const baseAlpha = isActive ? 1 : 0.5;
+      const alpha = Math.min(baseAlpha, (this.maxAge - this.age) / 100 * baseAlpha);
       const thicknessMult = isActive ? 1 + audioValue * 0.5 : 1;
       const pipeThickness = this.thickness * thicknessMult;
 
@@ -5402,9 +5409,9 @@ function drawPipes() {
 
       // Create 3D pipe effect with gradient
       const gradient = ctx.createLinearGradient(0, -thickness / 2, 0, thickness / 2);
-      const baseColor = getColor(this.colorIndex + segIndex * 20, state.maxPipes * 100, alpha * 0.9);
-      const highlightColor = getColor(this.colorIndex + segIndex * 20 + 50, state.maxPipes * 100, alpha);
-      const shadowColor = getColor(this.colorIndex + segIndex * 20 + 100, state.maxPipes * 100, alpha * 0.4);
+      const baseColor = getColor(this.colorIndex + segIndex * 20, maxPipes * 100, alpha * 0.9);
+      const highlightColor = getColor(this.colorIndex + segIndex * 20 + 50, maxPipes * 100, alpha);
+      const shadowColor = getColor(this.colorIndex + segIndex * 20 + 100, maxPipes * 100, alpha * 0.4);
 
       gradient.addColorStop(0, shadowColor);
       gradient.addColorStop(0.3, highlightColor);
@@ -5443,13 +5450,13 @@ function drawPipes() {
         wx, wy, radius
       );
 
-      const baseColor = getColor(this.colorIndex + segIndex * 30 + 150, state.maxPipes * 100, alpha);
-      const highlightColor = getColor(this.colorIndex + segIndex * 30 + 200, state.maxPipes * 100, alpha);
+      const baseColor = getColor(this.colorIndex + segIndex * 30 + 150, maxPipes * 100, alpha);
+      const highlightColor = getColor(this.colorIndex + segIndex * 30 + 200, maxPipes * 100, alpha);
 
       gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.6})`);
       gradient.addColorStop(0.3, highlightColor);
       gradient.addColorStop(0.7, baseColor);
-      gradient.addColorStop(1, getColor(this.colorIndex + segIndex * 30 + 100, state.maxPipes * 100, alpha * 0.5));
+      gradient.addColorStop(1, getColor(this.colorIndex + segIndex * 30 + 100, maxPipes * 100, alpha * 0.5));
 
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -5477,11 +5484,11 @@ function drawPipes() {
     dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255 :
     Math.sin(breathePhase) * 0.3 + 0.5;
 
-  // Spawn new pipes
+  // Spawn new pipes - much slower in idle mode for minimal look
   state.spawnTimer++;
-  const spawnRate = isActive ? Math.max(60, 150 - avgAudio * 100) : 200;
+  const spawnRate = isActive ? Math.max(60, 150 - avgAudio * 100) : 500;
 
-  if (state.pipes.length < state.maxPipes && state.spawnTimer > spawnRate) {
+  if (state.pipes.length < maxPipes && state.spawnTimer > spawnRate) {
     state.pipes.push(new Pipe(Math.floor(Math.random() * 1000)));
     state.spawnTimer = 0;
   }
@@ -5489,7 +5496,7 @@ function drawPipes() {
   // Update and draw pipes
   for (let i = state.pipes.length - 1; i >= 0; i--) {
     const pipe = state.pipes[i];
-    const pipeAudioIndex = Math.floor((i / state.maxPipes) * bufferLength);
+    const pipeAudioIndex = Math.floor((i / maxPipes) * bufferLength);
     const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
 
     pipe.update(pipeAudio);
@@ -5501,30 +5508,32 @@ function drawPipes() {
 
   // Draw pipes (back to front for proper layering)
   state.pipes.forEach((pipe, i) => {
-    const pipeAudioIndex = Math.floor((i / state.maxPipes) * bufferLength);
+    const pipeAudioIndex = Math.floor((i / maxPipes) * bufferLength);
     const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
     pipe.draw(ctx, pipeAudio);
   });
 
-  // Draw subtle grid in background for depth
-  ctx.globalAlpha = isActive ? 0.08 : 0.04;
-  const gridSize = 60;
-  ctx.strokeStyle = getColor(Math.floor(rotationAngle * 30), 1000, 0.3);
-  ctx.lineWidth = 1;
+  // Draw subtle grid in background for depth - only when active
+  if (isActive) {
+    ctx.globalAlpha = 0.08;
+    const gridSize = 60;
+    ctx.strokeStyle = getColor(Math.floor(rotationAngle * 30), 1000, 0.3);
+    ctx.lineWidth = 1;
 
-  for (let x = gridSize; x < width; x += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
+    for (let x = gridSize; x < width; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = gridSize; y < height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
-  for (let y = gridSize; y < height; y += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
 
   // Spawn particles at ball joints on high energy
   if (isActive && avgAudio > 0.7 && Math.random() > 0.9) {
