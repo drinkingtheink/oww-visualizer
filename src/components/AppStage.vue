@@ -609,6 +609,7 @@ const patterns = [
   { name: 'Kaleido', draw: drawKaleidoscope },
   { name: 'Synaptic', draw: drawNeuralWeb },
   { name: 'Cylindric', draw: drawCylinders },
+  { name: 'Pipes', draw: drawPipes },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5249,6 +5250,289 @@ function drawCylinders() {
       const spawnY = centerY - maxBarHeight * avgBass;
       createParticles(spawnX, spawnY, avgBass, 0, 1, 2);
     }
+  }
+
+  ctx.restore();
+}
+
+function drawPipes() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  ctx.save();
+
+  // Initialize pipes state
+  if (!window.pipesState) {
+    window.pipesState = {
+      pipes: [],
+      maxPipes: 6,
+      spawnTimer: 0
+    };
+  }
+
+  const state = window.pipesState;
+
+  // Pipe class definition
+  class Pipe {
+    constructor(colorIndex) {
+      // Start from random edge
+      const edge = Math.floor(Math.random() * 4);
+      const margin = 50;
+
+      if (edge === 0) { // Top
+        this.x = margin + Math.random() * (width - margin * 2);
+        this.y = margin;
+        this.direction = Math.floor(Math.random() * 2) === 0 ? 1 : 2; // Down or right/left
+      } else if (edge === 1) { // Right
+        this.x = width - margin;
+        this.y = margin + Math.random() * (height - margin * 2);
+        this.direction = Math.floor(Math.random() * 2) === 0 ? 3 : 0; // Left or up/down
+      } else if (edge === 2) { // Bottom
+        this.x = margin + Math.random() * (width - margin * 2);
+        this.y = height - margin;
+        this.direction = Math.floor(Math.random() * 2) === 0 ? 0 : 2; // Up or right/left
+      } else { // Left
+        this.x = margin;
+        this.y = margin + Math.random() * (height - margin * 2);
+        this.direction = Math.floor(Math.random() * 2) === 0 ? 2 : 1; // Right or up/down
+      }
+
+      this.segments = [{ x: this.x, y: this.y, direction: this.direction }];
+      this.segmentLength = 0;
+      this.maxSegmentLength = 60 + Math.random() * 100;
+      this.colorIndex = colorIndex;
+      this.thickness = 12 + Math.random() * 8;
+      this.age = 0;
+      this.maxAge = 800 + Math.random() * 400;
+      this.speed = 2 + Math.random() * 2;
+    }
+
+    update(audioValue) {
+      this.age++;
+
+      // Audio-reactive speed
+      const speedMult = isActive ? 1 + audioValue * 2 : 1;
+      const moveSpeed = this.speed * speedMult;
+
+      // Move in current direction
+      const dirs = [
+        { dx: 0, dy: -1 }, // 0: Up
+        { dx: 0, dy: 1 },  // 1: Down
+        { dx: 1, dy: 0 },  // 2: Right
+        { dx: -1, dy: 0 }  // 3: Left
+      ];
+
+      const dir = dirs[this.direction];
+      this.x += dir.dx * moveSpeed;
+      this.y += dir.dy * moveSpeed;
+      this.segmentLength += moveSpeed;
+
+      // Check if we need to turn
+      if (this.segmentLength >= this.maxSegmentLength) {
+        // Add current position as a joint
+        this.segments.push({ x: this.x, y: this.y, direction: this.direction });
+
+        // Choose new direction (90 degree turn)
+        const possibleDirs = this.direction < 2 ? [2, 3] : [0, 1];
+        this.direction = possibleDirs[Math.floor(Math.random() * 2)];
+
+        this.segmentLength = 0;
+        this.maxSegmentLength = 50 + Math.random() * 80 + (isActive ? audioValue * 60 : 0);
+      }
+
+      // Check bounds
+      const margin = 30;
+      if (this.x < margin || this.x > width - margin ||
+          this.y < margin || this.y > height - margin) {
+        // Turn back into bounds
+        if (this.x < margin) this.direction = 2;
+        else if (this.x > width - margin) this.direction = 3;
+        else if (this.y < margin) this.direction = 1;
+        else if (this.y > height - margin) this.direction = 0;
+
+        this.segments.push({ x: this.x, y: this.y, direction: this.direction });
+        this.segmentLength = 0;
+      }
+    }
+
+    draw(ctx, audioValue) {
+      const alpha = Math.min(1, (this.maxAge - this.age) / 100);
+      const thicknessMult = isActive ? 1 + audioValue * 0.5 : 1;
+      const pipeThickness = this.thickness * thicknessMult;
+
+      // Draw all completed segments
+      for (let i = 0; i < this.segments.length - 1; i++) {
+        const seg = this.segments[i];
+        const nextSeg = this.segments[i + 1];
+
+        this.drawPipeSegment(ctx, seg.x, seg.y, nextSeg.x, nextSeg.y, pipeThickness, alpha, i);
+
+        // Draw ball joint at connection
+        this.drawBallJoint(ctx, nextSeg.x, nextSeg.y, pipeThickness, alpha, i);
+      }
+
+      // Draw current growing segment
+      if (this.segments.length > 0) {
+        const lastSeg = this.segments[this.segments.length - 1];
+        this.drawPipeSegment(ctx, lastSeg.x, lastSeg.y, this.x, this.y, pipeThickness, alpha, this.segments.length);
+
+        // Draw ball joint at current head
+        this.drawBallJoint(ctx, this.x, this.y, pipeThickness * 1.1, alpha, this.segments.length, true);
+      }
+    }
+
+    drawPipeSegment(ctx, x1, y1, x2, y2, thickness, alpha, segIndex) {
+      // Apply warp distortion to both endpoints
+      const warped1 = applyWarpDistortion(x1, y1);
+      const warped2 = applyWarpDistortion(x2, y2);
+
+      const wx1 = warped1.x, wy1 = warped1.y;
+      const wx2 = warped2.x, wy2 = warped2.y;
+
+      const angle = Math.atan2(wy2 - wy1, wx2 - wx1);
+      const length = Math.sqrt((wx2 - wx1) ** 2 + (wy2 - wy1) ** 2);
+
+      if (length < 1) return;
+
+      ctx.save();
+      ctx.translate(wx1, wy1);
+      ctx.rotate(angle);
+
+      // Create 3D pipe effect with gradient
+      const gradient = ctx.createLinearGradient(0, -thickness / 2, 0, thickness / 2);
+      const baseColor = getColor(this.colorIndex + segIndex * 20, state.maxPipes * 100, alpha * 0.9);
+      const highlightColor = getColor(this.colorIndex + segIndex * 20 + 50, state.maxPipes * 100, alpha);
+      const shadowColor = getColor(this.colorIndex + segIndex * 20 + 100, state.maxPipes * 100, alpha * 0.4);
+
+      gradient.addColorStop(0, shadowColor);
+      gradient.addColorStop(0.3, highlightColor);
+      gradient.addColorStop(0.5, baseColor);
+      gradient.addColorStop(0.7, highlightColor);
+      gradient.addColorStop(1, shadowColor);
+
+      ctx.fillStyle = gradient;
+
+      // Draw rounded rectangle for pipe segment
+      ctx.beginPath();
+      ctx.roundRect(0, -thickness / 2, length, thickness, thickness / 4);
+      ctx.fill();
+
+      // Add specular highlight
+      const specGradient = ctx.createLinearGradient(0, -thickness / 2, 0, -thickness / 4);
+      specGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.3})`);
+      specGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+      ctx.fillStyle = specGradient;
+      ctx.beginPath();
+      ctx.roundRect(2, -thickness / 2 + 2, length - 4, thickness / 3, thickness / 6);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    drawBallJoint(ctx, x, y, thickness, alpha, segIndex, isHead = false) {
+      const warped = applyWarpDistortion(x, y);
+      const wx = warped.x, wy = warped.y;
+      const radius = thickness * 0.6 * warped.scale;
+
+      // Create radial gradient for 3D ball effect
+      const gradient = ctx.createRadialGradient(
+        wx - radius * 0.3, wy - radius * 0.3, 0,
+        wx, wy, radius
+      );
+
+      const baseColor = getColor(this.colorIndex + segIndex * 30 + 150, state.maxPipes * 100, alpha);
+      const highlightColor = getColor(this.colorIndex + segIndex * 30 + 200, state.maxPipes * 100, alpha);
+
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.6})`);
+      gradient.addColorStop(0.3, highlightColor);
+      gradient.addColorStop(0.7, baseColor);
+      gradient.addColorStop(1, getColor(this.colorIndex + segIndex * 30 + 100, state.maxPipes * 100, alpha * 0.5));
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(wx, wy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Add glow for head joint when active
+      if (isHead && isActive) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = baseColor;
+        ctx.beginPath();
+        ctx.arc(wx, wy, radius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    isDead() {
+      return this.age > this.maxAge;
+    }
+  }
+
+  // Get audio value for reactivity
+  const avgAudio = isActive ?
+    dataArray.reduce((sum, val) => sum + val, 0) / bufferLength / 255 :
+    Math.sin(breathePhase) * 0.3 + 0.5;
+
+  // Spawn new pipes
+  state.spawnTimer++;
+  const spawnRate = isActive ? Math.max(60, 150 - avgAudio * 100) : 200;
+
+  if (state.pipes.length < state.maxPipes && state.spawnTimer > spawnRate) {
+    state.pipes.push(new Pipe(Math.floor(Math.random() * 1000)));
+    state.spawnTimer = 0;
+  }
+
+  // Update and draw pipes
+  for (let i = state.pipes.length - 1; i >= 0; i--) {
+    const pipe = state.pipes[i];
+    const pipeAudioIndex = Math.floor((i / state.maxPipes) * bufferLength);
+    const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
+
+    pipe.update(pipeAudio);
+
+    if (pipe.isDead()) {
+      state.pipes.splice(i, 1);
+    }
+  }
+
+  // Draw pipes (back to front for proper layering)
+  state.pipes.forEach((pipe, i) => {
+    const pipeAudioIndex = Math.floor((i / state.maxPipes) * bufferLength);
+    const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
+    pipe.draw(ctx, pipeAudio);
+  });
+
+  // Draw subtle grid in background for depth
+  ctx.globalAlpha = isActive ? 0.08 : 0.04;
+  const gridSize = 60;
+  ctx.strokeStyle = getColor(Math.floor(rotationAngle * 30), 1000, 0.3);
+  ctx.lineWidth = 1;
+
+  for (let x = gridSize; x < width; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let y = gridSize; y < height; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Spawn particles at ball joints on high energy
+  if (isActive && avgAudio > 0.7 && Math.random() > 0.9) {
+    state.pipes.forEach(pipe => {
+      if (Math.random() > 0.7) {
+        createParticles(pipe.x, pipe.y, avgAudio, pipe.colorIndex, 1000, 2);
+      }
+    });
   }
 
   ctx.restore();
