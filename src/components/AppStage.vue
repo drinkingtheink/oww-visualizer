@@ -6090,6 +6090,13 @@ function handleKeyDown(e) {
     case 'ArrowDown': {
       currentPaletteIndex.value = (currentPaletteIndex.value - 1 + palettes.length) % palettes.length;
       currentPaletteName.value = palettes[currentPaletteIndex.value].name;
+      // Reset palette rotation timer
+      if (paletteTimer) {
+        clearInterval(paletteTimer);
+        paletteTimer = setInterval(() => {
+          cyclePalette();
+        }, paletteRotateInterval.value);
+      }
       break;
     }
     case ' ': {
