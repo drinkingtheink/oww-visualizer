@@ -241,6 +241,11 @@ let ripples = [];
 let warpIntensity = 0;
 let targetWarpIntensity = 0;
 
+// Drag trail state
+let dragTrailPoints = [];
+let lastDragX = null;
+let lastDragY = null;
+
 // Color Palettes
 const palettes = [
   {
@@ -572,6 +577,98 @@ class Ripple {
   isDead() {
     return this.life <= 0;
   }
+}
+
+// Drag trail point for mouse drag effect
+class DragTrailPoint {
+  constructor(x, y, colorIndex, total) {
+    this.x = x;
+    this.y = y;
+    this.life = 1.0;
+    this.maxLife = 40;
+    this.age = 0;
+    this.colorIndex = colorIndex;
+    this.total = total;
+    this.size = 8 + Math.random() * 4;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+  }
+
+  update() {
+    this.age++;
+    this.life = 1 - (this.age / this.maxLife);
+    this.pulsePhase += 0.15;
+  }
+
+  isDead() {
+    return this.life <= 0;
+  }
+}
+
+function updateDragTrail() {
+  dragTrailPoints = dragTrailPoints.filter(p => !p.isDead());
+  dragTrailPoints.forEach(p => p.update());
+}
+
+function drawDragTrail() {
+  if (dragTrailPoints.length < 2) return;
+
+  const total = dragTrailPoints.length;
+
+  // Draw connecting lines between points with glow
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (let i = 1; i < dragTrailPoints.length; i++) {
+    const prev = dragTrailPoints[i - 1];
+    const curr = dragTrailPoints[i];
+    const alpha = Math.min(prev.life, curr.life);
+
+    if (alpha <= 0) continue;
+
+    // Get color from palette
+    const color = getColor(i, total, alpha);
+
+    // Outer glow
+    ctx.strokeStyle = color;
+    ctx.lineWidth = (curr.size * 2) * alpha;
+    ctx.globalAlpha = alpha * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(prev.x, prev.y);
+    ctx.lineTo(curr.x, curr.y);
+    ctx.stroke();
+
+    // Inner bright line
+    ctx.lineWidth = curr.size * alpha;
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(prev.x, prev.y);
+    ctx.lineTo(curr.x, curr.y);
+    ctx.stroke();
+  }
+
+  // Draw glowing points at each trail position
+  for (let i = 0; i < dragTrailPoints.length; i++) {
+    const point = dragTrailPoints[i];
+    if (point.life <= 0) continue;
+
+    const pulse = Math.sin(point.pulsePhase) * 0.3 + 0.7;
+    const size = point.size * pulse * point.life;
+    const color = getColor(point.colorIndex, point.total, point.life);
+
+    // Outer glow
+    const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, size * 2);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(0.5, color.replace(/[\d.]+\)$/, `${point.life * 0.4})`));
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+    ctx.globalAlpha = point.life;
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, size * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
 }
 
 function createParticles(x, y, energy, colorIndex, total, count = 1) {
@@ -5817,8 +5914,10 @@ function animate() {
   // Conditionally update particles based on performance
   if (!performanceMode.value || frameSkipCounter.value % 2 === 1) {
     updateParticles();
+    updateDragTrail();
   }
   drawParticles();
+  drawDragTrail();
 
   // Optimize ripple updates - batch operations
   // Filter and update in single pass
@@ -5946,6 +6045,33 @@ function handleMouseMove(e) {
   mouseX = e.clientX - rect.left;
   mouseY = e.clientY - rect.top;
   targetWarpIntensity = 1;
+
+  // Create drag trail effect when mouse is held down
+  if (isMouseDown) {
+    // Calculate distance from last point to avoid too many points
+    const dx = lastDragX !== null ? mouseX - lastDragX : 0;
+    const dy = lastDragY !== null ? mouseY - lastDragY : 0;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Add trail point every few pixels of movement
+    if (lastDragX === null || dist > 8) {
+      const total = dragTrailPoints.length + 1;
+      dragTrailPoints.push(new DragTrailPoint(mouseX, mouseY, total, 100));
+
+      // Create ripples along drag path (30% chance)
+      if (Math.random() > 0.7) {
+        ripples.push(new Ripple(mouseX, mouseY, 0.6));
+      }
+
+      // Spawn particles along the trail (20% chance)
+      if (Math.random() > 0.8) {
+        createParticles(mouseX, mouseY, 0.5, Math.floor(Math.random() * 100), 100, 2);
+      }
+
+      lastDragX = mouseX;
+      lastDragY = mouseY;
+    }
+  }
 }
 
 function handleMouseDown(e) {
@@ -5953,15 +6079,30 @@ function handleMouseDown(e) {
   const rect = canvas.value.getBoundingClientRect();
   mouseX = e.clientX - rect.left;
   mouseY = e.clientY - rect.top;
+  lastDragX = mouseX;
+  lastDragY = mouseY;
+
+  // Create initial burst of particles at drag start
+  createParticles(mouseX, mouseY, 0.7, Math.floor(Math.random() * 100), 100, 3);
 }
 
 function handleMouseUp() {
   isMouseDown = false;
+  lastDragX = null;
+  lastDragY = null;
+
+  // Create final ripple burst on release
+  if (mouseX !== null && mouseY !== null) {
+    ripples.push(new Ripple(mouseX, mouseY, 1.2));
+    createParticles(mouseX, mouseY, 0.8, Math.floor(Math.random() * 100), 100, 4);
+  }
 }
 
 function handleMouseLeave() {
   targetWarpIntensity = 0;
   isMouseDown = false;
+  lastDragX = null;
+  lastDragY = null;
 }
 
 function handleClick(e) {
