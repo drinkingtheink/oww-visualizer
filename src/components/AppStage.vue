@@ -707,6 +707,7 @@ const patterns = [
   { name: 'Synaptic', draw: drawNeuralWeb },
   { name: 'Cylindric', draw: drawCylinders },
   { name: 'Pipes', draw: drawPipes },
+  { name: 'From Orbit', draw: drawCityLights },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5517,6 +5518,334 @@ function drawPipes() {
       }
     });
   }
+
+  ctx.restore();
+}
+
+function drawCityLights() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const isActive = audioLoaded.value && !isPaused.value;
+  const sphereRadius = Math.min(width, height) * 0.42;
+
+  // Initialize city state with spherical coordinates
+  if (!window.cityLightsState || window.cityLightsState.width !== width) {
+    const lights = [];
+
+    // Create city centers on sphere (in spherical coords)
+    const cityCenters = [];
+    const numCities = 8;
+    for (let i = 0; i < numCities; i++) {
+      cityCenters.push({
+        lat: (Math.random() - 0.5) * Math.PI * 0.9,
+        lon: Math.random() * Math.PI * 2,
+        radius: 0.3 + Math.random() * 0.4
+      });
+    }
+
+    // Create lights on sphere surface
+    const latSteps = 28;
+    const lonSteps = 40;
+
+    for (let latI = 0; latI < latSteps; latI++) {
+      const lat = ((latI / latSteps) - 0.5) * Math.PI;
+
+      for (let lonI = 0; lonI < lonSteps; lonI++) {
+        const lon = (lonI / lonSteps) * Math.PI * 2;
+
+        // Calculate density based on proximity to city centers
+        let density = 0.12;
+        for (const city of cityCenters) {
+          const dLat = lat - city.lat;
+          const dLon = Math.min(Math.abs(lon - city.lon), Math.PI * 2 - Math.abs(lon - city.lon));
+          const dist = Math.sqrt(dLat * dLat + dLon * dLon);
+          if (dist < city.radius) {
+            density = Math.max(density, 1 - (dist / city.radius) * 0.6);
+          }
+        }
+
+        // Skip sparse areas
+        if (Math.random() > density) continue;
+
+        // Add slight randomness to position
+        const jitterLat = lat + (Math.random() - 0.5) * 0.08;
+        const jitterLon = lon + (Math.random() - 0.5) * 0.08;
+
+        lights.push({
+          lat: jitterLat,
+          lon: jitterLon,
+          baseSize: 1.5 + density * 2,
+          brightness: 0.3 + density * 0.5,
+          blinkPhase: Math.random() * Math.PI * 2,
+          blinkSpeed: 0.015 + Math.random() * 0.03,
+          colorIndex: Math.floor(Math.random() * 300),
+          density: density
+        });
+      }
+    }
+
+    window.cityLightsState = {
+      lights: lights,
+      width: width,
+      rotation: 0,
+      tiltX: 0,
+      tiltY: 0,
+      lastBass: 0,
+      beatPulse: 0,
+      beatCooldown: 0,
+      surgeLon: 0,
+      surgeRadius: 0,
+      colorShift: 0
+    };
+  }
+
+  const state = window.cityLightsState;
+  ctx.save();
+
+  // Beat detection
+  let bassLevel = 0;
+  let avgLevel = 0;
+  if (isActive) {
+    for (let i = 0; i < 8; i++) bassLevel += dataArray[i];
+    bassLevel /= (8 * 255);
+    for (let i = 0; i < 64; i++) avgLevel += dataArray[i];
+    avgLevel /= (64 * 255);
+  }
+
+  const beatDetected = isActive && bassLevel > 0.6 && bassLevel - state.lastBass > 0.14 && state.beatCooldown <= 0;
+  if (beatDetected) {
+    state.beatPulse = 1.0;
+    state.beatCooldown = 8;
+    state.surgeLon = Math.random() * Math.PI * 2;
+    state.surgeRadius = 0;
+  }
+
+  state.beatPulse *= 0.88;
+  if (state.beatCooldown > 0) state.beatCooldown--;
+  state.lastBass = bassLevel;
+
+  // Expand surge
+  if (state.surgeRadius > 0 || beatDetected) {
+    state.surgeRadius += 0.15;
+    if (state.surgeRadius > Math.PI) state.surgeRadius = 0;
+  }
+
+  // Slow rotation
+  const rotationSpeed = isActive ? 0.003 + avgLevel * 0.004 : 0.0015;
+  state.rotation += rotationSpeed;
+
+  // Mouse influence on tilt
+  if (mouseX && mouseY) {
+    const targetTiltX = ((mouseY / height) - 0.5) * 0.4;
+    const targetTiltY = ((mouseX / width) - 0.5) * 0.5;
+    state.tiltX += (targetTiltX - state.tiltX) * 0.05;
+    state.tiltY += (targetTiltY - state.tiltY) * 0.05;
+  } else {
+    state.tiltX *= 0.98;
+    state.tiltY *= 0.98;
+  }
+
+  // Color shift
+  state.colorShift += isActive ? (0.2 + avgLevel * 0.4) : 0.06;
+
+  // Draw corona rays (behind the sphere)
+  const coronaRays = 48;
+
+  // Calculate mouse angle relative to center for corona interaction
+  let mouseAngle = 0;
+  let mouseDist = 0;
+  if (mouseX && mouseY) {
+    mouseAngle = Math.atan2(mouseY - centerY, mouseX - centerX);
+    mouseDist = Math.sqrt((mouseX - centerX) ** 2 + (mouseY - centerY) ** 2);
+  }
+
+  for (let i = 0; i < coronaRays; i++) {
+    const angle = (i / coronaRays) * Math.PI * 2 + state.rotation * 0.3;
+
+    // Get frequency data for this ray
+    const freqIndex = Math.floor((i / coronaRays) * bufferLength * 0.6);
+    const freqValue = isActive ? dataArray[freqIndex] / 255 : 0;
+
+    // Mouse proximity boost - rays near cursor extend further
+    let mouseBoost = 0;
+    if (mouseX && mouseY && warpIntensity > 0.01) {
+      let angleDiff = Math.abs(angle - mouseAngle);
+      if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+      if (angleDiff < 0.5) {
+        mouseBoost = (1 - angleDiff / 0.5) * warpIntensity * 60 * (mouseDist / sphereRadius);
+      }
+    }
+
+    // Base length with audio modulation
+    const baseLength = isActive ? 20 + freqValue * 80 + state.beatPulse * 50 : 8;
+    const rayLength = baseLength + Math.sin(angle * 3 + rotationAngle * 2) * 10 + mouseBoost;
+
+    // Ray width varies with frequency and mouse
+    const rayWidth = isActive ? 2 + freqValue * 4 + (mouseBoost > 20 ? 2 : 0) : 1.5;
+
+    // Skip very short rays
+    if (rayLength < 5) continue;
+
+    // Calculate ray start and end points
+    const startX = centerX + Math.cos(angle) * (sphereRadius + 5);
+    const startY = centerY + Math.sin(angle) * (sphereRadius + 5);
+    const endX = centerX + Math.cos(angle) * (sphereRadius + rayLength);
+    const endY = centerY + Math.sin(angle) * (sphereRadius + rayLength);
+
+    // Ray alpha based on frequency, beat, and mouse
+    const mouseAlphaBoost = mouseBoost > 10 ? 0.2 : 0;
+    const rayAlpha = isActive ? 0.15 + freqValue * 0.5 + state.beatPulse * 0.2 + mouseAlphaBoost : 0.08 + mouseAlphaBoost * 0.5;
+
+    // Draw ray with color from palette
+    ctx.strokeStyle = getColor(i * 8 + state.colorShift, coronaRays * 8, rayAlpha);
+    ctx.lineWidth = rayWidth;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    // Add glow layer for brighter rays
+    if (freqValue > 0.5 || state.beatPulse > 0.3 || mouseBoost > 20) {
+      const glowAlpha = (freqValue * 0.3 + state.beatPulse * 0.15 + (mouseBoost > 20 ? 0.2 : 0)) * (isActive ? 1 : 0.5);
+      ctx.strokeStyle = getColor(i * 8 + state.colorShift + 30, coronaRays * 8, glowAlpha);
+      ctx.lineWidth = rayWidth * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+  }
+
+  // Draw outer glow ring
+  const glowIntensity = isActive ? 0.1 + avgLevel * 0.15 + state.beatPulse * 0.1 : 0.05;
+  ctx.strokeStyle = getColor(state.colorShift, 400, glowIntensity);
+  ctx.lineWidth = isActive ? 8 + avgLevel * 15 : 4;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, sphereRadius + 3, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Project and draw lights
+  const visibleLights = [];
+
+  state.lights.forEach((light, i) => {
+    // Apply rotation and tilt
+    const lon = light.lon + state.rotation;
+    const lat = light.lat;
+
+    // 3D position on unit sphere
+    const x3d = Math.cos(lat) * Math.sin(lon);
+    const y3d = Math.sin(lat);
+    const z3d = Math.cos(lat) * Math.cos(lon);
+
+    // Apply tilt (rotation around X and Y axes)
+    const cosX = Math.cos(state.tiltX);
+    const sinX = Math.sin(state.tiltX);
+    const cosY = Math.cos(state.tiltY);
+    const sinY = Math.sin(state.tiltY);
+
+    // Rotate around X axis (tilt up/down)
+    const y3dTilted = y3d * cosX - z3d * sinX;
+    const z3dTilted = y3d * sinX + z3d * cosX;
+
+    // Rotate around Y axis (tilt left/right)
+    const x3dFinal = x3d * cosY + z3dTilted * sinY;
+    const z3dFinal = -x3d * sinY + z3dTilted * cosY;
+
+    // Only draw if facing viewer (z > 0)
+    if (z3dFinal < 0.05) return;
+
+    // Project to 2D
+    const screenX = centerX + x3dFinal * sphereRadius;
+    const screenY = centerY - y3dTilted * sphereRadius;
+
+    // Depth-based scaling and alpha
+    const depthFade = 0.3 + z3dFinal * 0.7;
+
+    visibleLights.push({
+      light: light,
+      index: i,
+      x: screenX,
+      y: screenY,
+      z: z3dFinal,
+      depthFade: depthFade,
+      lon: lon
+    });
+  });
+
+  // Sort by depth (back to front)
+  visibleLights.sort((a, b) => a.z - b.z);
+
+  // Draw visible lights
+  visibleLights.forEach(({ light, index, x, y, depthFade, lon }) => {
+    // Update blink
+    const blinkMult = isActive ? (1 + avgLevel * 2) : 1;
+    light.blinkPhase += light.blinkSpeed * blinkMult;
+    const blink = Math.sin(light.blinkPhase) * 0.5 + 0.5;
+
+    // Frequency response
+    const freqIndex = Math.floor((index / state.lights.length) * bufferLength * 0.5);
+    const freqValue = isActive ? dataArray[freqIndex] / 255 : 0;
+
+    // Power surge effect (ripple around sphere)
+    let surgeBrightness = 0;
+    if (state.surgeRadius > 0) {
+      const dLon = Math.min(Math.abs(lon - state.surgeLon), Math.PI * 2 - Math.abs(lon - state.surgeLon));
+      if (dLon > state.surgeRadius - 0.3 && dLon < state.surgeRadius + 0.3) {
+        surgeBrightness = 1 - Math.abs(dLon - state.surgeRadius) / 0.3;
+      }
+    }
+
+    // Mouse proximity glow
+    let mouseBrightness = 0;
+    if (mouseX && mouseY && warpIntensity > 0.01) {
+      const dx = x - mouseX;
+      const dy = y - mouseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 80) {
+        mouseBrightness = (1 - dist / 80) * warpIntensity * 0.6;
+      }
+    }
+
+    // Calculate brightness
+    let brightness;
+    if (isActive) {
+      brightness = light.brightness * (0.6 + blink * 0.4) +
+                   freqValue * 0.4 +
+                   state.beatPulse * 0.3 +
+                   surgeBrightness * 0.5 +
+                   mouseBrightness;
+    } else {
+      brightness = light.brightness * (0.35 + blink * 0.25) + mouseBrightness;
+    }
+    brightness = Math.min(1, brightness) * depthFade;
+
+    const size = light.baseSize * (0.7 + brightness * 0.5) * depthFade;
+
+    // Outer glow
+    const glowAlpha = brightness * (isActive ? 0.3 : 0.18);
+    ctx.fillStyle = getColor(light.colorIndex + state.colorShift, 400, glowAlpha);
+    ctx.beginPath();
+    ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core
+    const coreAlpha = brightness * (isActive ? 0.95 : 0.65);
+    ctx.fillStyle = getColor(light.colorIndex + state.colorShift + 50, 400, coreAlpha);
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // White hot center
+    if (brightness > 0.65) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${(brightness - 0.65) * 2.5})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
 
   ctx.restore();
 }
