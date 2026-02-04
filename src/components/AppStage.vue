@@ -5223,11 +5223,35 @@ function drawPipes() {
   if (!window.pipesState) {
     window.pipesState = {
       pipes: [],
-      spawnTimer: 0
+      spawnTimer: 0,
+      lastBassLevel: 0,
+      beatPulse: 0,
+      beatCooldown: 0
     };
   }
 
   const state = window.pipesState;
+
+  // Beat detection - check bass frequencies for sudden jumps
+  let bassLevel = 0;
+  if (isActive) {
+    for (let i = 0; i < 8; i++) {
+      bassLevel += dataArray[i];
+    }
+    bassLevel = bassLevel / (8 * 255);
+  }
+
+  // Detect beat: bass jumped significantly and cooldown expired
+  const beatDetected = isActive && bassLevel > 0.6 && bassLevel - state.lastBassLevel > 0.15 && state.beatCooldown <= 0;
+  if (beatDetected) {
+    state.beatPulse = 1.0;
+    state.beatCooldown = 12; // Prevent rapid re-triggers
+  }
+
+  // Decay beat pulse and cooldown
+  state.beatPulse *= 0.85;
+  if (state.beatCooldown > 0) state.beatCooldown--;
+  state.lastBassLevel = bassLevel;
 
   // Fewer pipes in idle mode for minimal look
   const maxPipes = isActive ? 6 : 2;
@@ -5270,12 +5294,22 @@ function drawPipes() {
       this.speed = isActive ? 2 + Math.random() * 2 : 0.8 + Math.random() * 0.8;
     }
 
-    update(audioValue) {
+    update(audioValue, beatPulse, beatDetected) {
       this.age++;
 
-      // Audio-reactive speed
-      const speedMult = isActive ? 1 + audioValue * 2 : 1;
+      // Audio-reactive speed with beat burst
+      const beatBoost = beatPulse * 3;
+      const speedMult = isActive ? 1 + audioValue * 2 + beatBoost : 1;
       const moveSpeed = this.speed * speedMult;
+
+      // Force a turn on beat for dynamic direction changes
+      if (beatDetected && this.segmentLength > 20 && Math.random() > 0.5) {
+        this.segments.push({ x: this.x, y: this.y, direction: this.direction });
+        const possibleDirs = this.direction < 2 ? [2, 3] : [0, 1];
+        this.direction = possibleDirs[Math.floor(Math.random() * 2)];
+        this.segmentLength = 0;
+        this.maxSegmentLength = 40 + Math.random() * 60;
+      }
 
       // Move in current direction
       const dirs = [
@@ -5318,12 +5352,15 @@ function drawPipes() {
       }
     }
 
-    draw(ctx, audioValue) {
+    draw(ctx, audioValue, beatPulse) {
       // Lower base alpha in idle mode for minimal look
       const baseAlpha = isActive ? 1 : 0.5;
       const alpha = Math.min(baseAlpha, (this.maxAge - this.age) / 100 * baseAlpha);
-      const thicknessMult = isActive ? 1 + audioValue * 0.5 : 1;
+      // Beat pulse affects thickness
+      const thicknessMult = isActive ? 1 + audioValue * 0.5 + beatPulse * 0.4 : 1;
       const pipeThickness = this.thickness * thicknessMult;
+      // Beat pulse brightens colors
+      this.beatBrightness = beatPulse;
 
       // Draw all completed segments
       for (let i = 0; i < this.segments.length - 1; i++) {
@@ -5342,7 +5379,7 @@ function drawPipes() {
         this.drawPipeSegment(ctx, lastSeg.x, lastSeg.y, this.x, this.y, pipeThickness, alpha, this.segments.length);
 
         // Draw ball joint at current head
-        this.drawBallJoint(ctx, this.x, this.y, pipeThickness * 1.1, alpha, this.segments.length, true);
+        this.drawBallJoint(ctx, this.x, this.y, pipeThickness * 1.1, alpha, this.segments.length);
       }
     }
 
@@ -5363,71 +5400,47 @@ function drawPipes() {
       ctx.translate(wx1, wy1);
       ctx.rotate(angle);
 
-      // Create 3D pipe effect with gradient
-      const gradient = ctx.createLinearGradient(0, -thickness / 2, 0, thickness / 2);
-      const baseColor = getColor(this.colorIndex + segIndex * 20, maxPipes * 100, alpha * 0.9);
-      const highlightColor = getColor(this.colorIndex + segIndex * 20 + 50, maxPipes * 100, alpha);
-      const shadowColor = getColor(this.colorIndex + segIndex * 20 + 100, maxPipes * 100, alpha * 0.4);
+      // Beat brightness boosts alpha
+      const pulseAlpha = Math.min(1, alpha + (this.beatBrightness || 0) * 0.3);
 
-      gradient.addColorStop(0, shadowColor);
-      gradient.addColorStop(0.3, highlightColor);
-      gradient.addColorStop(0.5, baseColor);
-      gradient.addColorStop(0.7, highlightColor);
-      gradient.addColorStop(1, shadowColor);
+      // Simplified pipe: solid color with edge shading (no gradient)
+      const baseColor = getColor(this.colorIndex + segIndex * 20, maxPipes * 100, pulseAlpha);
 
-      ctx.fillStyle = gradient;
-
-      // Draw rounded rectangle for pipe segment
+      ctx.fillStyle = baseColor;
       ctx.beginPath();
       ctx.roundRect(0, -thickness / 2, length, thickness, thickness / 4);
       ctx.fill();
 
-      // Add specular highlight
-      const specGradient = ctx.createLinearGradient(0, -thickness / 2, 0, -thickness / 4);
-      specGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.3})`);
-      specGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
-
-      ctx.fillStyle = specGradient;
+      // Simple highlight stripe (no gradient, just a lighter rectangle)
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.2})`;
       ctx.beginPath();
-      ctx.roundRect(2, -thickness / 2 + 2, length - 4, thickness / 3, thickness / 6);
+      ctx.roundRect(2, -thickness / 2 + 2, length - 4, thickness / 4, thickness / 8);
       ctx.fill();
 
       ctx.restore();
     }
 
-    drawBallJoint(ctx, x, y, thickness, alpha, segIndex, isHead = false) {
+    drawBallJoint(ctx, x, y, thickness, alpha, segIndex) {
       const warped = applyWarpDistortion(x, y);
       const wx = warped.x, wy = warped.y;
-      const radius = thickness * 0.6 * warped.scale;
+      // Beat pulse scales up the ball joints
+      const beatScale = 1 + (this.beatBrightness || 0) * 0.6;
+      const radius = thickness * 0.6 * warped.scale * beatScale;
 
-      // Create radial gradient for 3D ball effect
-      const gradient = ctx.createRadialGradient(
-        wx - radius * 0.3, wy - radius * 0.3, 0,
-        wx, wy, radius
-      );
+      // Simplified ball - solid fill with highlight, no radial gradient
+      const pulseAlpha = Math.min(1, alpha + (this.beatBrightness || 0) * 0.4);
+      const baseColor = getColor(this.colorIndex + segIndex * 30 + 150, maxPipes * 100, pulseAlpha);
 
-      const baseColor = getColor(this.colorIndex + segIndex * 30 + 150, maxPipes * 100, alpha);
-      const highlightColor = getColor(this.colorIndex + segIndex * 30 + 200, maxPipes * 100, alpha);
-
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.6})`);
-      gradient.addColorStop(0.3, highlightColor);
-      gradient.addColorStop(0.7, baseColor);
-      gradient.addColorStop(1, getColor(this.colorIndex + segIndex * 30 + 100, maxPipes * 100, alpha * 0.5));
-
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = baseColor;
       ctx.beginPath();
       ctx.arc(wx, wy, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Add glow for head joint when active
-      if (isHead && isActive) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = baseColor;
-        ctx.beginPath();
-        ctx.arc(wx, wy, radius * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
+      // Simple highlight dot (no gradient)
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(wx - radius * 0.25, wy - radius * 0.25, radius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     isDead() {
@@ -5449,13 +5462,18 @@ function drawPipes() {
     state.spawnTimer = 0;
   }
 
+  // Spawn extra pipe on beat for burst effect
+  if (beatDetected && state.pipes.length < maxPipes + 2) {
+    state.pipes.push(new Pipe(Math.floor(Math.random() * 1000)));
+  }
+
   // Update and draw pipes
   for (let i = state.pipes.length - 1; i >= 0; i--) {
     const pipe = state.pipes[i];
     const pipeAudioIndex = Math.floor((i / maxPipes) * bufferLength);
     const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
 
-    pipe.update(pipeAudio);
+    pipe.update(pipeAudio, state.beatPulse, beatDetected);
 
     if (pipe.isDead()) {
       state.pipes.splice(i, 1);
@@ -5466,7 +5484,7 @@ function drawPipes() {
   state.pipes.forEach((pipe, i) => {
     const pipeAudioIndex = Math.floor((i / maxPipes) * bufferLength);
     const pipeAudio = isActive ? dataArray[pipeAudioIndex] / 255 : avgAudio;
-    pipe.draw(ctx, pipeAudio);
+    pipe.draw(ctx, pipeAudio, state.beatPulse);
   });
 
   // Draw subtle grid in background for depth - only when active
