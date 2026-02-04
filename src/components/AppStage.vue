@@ -708,6 +708,7 @@ const patterns = [
   { name: 'Cylindric', draw: drawCylinders },
   { name: 'Pipes', draw: drawPipes },
   { name: 'From Orbit', draw: drawCityLights },
+  { name: 'Triangulator', draw: drawFractal },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5846,6 +5847,198 @@ function drawCityLights() {
       ctx.fill();
     }
   });
+
+  ctx.restore();
+}
+
+function drawFractal() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Initialize fractal state
+  if (!window.fractalState) {
+    window.fractalState = {
+      zoom: 1,
+      rotation: 0,
+      lastBass: 0,
+      beatPulse: 0,
+      beatCooldown: 0,
+      colorShift: 0
+    };
+  }
+
+  const state = window.fractalState;
+  ctx.save();
+
+  // Beat detection
+  let bassLevel = 0;
+  let midLevel = 0;
+  let avgLevel = 0;
+  if (isActive) {
+    for (let i = 0; i < 8; i++) bassLevel += dataArray[i];
+    for (let i = 8; i < 32; i++) midLevel += dataArray[i];
+    for (let i = 0; i < 64; i++) avgLevel += dataArray[i];
+    bassLevel /= (8 * 255);
+    midLevel /= (24 * 255);
+    avgLevel /= (64 * 255);
+  }
+
+  const beatDetected = isActive && bassLevel > 0.6 && bassLevel - state.lastBass > 0.13 && state.beatCooldown <= 0;
+  if (beatDetected) {
+    state.beatPulse = 1.0;
+    state.beatCooldown = 8;
+  }
+
+  state.beatPulse *= 0.9;
+  if (state.beatCooldown > 0) state.beatCooldown--;
+  state.lastBass = bassLevel;
+
+  // Zoom pulses with beat, breathes in dormant
+  const targetZoom = isActive ? 1 + avgLevel * 0.3 + state.beatPulse * 0.2 : 1 + Math.sin(breathePhase) * 0.05;
+  state.zoom += (targetZoom - state.zoom) * 0.1;
+
+  // Rotation
+  state.rotation += isActive ? 0.003 + midLevel * 0.008 : 0.001;
+  state.colorShift += isActive ? 0.4 + avgLevel * 0.8 : 0.1;
+
+  // Mouse influence on rotation
+  let mouseRotation = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    mouseRotation = ((mouseX / width) - 0.5) * warpIntensity * 0.3;
+  }
+
+  ctx.translate(centerX, centerY);
+  ctx.rotate(state.rotation + mouseRotation);
+  ctx.scale(state.zoom, state.zoom);
+  ctx.translate(-centerX, -centerY);
+
+  const baseSize = Math.min(width, height) * 0.45;
+
+  // Draw recursive triangles (Sierpinski-style)
+  function drawTriangle(x, y, size, depth, colorIdx) {
+    if (depth > 5 || size < 4) return;
+
+    // Get frequency value for this depth
+    const freqIndex = Math.floor((depth / 5) * bufferLength * 0.5);
+    const freqValue = isActive ? dataArray[freqIndex] / 255 : 0.5;
+
+    // Calculate triangle vertices
+    const h = size * Math.sqrt(3) / 2;
+    const x1 = x;
+    const y1 = y - h * 2 / 3;
+    const x2 = x - size / 2;
+    const y2 = y + h / 3;
+    const x3 = x + size / 2;
+    const y3 = y + h / 3;
+
+    // Alpha based on depth and audio
+    const depthFade = 1 - depth * 0.12;
+    const alpha = isActive
+      ? (0.25 + freqValue * 0.35 + state.beatPulse * 0.2) * depthFade
+      : 0.2 * depthFade;
+
+    // Draw filled triangle
+    ctx.fillStyle = getColor(colorIdx + state.colorShift + depth * 40, 400, alpha);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw triangle outline
+    const strokeAlpha = isActive
+      ? (0.4 + freqValue * 0.4 + state.beatPulse * 0.3) * depthFade
+      : 0.25 * depthFade;
+    ctx.strokeStyle = getColor(colorIdx + state.colorShift + depth * 40 + 20, 400, strokeAlpha);
+    ctx.lineWidth = Math.max(1, 3 - depth * 0.5);
+    ctx.stroke();
+
+    // Recursively draw three smaller triangles
+    const newSize = size / 2;
+
+    // Top triangle
+    drawTriangle(x, y - h / 3, newSize, depth + 1, colorIdx + 15);
+    // Bottom left triangle
+    drawTriangle(x - size / 4, y + h / 6, newSize, depth + 1, colorIdx + 30);
+    // Bottom right triangle
+    drawTriangle(x + size / 4, y + h / 6, newSize, depth + 1, colorIdx + 45);
+  }
+
+  // Draw main fractal from center
+  drawTriangle(centerX, centerY, baseSize, 0, 0);
+
+  // Draw radiating triangles when music is playing
+  if (isActive) {
+    const rings = 3 + Math.floor(avgLevel * 2);
+    const trianglesPerRing = 6;
+
+    for (let ring = 1; ring <= rings; ring++) {
+      const ringDist = baseSize * 0.5 + ring * baseSize * 0.35;
+      const ringSize = baseSize * (0.4 - ring * 0.06);
+      const distanceFade = 1 - (ring / (rings + 1));
+      const ringAlpha = distanceFade * (0.3 + avgLevel * 0.3 + state.beatPulse * 0.2);
+
+      for (let t = 0; t < trianglesPerRing; t++) {
+        const angle = (t / trianglesPerRing) * Math.PI * 2 + state.rotation * (ring % 2 === 0 ? 1 : -1) + ring * 0.2;
+        const tx = centerX + Math.cos(angle) * ringDist;
+        const ty = centerY + Math.sin(angle) * ringDist;
+
+        // Frequency response per triangle
+        const freqIdx = Math.floor(((ring * trianglesPerRing + t) / (rings * trianglesPerRing)) * bufferLength * 0.5);
+        const freqVal = dataArray[freqIdx] / 255;
+
+        ctx.save();
+        ctx.globalAlpha = ringAlpha * (0.5 + freqVal * 0.5);
+        ctx.translate(tx, ty);
+        ctx.rotate(angle + Math.PI / 2);
+        ctx.translate(-tx, -ty);
+
+        // Draw simple triangle (not recursive for performance)
+        const h = ringSize * Math.sqrt(3) / 2;
+        ctx.fillStyle = getColor(state.colorShift + ring * 60 + t * 20, 400, 0.5 + freqVal * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(tx, ty - h * 2 / 3);
+        ctx.lineTo(tx - ringSize / 2, ty + h / 3);
+        ctx.lineTo(tx + ringSize / 2, ty + h / 3);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = getColor(state.colorShift + ring * 60 + t * 20 + 30, 400, 0.6 + freqVal * 0.3);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+  }
+
+  // Draw inverted triangle overlay for extra depth
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(Math.PI);
+  ctx.translate(-centerX, -centerY);
+
+  const overlayAlpha = isActive ? 0.15 + state.beatPulse * 0.1 : 0.08;
+  ctx.globalAlpha = overlayAlpha;
+  drawTriangle(centerX, centerY, baseSize * 0.6, 1, 100);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Center glow
+  const glowSize = isActive ? 15 + state.beatPulse * 25 + bassLevel * 20 : 10;
+  ctx.fillStyle = getColor(state.colorShift, 400, isActive ? 0.4 : 0.2);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, glowSize * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = getColor(state.colorShift + 50, 400, isActive ? 0.6 : 0.3);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, glowSize, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
