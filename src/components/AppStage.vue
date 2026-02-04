@@ -709,6 +709,7 @@ const patterns = [
   { name: 'Pipes', draw: drawPipes },
   { name: 'From Orbit', draw: drawCityLights },
   { name: 'Triangulator', draw: drawFractal },
+  { name: 'Tendrils', draw: drawMusicalColors },
 ];
 
 const currentPatternName = ref(patterns[0].name);
@@ -5776,6 +5777,129 @@ function drawFractal() {
   ctx.beginPath();
   ctx.arc(centerX, centerY, glowSize, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.restore();
+}
+
+function drawMusicalColors() {
+  const width = canvas.value.width;
+  const height = canvas.value.height;
+  const centerY = height / 2;
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Initialize state
+  if (!window.musicalColorsState) {
+    window.musicalColorsState = {
+      time: 0,
+      colorOffset: 0,
+      smoothedLevel: 0
+    };
+  }
+
+  const state = window.musicalColorsState;
+  ctx.save();
+
+  // Get audio levels
+  let avgLevel = 0;
+  if (isActive) {
+    for (let i = 0; i < 64; i++) avgLevel += dataArray[i];
+    avgLevel /= (64 * 255);
+  }
+
+  // Smooth the audio level for less jarring transitions
+  state.smoothedLevel += (avgLevel - state.smoothedLevel) * 0.1;
+  const energy = state.smoothedLevel;
+
+  // Update time and color - slower, more gentle
+  state.time += isActive ? 0.012 + energy * 0.015 : 0.006;
+  state.colorOffset += isActive ? 0.2 + energy * 0.6 : 0.08;
+
+  // Mouse influence
+  let mouseInfluenceY = 0;
+  if (mouseX && mouseY && warpIntensity > 0.01) {
+    mouseInfluenceY = (mouseY - centerY) / height;
+  }
+
+  // Fewer ribbons, more elegant
+  const ribbonCount = 5;
+  const pointsPerRibbon = 50;
+
+  for (let r = 0; r < ribbonCount; r++) {
+    const ribbonPhase = (r / ribbonCount) * Math.PI * 2;
+    const freqIndex = Math.floor((r / ribbonCount) * bufferLength * 0.4);
+    const freqValue = isActive ? dataArray[freqIndex] / 255 : 0;
+
+    // Ribbon base position - more spread out vertically
+    const spread = isActive ? 0.15 + energy * 0.15 : 0.12;
+    const ribbonY = centerY + ((r / (ribbonCount - 1)) - 0.5) * height * spread * 2
+                    + Math.sin(ribbonPhase + state.time * 0.4) * height * 0.08;
+
+    // Build ribbon path
+    const points = [];
+    for (let p = 0; p < pointsPerRibbon; p++) {
+      const t = p / (pointsPerRibbon - 1);
+      const x = t * width;
+
+      // Gentler waves - amplitude scales with energy
+      const waveScale = isActive ? 0.4 + energy * 0.6 : 0.3;
+      const wave1 = Math.sin(t * Math.PI * 2 + state.time * 1.2 + ribbonPhase) * 25 * waveScale;
+      const wave2 = Math.sin(t * Math.PI * 4 + state.time * 0.8 + ribbonPhase * 2) * 12 * waveScale;
+
+      // Audio modulation - only when there's significant energy
+      const audioWave = isActive && freqValue > 0.2
+        ? Math.sin(t * Math.PI * 3 + state.time * 2) * freqValue * 30
+        : 0;
+
+      // Subtle mouse ripple
+      const mouseWave = mouseInfluenceY * Math.sin(t * Math.PI * 2 + state.time * 2) * 15 * warpIntensity;
+
+      const y = ribbonY + wave1 + wave2 + audioWave + mouseWave;
+      points.push({ x, y });
+    }
+
+    // Ribbon thickness - thinner base, grows with energy
+    const baseThickness = isActive ? 8 + energy * 25 + freqValue * 20 : 6;
+    const thickness = Math.max(4, baseThickness);
+
+    // Draw ribbon fill - lower alpha, more transparent
+    const fillAlpha = isActive ? 0.12 + energy * 0.15 + freqValue * 0.1 : 0.08;
+    ctx.fillStyle = getColor(r * 80 + state.colorOffset, ribbonCount * 80, fillAlpha);
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y - thickness / 2);
+    for (let p = 1; p < points.length; p++) {
+      ctx.lineTo(points[p].x, points[p].y - thickness / 2);
+    }
+    for (let p = points.length - 1; p >= 0; p--) {
+      ctx.lineTo(points[p].x, points[p].y + thickness / 2);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw center line - only visible with some energy
+    const lineAlpha = isActive ? 0.2 + energy * 0.35 + freqValue * 0.2 : 0.12;
+    ctx.strokeStyle = getColor(r * 80 + state.colorOffset + 40, ribbonCount * 80, lineAlpha);
+    ctx.lineWidth = isActive ? 1 + energy * 1.5 + freqValue * 1.5 : 1;
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let p = 1; p < points.length; p++) {
+      ctx.lineTo(points[p].x, points[p].y);
+    }
+    ctx.stroke();
+
+    // Highlight line only on strong beats
+    if (isActive && freqValue > 0.6 && energy > 0.4) {
+      ctx.strokeStyle = getColor(r * 80 + state.colorOffset + 60, ribbonCount * 80, (freqValue - 0.4) * 0.4);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y - thickness / 3);
+      for (let p = 1; p < points.length; p++) {
+        ctx.lineTo(points[p].x, points[p].y - thickness / 3);
+      }
+      ctx.stroke();
+    }
+  }
 
   ctx.restore();
 }
