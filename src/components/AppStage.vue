@@ -2619,183 +2619,66 @@ function drawNeuralWeb() {
 function drawAuroraWaves() {
   const width = canvas.value.width;
   const height = canvas.value.height;
-
   const isActive = audioLoaded.value && !isPaused.value;
 
-  // Balanced wave count for visual richness and performance
-  const waveCount = isActive ? 9 : 6;
-
-  // Increased segments for smoother waves
-  const segments = 55;
+  const waveCount = 5;
+  const segments = 25;
 
   ctx.save();
 
   for (let w = 0; w < waveCount; w++) {
-    const waveOffset = (w / waveCount) * height;
+    const waveOffset = ((w + 0.5) / waveCount) * height;
     const dataOffset = Math.floor((w / waveCount) * bufferLength);
+    const colorIdx = w * 200 + Math.floor(rotationAngle * 30);
 
-    // 3 layers per wave for more depth
-    const layers = 3;
+    // Build wave points once, reuse for fill and stroke
+    const points = [];
+    for (let s = 0; s <= segments; s++) {
+      const t = s / segments;
+      const x = t * width;
+      const dataIndex = (dataOffset + Math.floor(t * bufferLength / 4)) % bufferLength;
+      const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.5) * 0.3 + 0.5;
 
-    for (let layer = 0; layer < layers; layer++) {
-      const layerOffset = (layer - 1) * 12;
-      const layerAlpha = (layers - layer) / layers;
+      const wave = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.7) * 35;
+      const audioWave = isActive ? (value - 0.5) * 60 : 0;
+      let y = waveOffset + wave + audioWave;
 
-      // Create subtle vertical gradient for each wave
-      const colorIdx = w * 150 + layer * 60 + Math.floor(rotationAngle * 50);
-      const baseAlpha = isActive ? 0.15 * layerAlpha : 0.08 * layerAlpha;
-
-      const waveGradient = ctx.createLinearGradient(0, waveOffset - 50, 0, waveOffset + 100);
-      waveGradient.addColorStop(0, getColor(colorIdx, 1000, baseAlpha * 0.3));
-      waveGradient.addColorStop(0.5, getColor(colorIdx, 1000, baseAlpha));
-      waveGradient.addColorStop(1, getColor(colorIdx + 50, 1000, baseAlpha * 0.6));
-
-      ctx.fillStyle = waveGradient;
-
-      // Draw filled wave shape with simple lineTo (no curves)
-      ctx.beginPath();
-
-      for (let s = 0; s <= segments; s++) {
-        const t = s / segments;
-        const x = t * width;
-        const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
-        const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
-
-        // Dual sine wave calculation for more complex motion
-        const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
-        const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
-        const wave = wave1 + wave2;
-        const audioWave = isActive ? (value - 0.5) * 80 : 0;
-
-        let y = waveOffset + wave + audioWave + layerOffset;
-
-        // Apply mouse warp distortion
-        if (mouseX && mouseY && warpIntensity > 0.01) {
-          const dx = mouseX - x;
-          const dy = mouseY - y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const maxDistance = Math.min(width, height) * 0.4;
-
-          if (distance < maxDistance) {
-            const strength = (1 - distance / maxDistance) * warpIntensity * 50;
-            y += (dy / distance) * strength;
-          }
-        }
-
-        if (s === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
+      // Simplified mouse warp
+      if (mouseX && mouseY && warpIntensity > 0.01) {
+        const dx = mouseX - x;
+        const dy = mouseY - y;
+        const distSq = dx * dx + dy * dy;
+        const maxDist = Math.min(width, height) * 0.35;
+        if (distSq < maxDist * maxDist) {
+          const dist = Math.sqrt(distSq);
+          y += (dy / (dist + 1)) * (1 - dist / maxDist) * warpIntensity * 40;
         }
       }
 
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.closePath();
-      ctx.fill();
-
-      // Draw edge line with subtle glow on top layer only
-      if (layer === 0) {
-        ctx.strokeStyle = getColor(w * 150, waveCount * 150, isActive ? 0.4 : 0.2);
-        ctx.lineWidth = isActive ? 2 : 1;
-
-        // Add subtle glow to edge line
-        if (isActive) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = getColor(w * 150, waveCount * 150, 0.3);
-        }
-
-        ctx.beginPath();
-        for (let s = 0; s <= segments; s++) {
-          const t = s / segments;
-          const x = t * width;
-          const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
-          const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + t * Math.PI * 2 + w * 0.3) * 0.3 + 0.5;
-
-          // Dual sine wave calculation for more complex motion
-          const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
-          const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
-          const wave = wave1 + wave2;
-          const audioWave = isActive ? (value - 0.5) * 80 : 0;
-
-          let y = waveOffset + wave + audioWave + layerOffset;
-
-          // Apply mouse warp distortion
-          if (mouseX && mouseY && warpIntensity > 0.01) {
-            const dx = mouseX - x;
-            const dy = mouseY - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const maxDistance = Math.min(width, height) * 0.4;
-
-            if (distance < maxDistance) {
-              const strength = (1 - distance / maxDistance) * warpIntensity * 50;
-              y += (dy / distance) * strength;
-            }
-          }
-
-          if (s === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // Add sparkle points along high-intensity sections
-        if (isActive) {
-          for (let s = 0; s <= segments; s++) {
-            if (s % 4 !== 0) continue; // Only check every 4th segment
-
-            const t = s / segments;
-            const x = t * width;
-            const dataIndex = (dataOffset + Math.floor(t * bufferLength / 3)) % bufferLength;
-            const value = dataArray[dataIndex] / 255;
-
-            // Only add sparkles on high audio values
-            if (value > 0.65 && Math.random() > 0.5) {
-              const wave1 = Math.sin(t * Math.PI * 2 + rotationAngle + w * 0.5) * 40;
-              const wave2 = Math.sin(t * Math.PI * 4 + rotationAngle * 0.7 + w * 0.3) * 15;
-              const wave = wave1 + wave2;
-              const audioWave = (value - 0.5) * 80;
-
-              let y = waveOffset + wave + audioWave + layerOffset;
-
-              // Apply mouse warp to sparkles too
-              if (mouseX && mouseY && warpIntensity > 0.01) {
-                const dx = mouseX - x;
-                const dy = mouseY - y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const maxDistance = Math.min(width, height) * 0.4;
-
-                if (distance < maxDistance) {
-                  const strength = (1 - distance / maxDistance) * warpIntensity * 50;
-                  y += (dy / distance) * strength;
-                }
-              }
-
-              const sparkleSize = 1 + value * 2;
-
-              // Glow around sparkle
-              const sparkleGradient = ctx.createRadialGradient(x, y, 0, x, y, sparkleSize * 3);
-              sparkleGradient.addColorStop(0, getColor(w * 150 + s * 5, waveCount * segments, value * 0.8));
-              sparkleGradient.addColorStop(0.5, getColor(w * 150 + s * 5, waveCount * segments, value * 0.4));
-              sparkleGradient.addColorStop(1, 'rgba(0,0,0,0)');
-              ctx.fillStyle = sparkleGradient;
-              ctx.beginPath();
-              ctx.arc(x, y, sparkleSize * 3, 0, Math.PI * 2);
-              ctx.fill();
-
-              // Bright center
-              ctx.fillStyle = getColor(w * 150 + s * 5 + 100, waveCount * segments, 1);
-              ctx.beginPath();
-              ctx.arc(x, y, sparkleSize, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-        }
-      }
+      points.push({ x, y });
     }
+
+    // Fill wave area
+    ctx.fillStyle = getColor(colorIdx, 1000, isActive ? 0.12 : 0.06);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stroke wave edge
+    ctx.strokeStyle = getColor(colorIdx, 1000, isActive ? 0.35 : 0.15);
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
   }
 
   ctx.restore();
