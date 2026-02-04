@@ -6387,6 +6387,11 @@ function handleTouchStart(e) {
   mouseY = touch.clientY - rect.top;
   isMouseDown = true;
   targetWarpIntensity = 1;
+  lastDragX = mouseX;
+  lastDragY = mouseY;
+
+  // Create initial burst of particles at drag start
+  createParticles(mouseX, mouseY, 0.7, Math.floor(Math.random() * 100), 100, 3);
 
   // Store initial touch position for swipe detection
   if (!window.touchStartY) {
@@ -6401,10 +6406,29 @@ function handleTouchMove(e) {
   const touch = e.touches[0];
   mouseX = touch.clientX - rect.left;
   mouseY = touch.clientY - rect.top;
-  
-  // Create ripples along drag path
-  if (Math.random() > 0.8) {
-    ripples.push(new Ripple(mouseX, mouseY, 0.8));
+
+  // Create drag trail effect (same as mouse drag)
+  const dx = lastDragX !== null ? mouseX - lastDragX : 0;
+  const dy = lastDragY !== null ? mouseY - lastDragY : 0;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Add trail point every few pixels of movement
+  if (lastDragX === null || dist > 8) {
+    const total = dragTrailPoints.length + 1;
+    dragTrailPoints.push(new DragTrailPoint(mouseX, mouseY, total, 100));
+
+    // Create ripples along drag path (30% chance)
+    if (Math.random() > 0.7) {
+      ripples.push(new Ripple(mouseX, mouseY, 0.6));
+    }
+
+    // Spawn particles along the trail (20% chance)
+    if (Math.random() > 0.8) {
+      createParticles(mouseX, mouseY, 0.5, Math.floor(Math.random() * 100), 100, 2);
+    }
+
+    lastDragX = mouseX;
+    lastDragY = mouseY;
   }
 }
 
@@ -6413,10 +6437,14 @@ function handleTouchEnd(e) {
   isMouseDown = false;
   targetWarpIntensity = 0;
 
-  // Create final ripple on release
-  if (mouseX && mouseY) {
-    ripples.push(new Ripple(mouseX, mouseY, 1.5));
+  // Create final ripple burst on release
+  if (mouseX !== null && mouseY !== null) {
+    ripples.push(new Ripple(mouseX, mouseY, 1.2));
+    createParticles(mouseX, mouseY, 0.8, Math.floor(Math.random() * 100), 100, 4);
   }
+
+  lastDragX = null;
+  lastDragY = null;
 
   // Detect swipe gesture
   if (window.touchStartY !== undefined && window.touchStartX !== undefined) {
