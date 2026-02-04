@@ -3872,10 +3872,18 @@ function drawDiamondLattice() {
 function drawHexFlowers() {
   const width = canvas.value.width;
   const height = canvas.value.height;
-  const hexRadius = 40;
+  const hexRadius = 55;
   const hexHeight = hexRadius * Math.sqrt(3);
-  const cols = Math.ceil(width / (hexRadius * 1.5)) + 2;
-  const rows = Math.ceil(height / hexHeight) + 2;
+  const cols = Math.ceil(width / (hexRadius * 1.5)) + 1;
+  const rows = Math.ceil(height / hexHeight) + 1;
+  const totalCells = cols * rows;
+  const isActive = audioLoaded.value && !isPaused.value;
+
+  // Precompute hex angles
+  const hexAngles = [];
+  for (let k = 0; k < 6; k++) {
+    hexAngles.push((k / 6) * Math.PI * 2);
+  }
 
   ctx.save();
   ctx.translate(width / 2, height / 2);
@@ -3884,96 +3892,64 @@ function drawHexFlowers() {
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      const baseX = (i - 1) * hexRadius * 1.5;
-      const baseY = (j - 1) * hexHeight + (i % 2) * hexHeight / 2;
+      const baseX = i * hexRadius * 1.5;
+      const baseY = j * hexHeight + (i % 2) * hexHeight / 2;
       const index = i + j * cols;
-      const dataIndex = Math.floor((index / (cols * rows)) * bufferLength);
-      const value = audioLoaded.value ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.12) * 0.3 + 0.5;
-      
-      // Apply warp distortion
-      const warped = applyWarpDistortion(baseX, baseY);
-      const x = warped.x;
-      const y = warped.y;
-      
-      // Spawn particles at center
-      if (audioLoaded.value && value > 0.75 && Math.random() > 0.88) {
-        createParticles(x, y, value, index, cols * rows, 2);
+      const dataIndex = Math.floor((index / totalCells) * bufferLength);
+      const value = isActive ? dataArray[dataIndex] / 255 : Math.sin(breathePhase + index * 0.15) * 0.3 + 0.5;
+
+      // Simple warp
+      let x = baseX, y = baseY;
+      if (mouseX && mouseY && warpIntensity > 0.01) {
+        const dx = mouseX - baseX;
+        const dy = mouseY - baseY;
+        const distSq = dx * dx + dy * dy;
+        const maxDist = Math.min(width, height) * 0.35;
+        if (distSq < maxDist * maxDist) {
+          const dist = Math.sqrt(distSq);
+          const factor = (1 - dist / maxDist) * warpIntensity * 30;
+          x += (dx / (dist + 1)) * factor;
+          y += (dy / (dist + 1)) * factor;
+        }
       }
 
-      // Draw flower pattern with hexagons
-      const pattern = [
-        { angle: 0, dist: 0, scale: 1.2 },
-        { angle: 0, dist: hexRadius * 0.8, scale: 0.5 },
-        { angle: 60, dist: hexRadius * 0.8, scale: 0.5 },
-        { angle: 120, dist: hexRadius * 0.8, scale: 0.5 },
-        { angle: 180, dist: hexRadius * 0.8, scale: 0.5 },
-        { angle: 240, dist: hexRadius * 0.8, scale: 0.5 },
-        { angle: 300, dist: hexRadius * 0.8, scale: 0.5 }
-      ];
+      // Center hexagon size pulses with audio
+      const centerSize = hexRadius * (0.5 + value * 0.4);
 
-      // Draw connecting lines
-      if (value > 0.5) {
-        ctx.strokeStyle = getColor(index, cols * rows, value * 0.2);
-        ctx.lineWidth = 2;
-        pattern.slice(1).forEach(p => {
-          const angle = (p.angle * Math.PI / 180) + rotationAngle;
-          const hx = x + Math.cos(angle) * p.dist;
-          const hy = y + Math.sin(angle) * p.dist;
+      // Draw center hexagon
+      ctx.fillStyle = getColor(index, totalCells, isActive ? value * 0.7 : value * 0.4);
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const px = x + Math.cos(hexAngles[k]) * centerSize;
+        const py = y + Math.sin(hexAngles[k]) * centerSize;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw petals only when audio intensity is high enough
+      if (value > 0.4) {
+        const petalDist = hexRadius * 0.6;
+        const petalSize = hexRadius * 0.25 * value;
+
+        for (let p = 0; p < 6; p++) {
+          const angle = hexAngles[p] + rotationAngle;
+          const px = x + Math.cos(angle) * petalDist;
+          const py = y + Math.sin(angle) * petalDist;
+
+          ctx.fillStyle = getColor(index + p * 40, totalCells, value * 0.5);
           ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(hx, hy);
-          ctx.stroke();
-        });
-      }
-
-      pattern.forEach((p, pi) => {
-        const angle = (p.angle * Math.PI / 180) + rotationAngle;
-        const hx = x + Math.cos(angle) * p.dist;
-        const hy = y + Math.sin(angle) * p.dist;
-        const size = hexRadius * p.scale * (0.7 + value * 0.5) * warped.scale;
-        const intensity = pi === 0 ? value : value * 0.6;
-
-        // Glow for high energy
-        if (intensity > 0.6) {
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = getColor(index + pi * 30, cols * rows, intensity);
-        }
-
-        // Draw hexagon
-        ctx.fillStyle = getColor(index + pi * 30, cols * rows, intensity);
-        ctx.beginPath();
-        for (let k = 0; k < 6; k++) {
-          const hexAngle = (k / 6) * Math.PI * 2;
-          const px = hx + Math.cos(hexAngle) * size;
-          const py = hy + Math.sin(hexAngle) * size;
-          if (k === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = getColor(index + pi * 30, cols * rows, 1);
-        ctx.lineWidth = pi === 0 ? 2 : 1;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // Draw refraction rings for center hexagon
-        if (pi === 0 && value > 0.4) {
-          for (let r = 1; r <= 3; r++) {
-            ctx.strokeStyle = getColor(index + r * 40, cols * rows, (value - 0.4) * 0.3);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let k = 0; k < 6; k++) {
-              const hexAngle = (k / 6) * Math.PI * 2;
-              const px = hx + Math.cos(hexAngle) * (size + r * 8);
-              const py = hy + Math.sin(hexAngle) * (size + r * 8);
-              if (k === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.stroke();
+          for (let k = 0; k < 6; k++) {
+            const hx = px + Math.cos(hexAngles[k]) * petalSize;
+            const hy = py + Math.sin(hexAngles[k]) * petalSize;
+            if (k === 0) ctx.moveTo(hx, hy);
+            else ctx.lineTo(hx, hy);
           }
+          ctx.closePath();
+          ctx.fill();
         }
-      });
+      }
     }
   }
 
