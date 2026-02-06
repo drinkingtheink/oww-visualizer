@@ -119,6 +119,12 @@
             </svg>
             <span>YouTube Music</span>
           </a>
+          <a href="https://onewaxwing.bandcamp.com/album/let-slip" target="_blank" rel="noopener noreferrer" class="streaming-link bandcamp">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M0 18.75l7.437-13.5H24l-7.438 13.5H0z"/>
+            </svg>
+            <span>Bandcamp</span>
+          </a>
         </div>
       </div>
     </div>
@@ -6955,6 +6961,11 @@ input[type="file"] {
 .streaming-link.youtube:hover {
   border-color: #FF0000;
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+}
+
+.streaming-link.bandcamp:hover {
+  border-color: #1DA0C3;
+  box-shadow: 0 0 20px rgba(29, 160, 195, 0.3);
 }
 
 .visualizer-container {
