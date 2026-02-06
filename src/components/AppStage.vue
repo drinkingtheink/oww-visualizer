@@ -699,7 +699,7 @@ const patterns = [
   { name: 'Aurora Waves', draw: drawAuroraWaves },
   { name: 'Spiral Galaxy', draw: drawSpiralGalaxy },
   { name: 'Helix', draw: drawHelixRibbons },
-  { name: 'Diamond Lattice', draw: drawDiamondLattice },
+  // { name: 'Diamond Lattice', draw: drawDiamondLattice },
   { name: 'Hex Meadow', draw: drawHexFlowers },
   { name: 'Wavepools', draw: drawConcentricWaves },
   { name: 'Undertide', draw: drawFlowingRivers },
