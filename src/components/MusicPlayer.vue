@@ -47,7 +47,7 @@
     <!-- Expanded State -->
     <div v-else class="expanded-view">
       <div class="player-header">
-        <h3>Let Slip by One Wax Wing</h3>
+        <h3>{{ currentAlbumLabel }} by One Wax Wing</h3>
         <button @click="toggleCollapse" class="collapse-btn" title="Collapse">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <path d="M14 17l-5-5 5-5v10z"/>
@@ -56,21 +56,28 @@
       </div>
 
       <div class="track-list">
-        <div
-          v-for="(track, index) in tracks"
-          :key="index"
-          class="track-item"
-          :class="{ active: currentTrackIndex === index }"
-          @click="selectTrack(index)"
-        >
-          <div class="track-number">{{ index + 1 }}</div>
-          <div class="track-name">{{ track.name }}</div>
-          <div v-if="currentTrackIndex === index && isPlaying" class="playing-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
+        <template v-for="(track, index) in tracks" :key="index">
+          <!-- Release divider: shown before the first track of each album -->
+          <div
+            v-if="index === 0 || albumLabel(track) !== albumLabel(tracks[index - 1])"
+            class="release-divider"
+          >
+            {{ albumLabel(track) }}
           </div>
-        </div>
+          <div
+            class="track-item"
+            :class="{ active: currentTrackIndex === index }"
+            @click="selectTrack(index)"
+          >
+            <div class="track-number">{{ index + 1 }}</div>
+            <div class="track-name">{{ track.name }}</div>
+            <div v-if="currentTrackIndex === index && isPlaying" class="playing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- Progress Bar with Time -->
@@ -140,6 +147,14 @@ const props = defineProps({
 const emit = defineEmits(['track-change', 'play-pause', 'next', 'previous', 'seek']);
 
 const isCollapsed = ref(false);
+
+// Tracks without an explicit album belong to Let Slip; used for the header
+// and for the release dividers in the track list.
+function albumLabel(track) {
+  return (track && track.album) || 'Let Slip';
+}
+
+const currentAlbumLabel = computed(() => albumLabel(props.tracks[props.currentTrackIndex]));
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
@@ -321,6 +336,22 @@ function handleProgressTouch(event) {
 
 .track-list::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.release-divider {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 8px 4px 6px 4px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.release-divider:first-child {
+  margin-top: 0;
+  border-top: none;
 }
 
 .track-item {
