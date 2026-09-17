@@ -37,6 +37,15 @@
             <path d="M1306.93,120.52V17.71h16.67V1.04h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
           </g>
         </svg>
+        <div class="album-cover-frame">
+          <img
+            class="album-cover"
+            :src="aetherSeepCover"
+            alt="Aether Seep — album cover"
+            width="640"
+            height="640"
+          />
+        </div>
         <div class="modal-subtitle">New EP - Aether Seep - Available Everywhere</div>
         <button class="play-modal-btn" autofocus @click="startPlayback">
           {{ playButtonText }}
@@ -206,6 +215,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import MusicPlayer from './MusicPlayer.vue';
 import Seraphim from './Seraphim.vue';
+import aetherSeepCover from '@/assets/aether-seep-cover.jpg';
 
 const canvas = ref(null);
 const audioLoaded = ref(false);
@@ -7074,6 +7084,32 @@ canvas {
   text-transform: uppercase;
 }
 
+.album-cover-frame {
+  width: min(300px, 68vw);
+  margin: 22px auto 26px;
+}
+
+.album-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.album-cover:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
 .play-modal-btn {
   background: linear-gradient(135deg, #00ff88 0%, #00ffff 50%, #ff00ff 100%);
   background-size: 200% 200%;
@@ -7154,6 +7190,29 @@ canvas {
 
   .info {
     display: none;
+  }
+
+  /* Intro modal: keep the cover + logo + button fitting on short screens */
+  .modal-content {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  .album-cover-frame {
+    width: min(240px, 58vw);
+    margin: 16px auto 20px;
+  }
+
+  .modal-subtitle {
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    margin-bottom: 24px;
+  }
+
+  .play-modal-btn {
+    padding: 16px 36px;
+    font-size: 16px;
   }
 
   /* Adjust streaming button position on mobile */
