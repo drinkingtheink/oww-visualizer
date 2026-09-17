@@ -37,7 +37,7 @@
             <path d="M1306.93,120.52V17.71h16.67V1.04h99.16v35.95h-70.85v63.73h34.91v-24.66h35.95v61.13h-99.16v-16.67h-16.67Z" />
           </g>
         </svg>
-        <div class="modal-subtitle">Debut Album - "Let Slip" - Available Everywhere</div>
+        <div class="modal-subtitle">New EP - Aether Seep - Available Everywhere</div>
         <button class="play-modal-btn" autofocus @click="startPlayback">
           {{ playButtonText }}
         </button>
@@ -194,7 +194,30 @@ const lastEnergyCalcTime = ref(0);
 // Music player state
 const useMusicPlayer = ref(true); // Set to false to use file input instead
 const currentTrackIndex = ref(0);
+// Playlist runs the new EP (Aether Seep) first, then flows into Let Slip.
+// Aether Seep audio lives in a separate R2 bucket (pub-09edcbf9...) from Let Slip (pub-9bbd5540...).
+// Tracks without an explicit `album` default to 'Let Slip'.
 const tracks = ref([
+  {
+    name: 'From Your Easy Chair',
+    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-from-your-easy-chair-FINAL-MASTER-Open-Low.wav',
+    album: 'Aether Seep'
+  },
+  {
+    name: 'Reapers Reaping Early',
+    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-reapers-reaping-early-FINAL-MASTER-Balanced-Medium.wav',
+    album: 'Aether Seep'
+  },
+  {
+    name: 'Billywix Bluff',
+    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-billywix-bluff-FINAL-MASTER-Balanced-Medium.wav',
+    album: 'Aether Seep'
+  },
+  {
+    name: 'Among the Jumbled Heap',
+    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-among-the-jumbled-heap-FINAL-MASTER-Open-Low.wav',
+    album: 'Aether Seep'
+  },
   { 
     name: 'Crate Diggers Local 227', 
     url: 'https://pub-9bbd55405c2f4d19af472cb366881d09.r2.dev/LANDR-crate-diggers-local-227-MASTER-Open-Low.wav' 
@@ -408,9 +431,9 @@ const playButtonText = computed(() => {
   const trackParam = urlParams.get('track');
 
   if (trackParam) {
-    return `▶ Play "Let Slip" - Track ${trackParam}`;
+    return `▶ Play "Aether Seep" - Track ${trackParam}`;
   }
-  return '▶ Play "Let Slip"';
+  return '▶ Play "Aether Seep"';
 });
 
 // Particle system for ephemeral effects
@@ -747,7 +770,7 @@ function updateDocumentTitle() {
     document.title = `⏸ ${track.name} - One Wax Wing`;
   } else {
     // No track loaded
-    document.title = 'One Wax Wing - Let Slip';
+    document.title = 'One Wax Wing - Aether Seep';
   }
 }
 
@@ -760,7 +783,7 @@ function updateMediaSession() {
   navigator.mediaSession.metadata = new MediaMetadata({
     title: track.name,
     artist: 'One Wax Wing',
-    album: 'Let Slip',
+    album: track.album || 'Let Slip',
     artwork: [
       // You can add album artwork URLs here if available
       // { src: 'path/to/96x96.png', sizes: '96x96', type: 'image/png' },
