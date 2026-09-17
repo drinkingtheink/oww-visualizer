@@ -339,19 +339,27 @@ function handleProgressTouch(event) {
 }
 
 .release-divider {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  padding: 8px 4px 6px 4px;
-  margin-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a78bfa;
+  padding: 6px 4px;
+  margin: 14px 0 8px 0;
+}
+
+.release-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.5), rgba(167, 139, 250, 0));
 }
 
 .release-divider:first-child {
   margin-top: 0;
-  border-top: none;
 }
 
 .track-item {
