@@ -465,9 +465,33 @@ function getRandomPatternIndex() {
   return Math.floor(Math.random() * patterns.length);
 }
 
+// The logotype has a black stroke and a white backing layer (.oww-1), so a
+// near-black or near-white fill merges into them and ruins the effect. Detect
+// those by channel spread — not luminance, which would wrongly flag vivid
+// brights like pure yellow. Near-black = every channel dark; near-white =
+// every channel very light (i.e. desaturated and bright).
+function isNearBlackOrWhite(hex) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const nearBlack = Math.max(r, g, b) < 50;
+  const nearWhite = Math.min(r, g, b) > 200;
+  return nearBlack || nearWhite;
+}
+
 const currentTypographyColor = computed(() => {
   const palette = palettes[currentPaletteIndex.value].colors;
-  return palette[typographyColorIndex.value % palette.length];
+  const start = typographyColorIndex.value % palette.length;
+  // Start at the selected index and take the first color that isn't near-black
+  // or near-white, wrapping around the palette.
+  for (let i = 0; i < palette.length; i++) {
+    const color = palette[(start + i) % palette.length];
+    if (!isNearBlackOrWhite(color)) return color;
+  }
+  // Palette is entirely dark/light — fall back to a vivid default.
+  return '#ff006e';
 });
 
 const playButtonText = computed(() => {
