@@ -494,12 +494,32 @@ const currentTypographyColor = computed(() => {
   return '#ff006e';
 });
 
+// The `?track=N` URL param is a global 1-indexed identifier, but track numbers
+// are shown per-release (each release restarts at 1). Releases are contiguous,
+// so count back from a track while the album stays the same.
+function albumOf(index) {
+  const track = tracks.value[index];
+  return (track && track.album) || 'Let Slip';
+}
+
+function trackNumberInRelease(index) {
+  const album = albumOf(index);
+  let number = 1;
+  for (let i = index - 1; i >= 0 && albumOf(i) === album; i--) {
+    number++;
+  }
+  return number;
+}
+
 const playButtonText = computed(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const trackParam = urlParams.get('track');
 
   if (trackParam) {
-    return `▶ Play "Aether Seep" - Track ${trackParam}`;
+    const index = parseInt(trackParam, 10) - 1;
+    if (index >= 0 && index < tracks.value.length) {
+      return `▶ Play "${albumOf(index)}" - Track ${trackNumberInRelease(index)}`;
+    }
   }
   return '▶ Play "Aether Seep"';
 });

@@ -4,7 +4,7 @@
     <div v-if="isCollapsed" class="collapsed-view">
       <div class="collapsed-top">
         <div class="track-info">
-          <div class="track-number">{{ currentTrackIndex + 1 }}</div>
+          <div class="track-number">{{ trackNumberInRelease(currentTrackIndex) }}</div>
           <div class="track-name">{{ tracks[currentTrackIndex].name }}</div>
         </div>
         <div class="mini-controls">
@@ -69,7 +69,7 @@
             :class="{ active: currentTrackIndex === index }"
             @click="selectTrack(index)"
           >
-            <div class="track-number">{{ index + 1 }}</div>
+            <div class="track-number">{{ trackNumberInRelease(index) }}</div>
             <div class="track-name">{{ track.name }}</div>
             <div v-if="currentTrackIndex === index && isPlaying" class="playing-indicator">
               <span></span>
@@ -152,6 +152,17 @@ const isCollapsed = ref(false);
 // and for the release dividers in the track list.
 function albumLabel(track) {
   return (track && track.album) || 'Let Slip';
+}
+
+// Track numbers restart at 1 for each release. Releases are contiguous in the
+// playlist, so count back from this track while the album stays the same.
+function trackNumberInRelease(index) {
+  const album = albumLabel(props.tracks[index]);
+  let number = 1;
+  for (let i = index - 1; i >= 0 && albumLabel(props.tracks[i]) === album; i--) {
+    number++;
+  }
+  return number;
 }
 
 const currentAlbumLabel = computed(() => albumLabel(props.tracks[props.currentTrackIndex]));
