@@ -110,9 +110,11 @@
         <button class="modal-close" @click="showStreamingModal = false">×</button>
         <h2>Listen to One Wax Wing on:</h2>
 
+        <div class="streaming-scroll">
         <!-- Aether Seep: Bandcamp live now; streaming services go live Fri, Sep 18 -->
         <h3 class="release-heading">
-          Aether Seep
+          <img class="release-cover" :src="aetherSeepCover" alt="Aether Seep cover" />
+          <span class="release-title">Aether Seep</span>
           <span class="coming-soon">Streaming Fri, Sep 18</span>
         </h3>
         <div class="streaming-links">
@@ -142,7 +144,10 @@
           </a>
         </div>
 
-        <h3 class="release-heading">Let Slip</h3>
+        <h3 class="release-heading">
+          <img class="release-cover" :src="letSlipCover" alt="Let Slip cover" />
+          <span class="release-title">Let Slip</span>
+        </h3>
         <div class="streaming-links">
           <a href="https://open.spotify.com/album/1NsKmobn8B3cgLTzTafNTZ?si=NkbnDH7gQ66gHPLVaUW7IA" target="_blank" rel="noopener noreferrer" class="streaming-link spotify">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -168,6 +173,7 @@
             </svg>
             <span>Bandcamp</span>
           </a>
+        </div>
         </div>
       </div>
     </div>
@@ -6979,6 +6985,47 @@ input[type="file"] {
 
 .release-heading:first-of-type {
   margin-top: 0;
+}
+
+/* Release cover thumbnail — matches the music player header cover */
+.release-cover {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.release-title {
+  min-width: 0;
+}
+
+/* Scroll the release list if it outgrows the modal; title + close stay put */
+.streaming-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-right: -6px;
+}
+
+.streaming-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.streaming-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.streaming-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.streaming-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .coming-soon {
