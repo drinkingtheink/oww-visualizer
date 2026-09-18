@@ -6777,10 +6777,14 @@ input[type="file"] {
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
-  cursor: pointer; 
+  cursor: pointer;
   transition: all 0.3s ease;
   font-size: 13px;
   font-weight: 500;
+  /* Fixed floor + centered/nowrap so the width doesn't jump as the label changes */
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .pattern-btn:hover, .palette-btn:hover {
@@ -6788,8 +6792,8 @@ input[type="file"] {
   transform: scale(1.05);
 }
 
-.palette-btn { 
-  min-width: 150px;
+.palette-btn {
+  min-width: 220px;
 }
 
 .pattern-btn {
