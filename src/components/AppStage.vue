@@ -189,7 +189,7 @@
 
     <!-- Streaming Button - positioned below music player -->
     <button class="streaming-btn" @click="showStreamingModal = true" title="Streaming Links">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
       </svg>
       Stream Elsewhere
@@ -6788,17 +6788,17 @@ input[type="file"] {
   top: 22px;
   right: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: 5px solid black;
-  border-radius: 20px;
+  border: 7.5px solid black;
+  border-radius: 30px;
   color: white;
-  padding: 5px 9px;
+  padding: 7.5px 13.5px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 9px;
+  font-size: 13.5px;
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   z-index: 250;
   backdrop-filter: blur(20px) saturate(150%);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
