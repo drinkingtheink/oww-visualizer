@@ -40,13 +40,13 @@
         <div class="album-cover-frame">
           <img
             class="album-cover"
-            :src="aetherSeepCover"
-            alt="Aether Seep — album cover"
+            :src="currentReleaseCover"
+            :alt="albumOf(currentTrackIndex) + ' — album cover'"
             width="640"
             height="640"
           />
         </div>
-        <div class="modal-subtitle">New EP - Aether Seep - Available Everywhere</div>
+        <div class="modal-subtitle">{{ currentReleaseSubtitle }}</div>
         <button class="play-modal-btn" autofocus @click="startPlayback">
           {{ playButtonText }}
         </button>
@@ -216,6 +216,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import MusicPlayer from './MusicPlayer.vue';
 import Seraphim from './Seraphim.vue';
 import aetherSeepCover from '@/assets/aether-seep-cover.jpg';
+import letSlipCover from '@/assets/let-slip-cover.jpg';
 
 const canvas = ref(null);
 const audioLoaded = ref(false);
@@ -523,6 +524,21 @@ const playButtonText = computed(() => {
   }
   return '▶ Play "Aether Seep"';
 });
+
+// Per-release presentation for the intro modal — cover art and subtitle follow
+// the currently selected track's release (e.g. a deep-linked ?track=5 = Let Slip).
+const releaseCovers = {
+  'Aether Seep': aetherSeepCover,
+  'Let Slip': letSlipCover
+};
+
+const releaseSubtitles = {
+  'Aether Seep': 'New EP - Aether Seep - Available Everywhere',
+  'Let Slip': 'Debut Album - Let Slip - Available Everywhere'
+};
+
+const currentReleaseCover = computed(() => releaseCovers[albumOf(currentTrackIndex.value)] || aetherSeepCover);
+const currentReleaseSubtitle = computed(() => releaseSubtitles[albumOf(currentTrackIndex.value)] || releaseSubtitles['Aether Seep']);
 
 // Particle system for ephemeral effects
 class Particle {
