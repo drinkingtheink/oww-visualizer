@@ -250,6 +250,11 @@ const currentTrackIndex = ref(0);
 // Tracks without an explicit `album` default to 'Let Slip'.
 const tracks = ref([
   {
+    name: 'Billywix Bluff',
+    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-billywix-bluff-FINAL-MASTER-Balanced-Medium.wav',
+    album: 'Aether Seep'
+  },
+  {
     name: 'From Your Easy Chair',
     url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-from-your-easy-chair-FINAL-MASTER-Open-Low.wav',
     album: 'Aether Seep'
@@ -257,11 +262,6 @@ const tracks = ref([
   {
     name: 'Reapers Reaping Early',
     url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-reapers-reaping-early-FINAL-MASTER-Balanced-Medium.wav',
-    album: 'Aether Seep'
-  },
-  {
-    name: 'Billywix Bluff',
-    url: 'https://pub-09edcbf9f4c54205bc4f75e7f3d77b7c.r2.dev/LANDR-billywix-bluff-FINAL-MASTER-Balanced-Medium.wav',
     album: 'Aether Seep'
   },
   {
