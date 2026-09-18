@@ -111,11 +111,9 @@
         <h2>Listen to One Wax Wing on:</h2>
 
         <div class="streaming-scroll">
-        <!-- Aether Seep: Bandcamp live now; streaming services go live Fri, Sep 18 -->
         <h3 class="release-heading">
           <img class="release-cover" :src="aetherSeepCover" alt="Aether Seep cover" />
           <span class="release-title">Aether Seep</span>
-          <span class="coming-soon">Streaming Fri, Sep 18</span>
         </h3>
         <div class="streaming-links">
           <a href="https://open.spotify.com/album/6L4UfGkkJqoDhP4HpxgRgX?si=jLi6pQ8tTiiu_a24YFLdqA" target="_blank" rel="noopener noreferrer" class="streaming-link spotify">
@@ -124,12 +122,12 @@
             </svg>
             <span>Spotify</span>
           </a>
-          <span class="streaming-link apple disabled" title="Available Friday, Sep 18">
+          <a href="https://music.apple.com/us/album/aether-seep-ep/6801967702" target="_blank" rel="noopener noreferrer" class="streaming-link apple">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M23.997 6.124c0-.738-.065-1.47-.24-2.19-.317-1.31-1.062-2.31-2.18-3.043C21.003.517 20.373.285 19.7.164c-.517-.093-1.038-.135-1.564-.15-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.296-.81a5.087 5.087 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zM19.094 11.293c-.067 2.107 1.645 3.15 1.718 3.19-.015.05-.267.917-.883 1.816-.534.78-1.09 1.56-1.962 1.577-.857.017-1.134-.508-2.115-.508-.98 0-1.288.492-2.1.525-.843.034-1.478-.848-2.015-1.626-1.098-1.59-1.935-4.493-.81-6.452.558-.975 1.556-1.593 2.64-1.61.824-.017 1.603.555 2.107.555.503 0 1.446-.686 2.436-.585.415.017 1.58.168 2.327 1.266-.06.037-1.39.812-1.375 2.42l.032.432z"/>
             </svg>
             <span>Apple Music</span>
-          </span>
+          </a>
           <a href="https://music.youtube.com/playlist?list=OLAK5uy_lXMORcUrtwMlaWlFtrH2sauGXlNU_T7CA&si=jn_MclPGieVaV3zY" target="_blank" rel="noopener noreferrer" class="streaming-link youtube">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
@@ -7042,31 +7040,6 @@ input[type="file"] {
 
 .streaming-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
-}
-
-.coming-soon {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: none;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-  padding: 3px 10px;
-}
-
-/* Placeholder streaming links (not yet live) — rendered as <span>, not clickable */
-.streaming-link.disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.streaming-link.disabled:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: none;
-  box-shadow: none;
 }
 
 .visualizer-container {
