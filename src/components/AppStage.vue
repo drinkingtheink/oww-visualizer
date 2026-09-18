@@ -175,6 +175,7 @@
     <MusicPlayer
       v-if="useMusicPlayer"
       :tracks="tracks"
+      :release-covers="releaseCovers"
       :current-track-index="currentTrackIndex"
       :is-playing="!isPaused && audioLoaded"
       :current-time="currentTime"

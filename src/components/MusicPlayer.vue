@@ -47,7 +47,15 @@
     <!-- Expanded State -->
     <div v-else class="expanded-view">
       <div class="player-header">
-        <h3>{{ currentAlbumLabel }} by One Wax Wing</h3>
+        <div class="player-header-info">
+          <img
+            v-if="currentCover"
+            :src="currentCover"
+            :alt="currentAlbumLabel + ' cover'"
+            class="header-cover"
+          />
+          <h3>{{ currentAlbumLabel }} by One Wax Wing</h3>
+        </div>
         <button @click="toggleCollapse" class="collapse-btn" title="Collapse">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <path d="M14 17l-5-5 5-5v10z"/>
@@ -126,6 +134,10 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  releaseCovers: {
+    type: Object,
+    default: () => ({})
+  },
   currentTrackIndex: {
     type: Number,
     default: 0
@@ -166,6 +178,7 @@ function trackNumberInRelease(index) {
 }
 
 const currentAlbumLabel = computed(() => albumLabel(props.tracks[props.currentTrackIndex]));
+const currentCover = computed(() => props.releaseCovers[currentAlbumLabel.value] || null);
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
@@ -312,7 +325,25 @@ function handleProgressTouch(event) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
+}
+
+.player-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.header-cover {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .player-header h3 {
