@@ -1,7 +1,9 @@
 <template>
-  <div 
+  <div
         class="seraphim-wrapper"
-        :class="{ 'animate': audioLoaded && !isPaused }"    
+        :class="{ 'animate': audioLoaded && !isPaused, 'resumable': audioLoaded && isPaused }"
+        @click="handleActivate"
+        @touchstart.prevent="handleActivate"
     >
         <svg 
             id="seraphim" 
@@ -217,6 +219,7 @@ function generateSymbolPhrase() {
 
 export default {
     name: 'seraphimn',
+    emits: ['resume'],
     props: {
         audioData: {
             type: Uint8Array,
@@ -262,6 +265,12 @@ export default {
         clearInterval(this.intervalId)
     },
     methods: {
+        // Clicking/tapping the Seraphim while music is paused resumes playback.
+        handleActivate() {
+            if (this.audioLoaded && this.isPaused) {
+                this.$emit('resume');
+            }
+        },
         getWrapperStyle(index) {
             const angle = (index / totalSymbols) * 360 - 90; // degrees, starting from top
             
@@ -375,6 +384,11 @@ export default {
   z-index: 100;
   opacity: 1;
   transition: opacity 2s;
+}
+
+/* Hint that the Seraphim is tappable to resume when paused */
+.seraphim-wrapper.resumable {
+  cursor: pointer;
 }
 
 .animate.seraphim-wrapper:hover {

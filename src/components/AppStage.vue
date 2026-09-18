@@ -211,9 +211,10 @@
 
     <Seraphim
       v-if="audioLoaded"
-      :audioData="dataArray" 
+      :audioData="dataArray"
       :audioLoaded="audioLoaded"
       :isPaused="isPaused"
+      @resume="resumePlayback"
       />
   </div>
 </template>
@@ -6219,6 +6220,17 @@ function animate() {
   drawAnalogEffects();
 
   animationId = requestAnimationFrame(animate);
+}
+
+// Resume playback (used when the Seraphim is clicked/tapped while paused).
+// Idempotent — does nothing if already playing — so repeat taps are safe.
+function resumePlayback() {
+  if (audioElement && isPaused.value) {
+    audioElement.play();
+    isPaused.value = false;
+    updateDocumentTitle();
+    updateMediaSession();
+  }
 }
 
 function togglePause() {
