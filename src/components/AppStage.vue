@@ -6787,6 +6787,9 @@ input[type="file"] {
   position: fixed;
   top: 22px;
   right: 20px;
+  /* translateX(50%) centers the button on its `right` anchor; sibling rules set
+     `right` to the music player's horizontal center so it sits centered below. */
+  transform: translateX(50%);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: 7.5px solid black;
   border-radius: 30px;
@@ -6805,7 +6808,7 @@ input[type="file"] {
 }
 
 .streaming-btn:hover {
-  transform: scale(1.05);
+  transform: translateX(50%) scale(1.05);
   box-shadow: 0 5px 20px rgba(102, 126, 234, 0.6);
 }
 
@@ -6813,14 +6816,19 @@ input[type="file"] {
   flex-shrink: 0;
 }
 
-/* Position streaming button below music player when it's collapsed */
+/* Position streaming button below music player when it's collapsed.
+   right = player right (20px) + half the collapsed player width (~200px) so the
+   button centers under it. */
 .music-player.collapsed ~ .streaming-btn {
   top: calc(22px + 50px); /* Music player top + approximate collapsed height + gap */
+  right: 120px;
 }
 
-/* Position streaming button below music player when it's expanded */
+/* Position streaming button below music player when it's expanded.
+   right = player right (20px) + half the 280px expanded width = 160px. */
 .music-player:not(.collapsed) ~ .streaming-btn {
-  top: calc(22px + 500px); /* Music player top + approximate expanded height + gap */
+  top: calc(22px + 513px); /* Music player top + approximate expanded height + gap */
+  right: 160px;
 }
 
 /* Modal Styles */
@@ -7282,12 +7290,16 @@ canvas {
     right: 10px;
   }
 
+  /* On mobile the player is near full-width, so centering under it ≈ centering
+     on screen. right: 50% + the base translateX(50%) does exactly that. */
   .music-player.collapsed ~ .streaming-btn {
     top: calc(10px + 45px);
+    right: 50%;
   }
 
   .music-player:not(.collapsed) ~ .streaming-btn {
-    top: calc(10px + 500px);
+    top: calc(10px + 513px);
+    right: 50%;
   }
 
   /* Hide triangle seraphim SVGs on mobile */
