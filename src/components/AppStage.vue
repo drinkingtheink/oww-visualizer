@@ -110,10 +110,10 @@
         <button class="modal-close" @click="showStreamingModal = false">×</button>
         <h2>Listen to One Wax Wing on:</h2>
 
-        <!-- Aether Seep: streaming links go live Fri, Sep 18 — placeholders until then -->
+        <!-- Aether Seep: Bandcamp live now; streaming services go live Fri, Sep 18 -->
         <h3 class="release-heading">
           Aether Seep
-          <span class="coming-soon">Available Fri, Sep 18</span>
+          <span class="coming-soon">Streaming Fri, Sep 18</span>
         </h3>
         <div class="streaming-links">
           <span class="streaming-link spotify disabled" title="Available Friday, Sep 18">
@@ -134,12 +134,12 @@
             </svg>
             <span>YouTube Music</span>
           </span>
-          <span class="streaming-link bandcamp disabled" title="Available Friday, Sep 18">
+          <a href="https://onewaxwing.bandcamp.com/album/aether-seep" target="_blank" rel="noopener noreferrer" class="streaming-link bandcamp">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M0 18.75l7.437-13.5H24l-7.438 13.5H0z"/>
             </svg>
             <span>Bandcamp</span>
-          </span>
+          </a>
         </div>
 
         <h3 class="release-heading">Let Slip</h3>
